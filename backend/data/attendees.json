@@ -1,0 +1,34 @@
+[
+  {
+    "id": "att-1776351099083",
+    "fullName": "Andrea Ramirez",
+    "documentId": "101533369987",
+    "email": "innovacion@cun.edu.co",
+    "phone": "3215844485",
+    "organization": "cun",
+    "attendeeType": "vip",
+    "notes": "",
+    "hasFaceConsent": false,
+    "status": "pre-registered",
+    "source": "public-registration",
+    "qrToken": "evt-1776351099074-ykv7kmzv",
+    "qrValue": "{\"event\":\"evento-principal\",\"attendee\":\"innovacion@cun.edu.co\",\"token\":\"evt-1776351099074-ykv7kmzv\",\"source\":\"public-registration\"}",
+    "createdAt": "2026-04-16T14:51:39.083Z"
+  },
+  {
+    "id": "att-1776350157897",
+    "fullName": "asistente",
+    "documentId": "123456",
+    "email": "asistente@mail.com",
+    "phone": "3002156987",
+    "organization": "cun",
+    "attendeeType": "general",
+    "notes": "",
+    "hasFaceConsent": false,
+    "status": "approved",
+    "source": "admin-panel",
+    "qrToken": "evt-1776350157881-f78ud88a",
+    "qrValue": "{\"event\":\"evento-principal\",\"attendee\":\"asistente@mail.com\",\"token\":\"evt-1776350157881-f78ud88a\",\"source\":\"admin-panel\"}",
+    "createdAt": "2026-04-16T14:35:57.897Z"
+  }
+]

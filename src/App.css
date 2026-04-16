@@ -3,6 +3,30 @@
   z-index: 1;
 }
 
+.public-shell {
+  width: min(1200px, calc(100% - 24px));
+  margin: 12px auto;
+  min-height: calc(100vh - 24px);
+}
+
+.public-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  padding: 40px 24px 12px;
+}
+
+.public-status {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.public-panel {
+  margin: 0 24px 40px;
+}
+
 .hero-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
@@ -184,6 +208,32 @@
   align-items: flex-end;
 }
 
+.table-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(2, minmax(140px, 0.7fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.toolbar-field {
+  display: grid;
+  gap: 8px;
+  color: var(--heading);
+  font-weight: 600;
+}
+
+.toolbar-field input,
+.toolbar-field select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--heading);
+  font: inherit;
+}
+
 .section-copy {
   margin-top: 10px;
   max-width: 60ch;
@@ -288,6 +338,17 @@
   cursor: progress;
 }
 
+.form-actions-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.form-ghost {
+  min-height: 52px;
+}
+
 .helper-text,
 .feedback {
   grid-column: 1 / -1;
@@ -347,6 +408,14 @@
   font-size: 0.94rem;
 }
 
+.preview-actions {
+  margin-top: 20px;
+}
+
+.download-action {
+  width: 100%;
+}
+
 .empty-state {
   padding: 28px;
   border-radius: 22px;
@@ -367,13 +436,47 @@
 
 .attendee-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr 0.8fr 1fr;
+  grid-template-columns: 1.3fr 1fr 0.8fr 0.8fr 1fr 1fr;
   gap: 16px;
   align-items: center;
   padding: 16px 18px;
   border-radius: 18px;
   background: var(--panel-soft);
   text-align: left;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-action {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--heading);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mini-action.danger {
+  border-color: rgba(163, 61, 44, 0.25);
+  color: #a33d2c;
+}
+
+.mini-action.success {
+  border-color: rgba(53, 208, 127, 0.24);
+  color: #177a4b;
+}
+
+.mini-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .attendee-head {
@@ -491,11 +594,50 @@
   font-size: 0.78rem;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(8, 15, 22, 0.58);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+}
+
+.modal-card {
+  width: min(100%, 520px);
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 249, 239, 0.98);
+  box-shadow: 0 24px 60px rgba(12, 27, 43, 0.22);
+}
+
+.modal-copy {
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.danger-submit {
+  grid-column: auto;
+  min-width: 170px;
+  background: linear-gradient(135deg, #ff9f43, #ff6b57);
+}
+
 @media (max-width: 980px) {
   .hero-panel,
   .split-panel,
   .modules-grid,
-  .registration-layout {
+  .registration-layout,
+  .public-hero {
     grid-template-columns: 1fr;
   }
 
@@ -507,9 +649,26 @@
     padding: 18px 18px 28px;
   }
 
+  .public-hero {
+    display: grid;
+    padding: 28px 20px 10px;
+  }
+
+  .public-status {
+    justify-items: start;
+  }
+
+  .public-panel {
+    margin: 0 18px 28px;
+  }
+
   .table-heading {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .table-toolbar {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -553,5 +712,22 @@
 
   .attendee-form {
     grid-template-columns: 1fr;
+  }
+
+  .form-actions-row {
+    grid-template-columns: 1fr;
+  }
+
+  .table-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .danger-submit,
+  .modal-actions .ghost-action {
+    width: 100%;
   }
 }
