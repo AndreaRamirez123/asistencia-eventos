@@ -117,17 +117,6 @@ function AttendeeTableSection({
                   </button>
                 ) : null}
 
-                {item.status === 'approved' ? (
-                  <button
-                    type="button"
-                    className="mini-action success"
-                    onClick={() => handleStatusAction(item.id, 'checked-in')}
-                    disabled={isUpdatingStatusId === item.id}
-                  >
-                    {isUpdatingStatusId === item.id ? 'Actualizando...' : 'Marcar ingreso'}
-                  </button>
-                ) : null}
-
                 <button type="button" className="mini-action" onClick={() => handleEdit(item)}>
                   Editar
                 </button>

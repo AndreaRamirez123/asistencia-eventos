@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const QRCode = require('qrcode')
+const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
 
@@ -8,6 +9,56 @@ const app = express()
 const PORT = Number(process.env.PORT) || 4000
 const DATA_DIR = path.join(__dirname, 'data')
 const ATTENDEES_FILE = path.join(DATA_DIR, 'attendees.json')
+
+const ADMIN_USER = process.env.ADMIN_USER || 'admin'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123'
+const STAFF_USER = process.env.STAFF_USER || 'staff'
+const STAFF_PASSWORD = process.env.STAFF_PASSWORD || 'staff123'
+
+const sessions = new Map()
+
+function createSessionToken(user) {
+  const token = crypto.randomBytes(32).toString('hex')
+  sessions.set(token, {
+    username: user.username,
+    role: user.role,
+    createdAt: new Date().toISOString(),
+  })
+  return token
+}
+
+function getSessionFromRequest(request) {
+  const header = request.headers.authorization || ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
+  if (!token) {
+    return null
+  }
+  const session = sessions.get(token)
+  return session ? { token, ...session } : null
+}
+
+function requireAuth(request, response, next) {
+  const session = getSessionFromRequest(request)
+  if (!session) {
+    return response.status(401).json({ error: 'Autenticacion requerida.' })
+  }
+  request.session = session
+  return next()
+}
+
+function requireRole(allowedRoles) {
+  return (request, response, next) => {
+    const session = getSessionFromRequest(request)
+    if (!session) {
+      return response.status(401).json({ error: 'Autenticacion requerida.' })
+    }
+    if (!allowedRoles.includes(session.role)) {
+      return response.status(403).json({ error: 'Rol sin permiso suficiente.' })
+    }
+    request.session = session
+    return next()
+  }
+}
 
 function ensureDataFile() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -111,6 +162,46 @@ async function createQrPayload(attendee, qrToken) {
   return { qrValue, qrDataUrl }
 }
 
+app.post('/api/auth/login', (request, response) => {
+  const username = normalizeText(request.body.username)
+  const password = String(request.body.password || '')
+
+  let role = ''
+  if (username === ADMIN_USER && password === ADMIN_PASSWORD) {
+    role = 'admin'
+  } else if (username === STAFF_USER && password === STAFF_PASSWORD) {
+    role = 'staff'
+  }
+
+  if (!role) {
+    return response.status(401).json({ error: 'Credenciales invalidas.' })
+  }
+
+  const token = createSessionToken({ username, role })
+  return response.json({
+    token,
+    user: { username, role },
+  })
+})
+
+app.post('/api/auth/logout', (request, response) => {
+  const session = getSessionFromRequest(request)
+  if (session) {
+    sessions.delete(session.token)
+  }
+  return response.json({ message: 'Sesion cerrada.' })
+})
+
+app.get('/api/auth/me', (request, response) => {
+  const session = getSessionFromRequest(request)
+  if (!session) {
+    return response.status(401).json({ error: 'Sin sesion activa.' })
+  }
+  return response.json({
+    user: { username: session.username, role: session.role },
+  })
+})
+
 app.get('/health', (_request, response) => {
   response.json({
     ok: true,
@@ -133,11 +224,12 @@ app.get('/api/meta', (_request, response) => {
       'PATCH /api/attendees/:id/status',
       'DELETE /api/attendees/:id',
       'POST /api/qr/generate',
+      'POST /api/checkin',
     ],
   })
 })
 
-app.get('/api/attendees', (_request, response) => {
+app.get('/api/attendees', requireAuth, (_request, response) => {
   response.json({
     items: attendees,
     total: attendees.length,
@@ -165,6 +257,16 @@ app.post('/api/qr/generate', async (request, response) => {
 app.post('/api/attendees/register', async (request, response) => {
   try {
     const attendee = buildAttendeePayload(request.body)
+    const session = getSessionFromRequest(request)
+
+    if (attendee.source !== 'public-registration' && !session) {
+      return response.status(401).json({ error: 'Autenticacion requerida para registrar desde admin.' })
+    }
+
+    if (attendee.source === 'public-registration') {
+      attendee.status = 'pre-registered'
+    }
+
     const errors = validateAttendee(attendee)
 
     if (errors.length > 0) {
@@ -201,7 +303,7 @@ app.post('/api/attendees/register', async (request, response) => {
   }
 })
 
-app.put('/api/attendees/:id', (request, response) => {
+app.put('/api/attendees/:id', requireAuth, (request, response) => {
   try {
     const attendeeIndex = findAttendeeIndex(request.params.id)
 
@@ -247,7 +349,7 @@ app.put('/api/attendees/:id', (request, response) => {
   }
 })
 
-app.patch('/api/attendees/:id/status', (request, response) => {
+app.patch('/api/attendees/:id/status', requireRole(['admin']), (request, response) => {
   try {
     const attendeeIndex = findAttendeeIndex(request.params.id)
 
@@ -287,7 +389,81 @@ app.patch('/api/attendees/:id/status', (request, response) => {
   }
 })
 
-app.delete('/api/attendees/:id', (request, response) => {
+app.post('/api/checkin', requireRole(['admin', 'staff']), (request, response) => {
+  try {
+    const qrToken = normalizeText(request.body.qrToken)
+    const documentId = normalizeText(request.body.documentId)
+    const accessPoint = normalizeText(request.body.accessPoint) || 'general'
+
+    if (!qrToken && !documentId) {
+      return response.status(400).json({
+        status: 'invalid',
+        error: 'Debes enviar un token QR o un numero de documento.',
+      })
+    }
+
+    const attendeeIndex = attendees.findIndex((item) => {
+      if (qrToken && item.qrToken === qrToken) {
+        return true
+      }
+      if (documentId && item.documentId === documentId) {
+        return true
+      }
+      return false
+    })
+
+    if (attendeeIndex === -1) {
+      return response.status(404).json({
+        status: 'not-found',
+        error: 'QR no reconocido. Verifica el registro del asistente.',
+      })
+    }
+
+    const currentRecord = attendees[attendeeIndex]
+
+    if (currentRecord.status === 'checked-in') {
+      return response.status(409).json({
+        status: 'duplicate',
+        error: 'Este asistente ya hizo check-in.',
+        item: currentRecord,
+      })
+    }
+
+    if (currentRecord.status !== 'approved') {
+      return response.status(403).json({
+        status: 'not-approved',
+        error:
+          'El asistente todavia no esta aprobado. Debe ser aprobado desde el panel admin antes del ingreso.',
+        item: currentRecord,
+      })
+    }
+
+    const updatedRecord = {
+      ...currentRecord,
+      status: 'checked-in',
+      checkedInAt: new Date().toISOString(),
+      checkinPoint: accessPoint,
+      updatedAt: new Date().toISOString(),
+    }
+
+    attendees[attendeeIndex] = updatedRecord
+    saveAttendeesToDisk(attendees)
+
+    return response.json({
+      status: 'ok',
+      message: 'Check-in registrado correctamente.',
+      item: updatedRecord,
+    })
+  } catch (error) {
+    return response.status(500).json({
+      status: 'error',
+      error: 'No fue posible registrar el check-in.',
+      detail: error.message,
+    })
+  }
+})
+
+app.delete('/api/attendees/:id', requireRole(['admin']), (request, response) => {
   try {
     const attendeeIndex = findAttendeeIndex(request.params.id)
 

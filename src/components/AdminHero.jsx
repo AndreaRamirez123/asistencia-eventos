@@ -1,4 +1,11 @@
-function AdminHero({ attendeesCount, backendStatus, isFirebaseConfigured, metrics }) {
+function AdminHero({
+  attendeesCount,
+  backendStatus,
+  isFirebaseConfigured,
+  metrics,
+  currentUser,
+  onLogout,
+}) {
   return (
     <header className="hero-panel">
       <div className="hero-copy">
@@ -16,6 +23,14 @@ function AdminHero({ attendeesCount, backendStatus, isFirebaseConfigured, metric
           <a href="#asistentes" className="secondary-action">
             Ver asistentes
           </a>
+          <a href="/scanner" className="secondary-action">
+            Abrir scanner QR
+          </a>
+          {onLogout ? (
+            <button type="button" className="ghost-action" onClick={onLogout}>
+              Cerrar sesion{currentUser ? ` (${currentUser.username})` : ''}
+            </button>
+          ) : null}
         </div>
       </div>
 

@@ -1,89 +1,23 @@
-import { useEffect, useState } from 'react'
-import QRCode from 'qrcode'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from './firebase'
-import ActivitySection from './components/ActivitySection'
+import { useEffect, useMemo, useState } from 'react'
+import { isFirebaseConfigured } from './firebase'
+import {
+  deleteAttendee,
+  listAttendees,
+  registerAttendee,
+  updateAttendee,
+  updateAttendeeStatus,
+} from './attendeesStore'
 import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
-import ModulesSection from './components/ModulesSection'
-import OperationsSection from './components/OperationsSection'
+import LoginPage from './components/LoginPage'
 import PublicRegistrationPage from './components/PublicRegistrationPage'
-import RoadmapSection from './components/RoadmapSection'
+import ScannerPage from './components/ScannerPage'
+import { authFetch, clearSession, getStoredUser, getToken } from './auth'
 import './App.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'
-
-const metrics = [
-  { value: '1,248', label: 'registros aprobados' },
-  { value: '834', label: 'check-ins confirmados' },
-  { value: '04', label: 'puntos de acceso activos' },
-  { value: '17', label: 'casos pendientes' },
-]
-
-const modules = [
-  {
-    title: 'Registro asistido por staff',
-    description:
-      'El administrador o su equipo pueden registrar asistentes manualmente desde mesa de apoyo o backoffice.',
-    detail: 'Util para casos VIP, prensa, invitados de ultima hora o correcciones.',
-  },
-  {
-    title: 'Control de accesos',
-    description:
-      'Vista central para coordinar scanners, validar incidencias y supervisar ingresos por punto de acceso.',
-    detail: 'Permite tomar decisiones rapidas durante el evento.',
-  },
-  {
-    title: 'Validaciones especiales',
-    description:
-      'Casos de QR duplicado, busqueda manual, cambios de categoria y autorizaciones excepcionales.',
-    detail: 'Todo operado desde la cuenta admin o supervisores.',
-  },
-  {
-    title: 'Pantalla operativa',
-    description:
-      'Resumen en tiempo real para aforo, flujo, alertas y estado general del evento.',
-    detail: 'Ideal para coordinacion de produccion y recepcion.',
-  },
-]
-
-const adminLanes = [
-  {
-    name: 'Admin principal',
-    action: 'Configura el evento, controla accesos, monitorea metricas y toma decisiones operativas.',
-  },
-  {
-    name: 'Supervisor de ingreso',
-    action: 'Gestiona filas, valida excepciones y coordina el staff de scanners.',
-  },
-  {
-    name: 'Mesa de soporte',
-    action: 'Registra asistentes manualmente, corrige datos y resuelve casos sin QR.',
-  },
-]
-
-const roadmap = [
-  'Panel admin con autenticacion y roles.',
-  'Registro manual y edicion de asistentes.',
-  'Scanner QR y validacion anti-duplicado.',
-  'Dashboard en vivo con incidencias y aforo.',
-  'Reportes, exportaciones y mejoras avanzadas.',
-]
-
-const liveFeed = [
-  { time: '08:41', person: 'Valentina Perez', status: 'Ingreso validado', point: 'Entrada norte' },
-  { time: '08:43', person: 'Carlos Mendez', status: 'QR duplicado bloqueado', point: 'Acceso VIP' },
-  { time: '08:44', person: 'Sandra Rojas', status: 'Registro manual por admin', point: 'Mesa 2' },
-  { time: '08:45', person: 'Equipo Prensa', status: '04 acreditaciones aprobadas', point: 'Backstage' },
-]
-
-const incidents = [
-  '2 asistentes sin QR enviados a mesa de soporte.',
-  '1 duplicado detectado y bloqueado en acceso VIP.',
-  '1 cambio de categoria pendiente de aprobacion.',
-]
 
 const initialForm = {
   fullName: '',
@@ -119,8 +53,12 @@ function getCurrentView() {
     return 'public'
   }
 
-  if (path === '/admin') {
-    return 'admin'
+  if (path === '/admin/login' || path === '/login') {
+    return 'login'
+  }
+
+  if (path === '/scanner') {
+    return 'scanner'
   }
 
   return 'admin'
@@ -134,7 +72,7 @@ function createQrToken() {
   return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-function buildAttendeePayload(form, qrToken, overrides = {}) {
+function buildAttendeePayload(form, overrides = {}) {
   return {
     fullName: form.fullName.trim(),
     documentId: form.documentId.trim(),
@@ -144,34 +82,8 @@ function buildAttendeePayload(form, qrToken, overrides = {}) {
     attendeeType: form.attendeeType,
     notes: form.notes?.trim?.() || '',
     hasFaceConsent: form.hasFaceConsent,
-    qrToken,
     status: overrides.status || 'approved',
     source: overrides.source || 'admin-panel',
-  }
-}
-
-async function createLocalSubmission(attendee, qrToken, source = 'admin') {
-  const qrValue = JSON.stringify({
-    event: 'evento-principal',
-    attendee: attendee.email || attendee.documentId,
-    token: qrToken,
-    source,
-  })
-
-  const qrDataUrl = await QRCode.toDataURL(qrValue, {
-    width: 320,
-    margin: 2,
-    color: {
-      dark: '#13212d',
-      light: '#fffaf1',
-    },
-  })
-
-  return {
-    recordId: `preview-${qrToken.slice(0, 8)}`,
-    qrDataUrl,
-    mode: 'preview',
-    attendee,
   }
 }
 
@@ -227,8 +139,18 @@ function App() {
   const [filters, setFilters] = useState(initialFilters)
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
 
+  const handleLogout = async () => {
+    try {
+      await authFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' })
+    } catch {
+      // ignore network errors on logout
+    }
+    clearSession()
+    window.location.href = '/admin/login'
+  }
+
   const loadAttendees = async ({ silent = false } = {}) => {
-    if (backendStatus !== 'online') {
+    if (!isFirebaseConfigured) {
       setAttendees([])
       return
     }
@@ -238,16 +160,11 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/attendees`)
-      const data = await parseApiResponse(response)
-
-      if (!response.ok) {
-        throw new Error(data.error || 'No fue posible consultar asistentes.')
-      }
-
-      setAttendees(data.items || [])
+      const items = await listAttendees()
+      setAttendees(items)
     } catch (error) {
       console.error(error)
+      setErrorMessage(error.message || 'No fue posible consultar asistentes.')
     } finally {
       if (!silent) {
         setIsLoadingAttendees(false)
@@ -293,12 +210,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (backendStatus === 'online' && currentView === 'admin') {
+    if (isFirebaseConfigured && currentView === 'admin') {
       loadAttendees()
-    } else if (backendStatus === 'offline') {
-      setAttendees([])
     }
-  }, [backendStatus, currentView])
+  }, [currentView])
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -363,8 +278,8 @@ function App() {
   }
 
   const handleStatusAction = async (attendeeId, nextStatus) => {
-    if (backendStatus !== 'online') {
-      setErrorMessage('La actualizacion de estado solo esta disponible con el backend conectado.')
+    if (!isFirebaseConfigured) {
+      setErrorMessage('Firestore no esta configurado. Revisa .env.local.')
       return
     }
 
@@ -372,20 +287,10 @@ function App() {
     setErrorMessage('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/attendees/${attendeeId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: nextStatus }),
-      })
-      const data = await parseApiResponse(response)
-
-      if (!response.ok) {
-        throw new Error(data.error || 'No fue posible actualizar el estado.')
-      }
-
-      setAttendees((current) => current.map((item) => (item.id === attendeeId ? data.item : item)))
+      const updated = await updateAttendeeStatus(attendeeId, nextStatus)
+      setAttendees((current) =>
+        current.map((item) => (item.id === attendeeId ? { ...item, ...updated } : item)),
+      )
     } catch (error) {
       setErrorMessage(error.message || 'No fue posible actualizar el estado.')
       console.error(error)
@@ -395,8 +300,8 @@ function App() {
   }
 
   const handleConfirmDelete = async (attendee) => {
-    if (backendStatus !== 'online') {
-      setErrorMessage('La eliminacion solo esta disponible cuando el backend esta conectado.')
+    if (!isFirebaseConfigured) {
+      setErrorMessage('Firestore no esta configurado. Revisa .env.local.')
       return
     }
 
@@ -404,14 +309,7 @@ function App() {
     setErrorMessage('')
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/attendees/${attendee.id}`, {
-        method: 'DELETE',
-      })
-      const data = await parseApiResponse(response)
-
-      if (!response.ok) {
-        throw new Error(data.error || 'No fue posible eliminar el asistente.')
-      }
+      await deleteAttendee(attendee.id)
 
       setAttendees((current) => current.filter((item) => item.id !== attendee.id))
       setPendingDeleteAttendee(null)
@@ -433,29 +331,15 @@ function App() {
     setErrorMessage('')
 
     try {
-      const qrToken = createQrToken()
-      const attendee = buildAttendeePayload(form, qrToken, {
+      const attendee = buildAttendeePayload(form, {
         source: 'admin-panel',
         status: 'approved',
       })
 
-      if (backendStatus === 'online' && editingAttendeeId) {
-        const response = await fetch(`${API_BASE_URL}/api/attendees/${editingAttendeeId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(attendee),
-        })
-
-        const data = await parseApiResponse(response)
-
-        if (!response.ok) {
-          throw new Error(data.validations?.join(' ') || data.error || 'No fue posible actualizar.')
-        }
-
+      if (editingAttendeeId) {
+        const updated = await updateAttendee(editingAttendeeId, attendee)
         setAttendees((current) =>
-          current.map((item) => (item.id === editingAttendeeId ? data.item : item)),
+          current.map((item) => (item.id === editingAttendeeId ? { ...item, ...updated } : item)),
         )
         setSubmission(null)
         setEditingAttendeeId('')
@@ -463,72 +347,20 @@ function App() {
         return
       }
 
-      if (backendStatus === 'online') {
-        const response = await fetch(`${API_BASE_URL}/api/attendees/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(attendee),
-        })
-
-        const data = await parseApiResponse(response)
-
-        if (!response.ok) {
-          throw new Error(data.validations?.join(' ') || data.error || 'No fue posible registrar.')
-        }
-
-        setSubmission({
-          recordId: data.item.id,
-          qrDataUrl: data.qrDataUrl,
-          mode: 'backend',
-          attendee: data.item,
-        })
-        setAttendees((current) => [data.item, ...current])
-        setEditingAttendeeId('')
-        setForm(initialForm)
-        return
-      }
-
-      if (isFirebaseConfigured) {
-        const qrValue = JSON.stringify({
-          event: 'evento-principal',
-          attendee: attendee.email || attendee.documentId,
-          token: qrToken,
-          source: 'admin',
-        })
-        const qrDataUrl = await QRCode.toDataURL(qrValue, {
-          width: 320,
-          margin: 2,
-          color: {
-            dark: '#13212d',
-            light: '#fffaf1',
-          },
-        })
-
-        const docRef = await addDoc(collection(db, 'attendees'), {
-          ...attendee,
-          qrValue,
-          createdAt: serverTimestamp(),
-        })
-
-        setSubmission({
-          recordId: docRef.id,
-          qrDataUrl,
-          mode: 'firestore',
-          attendee,
-        })
-        setForm(initialForm)
-        return
-      }
-
-      setSubmission(await createLocalSubmission(attendee, qrToken))
+      const result = await registerAttendee(attendee)
+      setSubmission({
+        recordId: result.item.id,
+        qrDataUrl: result.qrDataUrl,
+        mode: 'firestore',
+        attendee: result.item,
+      })
+      setAttendees((current) => [result.item, ...current])
       setEditingAttendeeId('')
       setForm(initialForm)
     } catch (error) {
       setErrorMessage(
         error.message ||
-          'No fue posible guardar el registro desde el panel admin. Revisa el backend o Firebase.',
+          'No fue posible guardar el registro desde el panel admin. Revisa Firestore.',
       )
       console.error(error)
     } finally {
@@ -542,70 +374,18 @@ function App() {
     setPublicErrorMessage('')
 
     try {
-      const qrToken = createQrToken()
-      const attendee = buildAttendeePayload(publicForm, qrToken, {
+      const attendee = buildAttendeePayload(publicForm, {
         source: 'public-registration',
         status: 'pre-registered',
       })
 
-      if (backendStatus === 'online') {
-        const response = await fetch(`${API_BASE_URL}/api/attendees/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(attendee),
-        })
-
-        const data = await parseApiResponse(response)
-
-        if (!response.ok) {
-          throw new Error(data.validations?.join(' ') || data.error || 'No fue posible registrar.')
-        }
-
-        setPublicSubmission({
-          recordId: data.item.id,
-          qrDataUrl: data.qrDataUrl,
-          mode: 'backend',
-          attendee: data.item,
-        })
-        setPublicForm(initialPublicForm)
-        return
-      }
-
-      if (isFirebaseConfigured) {
-        const qrValue = JSON.stringify({
-          event: 'evento-principal',
-          attendee: attendee.email || attendee.documentId,
-          token: qrToken,
-          source: 'public',
-        })
-        const qrDataUrl = await QRCode.toDataURL(qrValue, {
-          width: 320,
-          margin: 2,
-          color: {
-            dark: '#13212d',
-            light: '#fffaf1',
-          },
-        })
-
-        const docRef = await addDoc(collection(db, 'attendees'), {
-          ...attendee,
-          qrValue,
-          createdAt: serverTimestamp(),
-        })
-
-        setPublicSubmission({
-          recordId: docRef.id,
-          qrDataUrl,
-          mode: 'firestore',
-          attendee,
-        })
-        setPublicForm(initialPublicForm)
-        return
-      }
-
-      setPublicSubmission(await createLocalSubmission(attendee, qrToken, 'public'))
+      const result = await registerAttendee(attendee)
+      setPublicSubmission({
+        recordId: result.item.id,
+        qrDataUrl: result.qrDataUrl,
+        mode: 'firestore',
+        attendee: result.item,
+      })
       setPublicForm(initialPublicForm)
     } catch (error) {
       setPublicErrorMessage(
@@ -617,12 +397,23 @@ function App() {
     }
   }
 
-  const modeLabel =
-    backendStatus === 'online'
-      ? 'backend activo'
-      : isFirebaseConfigured
-        ? 'guardado en Firestore'
-        : 'modo preview local'
+  const modeLabel = isFirebaseConfigured ? 'Firestore activo' : 'Firebase no configurado'
+
+  const liveMetrics = useMemo(() => {
+    const total = attendees.length
+    const approved = attendees.filter((item) => item.status === 'approved').length
+    const checkedIn = attendees.filter((item) => item.status === 'checked-in').length
+    const pending = attendees.filter(
+      (item) => item.status === 'pre-registered' || item.status === 'pending',
+    ).length
+
+    return [
+      { value: String(total), label: 'registros totales' },
+      { value: String(approved), label: 'aprobados' },
+      { value: String(checkedIn), label: 'check-ins confirmados' },
+      { value: String(pending), label: 'pendientes' },
+    ]
+  }, [attendees])
 
   const normalizedQuery = filters.query.trim().toLowerCase()
   const filteredAttendees = attendees.filter((item) => {
@@ -654,13 +445,39 @@ function App() {
     )
   }
 
+  if (currentView === 'login') {
+    return <LoginPage />
+  }
+
+  const currentUser = getStoredUser()
+  const hasToken = Boolean(getToken())
+
+  if (!hasToken || !currentUser) {
+    window.location.href = '/admin/login'
+    return null
+  }
+
+  if (currentView === 'scanner') {
+    if (!['admin', 'staff'].includes(currentUser.role)) {
+      return <LoginPage />
+    }
+    return <ScannerPage currentUser={currentUser} onLogout={handleLogout} />
+  }
+
+  if (currentUser.role !== 'admin') {
+    window.location.href = '/scanner'
+    return null
+  }
+
   return (
     <div className="app-shell">
       <AdminHero
         attendeesCount={attendees.length}
         backendStatus={backendStatus}
         isFirebaseConfigured={isFirebaseConfigured}
-        metrics={metrics}
+        metrics={liveMetrics}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       <main className="content-grid">
@@ -691,11 +508,6 @@ function App() {
           isLoadingAttendees={isLoadingAttendees}
           loadAttendees={loadAttendees}
         />
-
-        <ModulesSection modules={modules} />
-        <OperationsSection adminLanes={adminLanes} />
-        <RoadmapSection incidents={incidents} roadmap={roadmap} />
-        <ActivitySection liveFeed={liveFeed} />
       </main>
 
       <DeleteConfirmModal
