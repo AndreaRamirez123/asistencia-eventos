@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { performCheckin } from '../attendeesStore'
+
+const ACCESS_POINT_KEY = 'asistencia-evento:accessPoint'
 
 const accessPoints = [
   { value: 'entrada-norte', label: 'Entrada norte' },
@@ -8,6 +10,18 @@ const accessPoints = [
   { value: 'acceso-vip', label: 'Acceso VIP' },
   { value: 'backstage', label: 'Backstage / Staff' },
 ]
+
+function loadStoredAccessPoint() {
+  try {
+    const saved = localStorage.getItem(ACCESS_POINT_KEY)
+    if (saved && accessPoints.some((p) => p.value === saved)) {
+      return saved
+    }
+  } catch {
+    // localStorage not available
+  }
+  return accessPoints[0].value
+}
 
 const feedbackStyles = {
   ok: { tone: 'online', title: 'Ingreso validado' },
@@ -19,7 +33,7 @@ const feedbackStyles = {
 }
 
 function ScannerPage({ currentUser, onLogout }) {
-  const [accessPoint, setAccessPoint] = useState(accessPoints[0].value)
+  const [accessPoint, setAccessPoint] = useState(loadStoredAccessPoint)
   const [isScanning, setIsScanning] = useState(true)
   const [cameraSupported, setCameraSupported] = useState(true)
   const [manualInput, setManualInput] = useState('')
@@ -33,7 +47,12 @@ function ScannerPage({ currentUser, onLogout }) {
     setIsScanning(false)
 
     try {
-      const data = await performCheckin({ ...payload, accessPoint })
+      const data = await performCheckin({
+        ...payload,
+        accessPoint,
+        checkedInBy: currentUser?.email || '',
+        checkedInByName: currentUser?.displayName || '',
+      })
 
       const result = {
         status: data.status,
@@ -87,8 +106,22 @@ function ScannerPage({ currentUser, onLogout }) {
   }
 
   const handleAccessPointChange = (event) => {
-    setAccessPoint(event.target.value)
+    const next = event.target.value
+    setAccessPoint(next)
+    try {
+      localStorage.setItem(ACCESS_POINT_KEY, next)
+    } catch {
+      // localStorage not available, ignore
+    }
   }
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACCESS_POINT_KEY, accessPoint)
+    } catch {
+      // localStorage not available, ignore
+    }
+  }, [accessPoint])
 
   const resumeScan = () => {
     setLastResult(null)
@@ -169,26 +202,38 @@ function ScannerPage({ currentUser, onLogout }) {
               ))}
             </select>
           </label>
-          {currentUser?.role === 'admin' ? (
+          {['admin', 'superadmin', 'admin_empresa'].includes(currentUser?.role) ? (
             <a href="/admin" className="secondary-action">
               Ir al panel admin
             </a>
           ) : null}
           {onLogout ? (
             <button type="button" className="ghost-action" onClick={onLogout}>
-              Cerrar sesion{currentUser ? ` (${currentUser.username})` : ''}
+              Cerrar sesion
             </button>
           ) : null}
         </div>
       </header>
 
+      <section className="scanner-context-banner">
+        <div>
+          <p className="eyebrow">Estas validando en</p>
+          <strong className="banner-point">
+            {accessPoints.find((p) => p.value === accessPoint)?.label || accessPoint}
+          </strong>
+        </div>
+        <div>
+          <p className="eyebrow">Staff de turno</p>
+          <strong className="banner-staff">
+            {currentUser?.displayName || currentUser?.email || 'Sin sesion'}
+          </strong>
+        </div>
+      </section>
+
       <section className="panel public-panel">
         <div className="panel-heading">
           <p className="eyebrow">Camara activa</p>
           <h2>Escaneo en vivo</h2>
-          <p className="section-copy">
-            Cada QR valido marca al asistente como <strong>checked-in</strong> en el backend.
-          </p>
         </div>
 
         <div className="registration-layout">

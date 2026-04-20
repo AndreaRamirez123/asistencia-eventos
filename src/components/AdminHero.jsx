@@ -1,6 +1,5 @@
 function AdminHero({
   attendeesCount,
-  backendStatus,
   isFirebaseConfigured,
   metrics,
   currentUser,
@@ -10,7 +9,7 @@ function AdminHero({
     <header className="hero-panel">
       <div className="hero-copy">
         <p className="eyebrow">Panel administrativo del evento</p>
-        <h1>Centro de control para registro, accesos, soporte e incidencias.</h1>
+        <h1>Centro de control para registro y accesos.</h1>
         <p className="hero-text">
           Esta vista queda orientada al admin para operar el evento, registrar personas
           manualmente, supervisar entradas y resolver casos especiales en tiempo real.
@@ -28,7 +27,7 @@ function AdminHero({
           </a>
           {onLogout ? (
             <button type="button" className="ghost-action" onClick={onLogout}>
-              Cerrar sesion{currentUser ? ` (${currentUser.username})` : ''}
+              Cerrar sesion
             </button>
           ) : null}
         </div>
@@ -50,17 +49,22 @@ function AdminHero({
         </div>
 
         <div className="status-strip">
-          <span className={`status-pill ${backendStatus === 'online' ? 'online' : 'alert'}`}>
-            {backendStatus === 'checking'
-              ? 'Verificando backend...'
-              : backendStatus === 'online'
-                ? 'Backend admin conectado'
-                : 'Backend no disponible'}
+          <span className={`status-pill ${isFirebaseConfigured ? 'online' : 'alert'}`}>
+            {isFirebaseConfigured ? 'Firestore conectado' : 'Firebase no configurado'}
           </span>
-          <span className="status-pill standby">
-            {isFirebaseConfigured ? 'Firebase listo' : 'Firebase en preview'}
-          </span>
-          <span className="status-pill alert">{attendeesCount} registros cargados</span>
+          <span className="status-pill standby">{attendeesCount} registros cargados</span>
+          {currentUser ? (
+            <span className="status-pill standby" title={currentUser.email}>
+              {currentUser.role === 'superadmin'
+                ? 'Superadmin'
+                : currentUser.role === 'admin_empresa'
+                  ? 'Admin empresa'
+                  : currentUser.role === 'admin'
+                    ? 'Admin'
+                    : 'Staff'}
+              : {currentUser.displayName}
+            </span>
+          ) : null}
         </div>
       </section>
     </header>

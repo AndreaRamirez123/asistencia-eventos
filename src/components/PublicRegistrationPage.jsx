@@ -1,12 +1,21 @@
+import { useState } from 'react'
+import CedulaScanner from './CedulaScanner'
+
 function PublicRegistrationPage({
-  backendStatus,
   errorMessage,
   form,
   handleChange,
   handleSubmit,
   isSubmitting,
   submission,
+  onCedulaFill,
 }) {
+  const [showScanner, setShowScanner] = useState(false)
+
+  const handleExtract = (data) => {
+    onCedulaFill?.(data)
+    setShowScanner(false)
+  }
   return (
     <div className="public-shell">
       <header className="public-hero">
@@ -14,21 +23,11 @@ function PublicRegistrationPage({
           <p className="eyebrow">Registro publico del evento</p>
           <h1>Inscribete y recibe tu codigo QR de asistencia.</h1>
           <p className="hero-text">
-            Esta vista esta pensada para el asistente. Aqui la persona diligencia sus datos y queda
-            registrada para el evento.
+             Diligencia tus datos y quedarás
+            registrado para el evento.
           </p>
         </div>
 
-        <div className="public-status">
-          <span className={`status-pill ${backendStatus === 'online' ? 'online' : 'alert'}`}>
-            {backendStatus === 'online'
-              ? 'Registro conectado al backend'
-              : 'Registro en modo local temporal'}
-          </span>
-          <a href="/admin" className="secondary-action">
-            Ir al panel admin
-          </a>
-        </div>
       </header>
 
       <section className="panel public-panel">
@@ -107,15 +106,40 @@ function PublicRegistrationPage({
               </select>
             </label>
 
-            <label className="checkbox-field">
-              <input
-                type="checkbox"
-                name="hasFaceConsent"
-                checked={form.hasFaceConsent}
-                onChange={handleChange}
-              />
-              <span>Autorizo reconocimiento facial opcional como apoyo al ingreso.</span>
-            </label>
+            <fieldset className="consent-section">
+              <legend>Apoyos opcionales al registro</legend>
+              <p className="helper-text">
+                Estas opciones son voluntarias. Los datos se tratan conforme a la Ley 1581 de 2012
+                (habeas data) y solo se usan para fines del registro al evento.
+              </p>
+
+              <div className="consent-item">
+                <div>
+                  <strong>Escanear cedula para autocompletar</strong>
+                  <p className="helper-text">
+                    Se lee el codigo de barras del reverso y se rellenan nombre y documento. La
+                    imagen no se almacena.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-action cedula-trigger"
+                  onClick={() => setShowScanner(true)}
+                >
+                  Escanear cedula
+                </button>
+              </div>
+
+              <label className="checkbox-field consent-checkbox">
+                <input
+                  type="checkbox"
+                  name="hasFaceConsent"
+                  checked={form.hasFaceConsent}
+                  onChange={handleChange}
+                />
+                <span>Autorizo reconocimiento facial opcional como apoyo al ingreso.</span>
+              </label>
+            </fieldset>
 
             {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
 
@@ -166,6 +190,10 @@ function PublicRegistrationPage({
           </aside>
         </div>
       </section>
+
+      {showScanner ? (
+        <CedulaScanner onExtract={handleExtract} onClose={() => setShowScanner(false)} />
+      ) : null}
     </div>
   )
 }

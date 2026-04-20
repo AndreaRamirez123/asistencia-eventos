@@ -39,18 +39,26 @@ async function buildQrPayload(attendee, qrToken, source) {
   return { qrValue, qrDataUrl }
 }
 
+export function normalizeDocumentId(value) {
+  return String(value || '')
+    .replace(/[\s.\-_,;:/\\]/g, '')
+    .toUpperCase()
+}
+
 function normalizeAttendee(payload) {
   return {
     fullName: String(payload.fullName || '').trim(),
-    documentId: String(payload.documentId || '').trim(),
+    documentId: normalizeDocumentId(payload.documentId),
     email: String(payload.email || '').trim().toLowerCase(),
-    phone: String(payload.phone || '').trim(),
+    phone: String(payload.phone || '').replace(/\s+/g, ''),
     organization: String(payload.organization || '').trim(),
     attendeeType: String(payload.attendeeType || 'general').trim(),
     notes: String(payload.notes || '').trim(),
     hasFaceConsent: Boolean(payload.hasFaceConsent),
     status: String(payload.status || 'approved').trim(),
     source: String(payload.source || 'admin-panel').trim(),
+    empresaId: String(payload.empresaId || '').trim(),
+    eventoId: String(payload.eventoId || '').trim(),
   }
 }
 
@@ -109,6 +117,18 @@ export async function registerAttendee(payload) {
     throw error
   }
 
+  const attendeesRef = collection(db, COLLECTION_NAME)
+
+  const duplicateQuery = query(attendeesRef, where('documentId', '==', attendee.documentId))
+  const duplicateSnap = await getDocs(duplicateQuery)
+  if (!duplicateSnap.empty) {
+    const error = new Error(
+      'Ya existe un asistente registrado con este numero de documento.',
+    )
+    error.validations = ['Documento duplicado.']
+    throw error
+  }
+
   const qrToken = createQrToken()
   const { qrValue, qrDataUrl } = await buildQrPayload(attendee, qrToken, attendee.source)
 
@@ -119,7 +139,6 @@ export async function registerAttendee(payload) {
     createdAt: serverTimestamp(),
   }
 
-  const attendeesRef = collection(db, COLLECTION_NAME)
   const docRef = await addDoc(attendeesRef, record)
 
   return {
@@ -170,9 +189,50 @@ export async function deleteAttendee(id) {
   return { id }
 }
 
-export async function performCheckin({ qrToken, documentId, accessPoint }) {
+export async function migrateOrphanAttendees({ empresaId, eventoId }) {
   ensureFirestore()
-  if (!qrToken && !documentId) {
+  if (!empresaId || !eventoId) {
+    throw new Error('Se requiere empresaId y eventoId para migrar.')
+  }
+
+  const attendeesRef = collection(db, COLLECTION_NAME)
+  const snap = await getDocs(attendeesRef)
+
+  let migrated = 0
+  let skipped = 0
+
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data()
+    const updates = {}
+    if (!data.empresaId) updates.empresaId = empresaId
+    if (!data.eventoId) updates.eventoId = eventoId
+
+    if (Object.keys(updates).length === 0) {
+      skipped += 1
+      continue
+    }
+
+    updates.updatedAt = serverTimestamp()
+    await updateDoc(docSnap.ref, updates)
+    migrated += 1
+  }
+
+  return { migrated, skipped, total: snap.docs.length }
+}
+
+export async function performCheckin({
+  qrToken,
+  documentId,
+  accessPoint,
+  checkedInBy = '',
+  checkedInByName = '',
+}) {
+  ensureFirestore()
+
+  const cleanQrToken = String(qrToken || '').trim()
+  const cleanDocumentId = normalizeDocumentId(documentId)
+
+  if (!cleanQrToken && !cleanDocumentId) {
     return {
       status: 'invalid',
       message: 'Debes enviar un token QR o un numero de documento.',
@@ -180,8 +240,8 @@ export async function performCheckin({ qrToken, documentId, accessPoint }) {
   }
 
   const attendeesRef = collection(db, COLLECTION_NAME)
-  const field = qrToken ? 'qrToken' : 'documentId'
-  const value = qrToken || documentId
+  const field = cleanQrToken ? 'qrToken' : 'documentId'
+  const value = cleanQrToken || cleanDocumentId
   const q = query(attendeesRef, where(field, '==', value))
   const snap = await getDocs(q)
 
@@ -216,6 +276,8 @@ export async function performCheckin({ qrToken, documentId, accessPoint }) {
     status: 'checked-in',
     checkedInAt: serverTimestamp(),
     checkinPoint: accessPoint || 'general',
+    checkedInBy: checkedInBy || '',
+    checkedInByName: checkedInByName || '',
     updatedAt: serverTimestamp(),
   }
 
@@ -229,6 +291,8 @@ export async function performCheckin({ qrToken, documentId, accessPoint }) {
       status: 'checked-in',
       checkedInAt: new Date().toISOString(),
       checkinPoint: update.checkinPoint,
+      checkedInBy: update.checkedInBy,
+      checkedInByName: update.checkedInByName,
       updatedAt: new Date().toISOString(),
     },
   }

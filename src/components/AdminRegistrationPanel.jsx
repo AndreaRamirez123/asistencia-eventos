@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import CedulaScanner from './CedulaScanner'
+
 function AdminRegistrationPanel({
   editingAttendeeId,
   errorMessage,
@@ -8,7 +11,14 @@ function AdminRegistrationPanel({
   modeLabel,
   onCancelEdit,
   submission,
+  onCedulaFill,
 }) {
+  const [showScanner, setShowScanner] = useState(false)
+
+  const handleExtract = (data) => {
+    onCedulaFill?.(data)
+    setShowScanner(false)
+  }
   return (
     <section id="registro-admin" className="panel registration-panel">
       <div className="panel-heading">
@@ -101,15 +111,40 @@ function AdminRegistrationPanel({
             />
           </label>
 
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              name="hasFaceConsent"
-              checked={form.hasFaceConsent}
-              onChange={handleChange}
-            />
-            <span>Marcar si el asistente autorizo reconocimiento facial opcional.</span>
-          </label>
+          <fieldset className="consent-section">
+            <legend>Apoyos opcionales al registro</legend>
+            <p className="helper-text">
+              Estas opciones son voluntarias y el asistente debe autorizarlas. Los datos se tratan
+              conforme a la Ley 1581 de 2012 (habeas data).
+            </p>
+
+            <div className="consent-item">
+              <div>
+                <strong>Escanear cedula para autocompletar</strong>
+                <p className="helper-text">
+                  Se lee el codigo de barras del reverso y se rellenan nombre y documento. La
+                  imagen no se almacena.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="ghost-action cedula-trigger"
+                onClick={() => setShowScanner(true)}
+              >
+                Escanear cedula
+              </button>
+            </div>
+
+            <label className="checkbox-field consent-checkbox">
+              <input
+                type="checkbox"
+                name="hasFaceConsent"
+                checked={form.hasFaceConsent}
+                onChange={handleChange}
+              />
+              <span>Marcar si el asistente autorizo reconocimiento facial opcional.</span>
+            </label>
+          </fieldset>
 
           {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
 
@@ -177,6 +212,10 @@ function AdminRegistrationPanel({
           )}
         </aside>
       </div>
+
+      {showScanner ? (
+        <CedulaScanner onExtract={handleExtract} onClose={() => setShowScanner(false)} />
+      ) : null}
     </section>
   )
 }

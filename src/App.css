@@ -436,7 +436,7 @@
 
 .attendee-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr 0.8fr 1fr 1fr;
+  grid-template-columns: 1.3fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr;
   gap: 16px;
   align-items: center;
   padding: 16px 18px;
@@ -752,4 +752,270 @@
 .scanner-frame .qr-placeholder {
   width: 100%;
   margin: 0;
+}
+
+.scanner-context-banner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 20px 28px;
+  margin: 16px 0 24px;
+  background: linear-gradient(135deg, #13212d 0%, #1f3340 100%);
+  border-radius: 24px;
+  color: #fffaf1;
+  box-shadow: 0 12px 32px rgba(19, 33, 45, 0.25);
+}
+
+.scanner-context-banner .eyebrow {
+  color: #ffb273;
+  margin: 0 0 6px;
+  letter-spacing: 0.08em;
+}
+
+.banner-point {
+  font-family: var(--heading-font, inherit);
+  font-size: 1.6rem;
+  line-height: 1.2;
+  display: block;
+}
+
+.banner-staff {
+  font-size: 1.1rem;
+  opacity: 0.92;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .scanner-context-banner {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 18px 20px;
+  }
+  .banner-point {
+    font-size: 1.3rem;
+  }
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: #c06021;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.text-link:hover {
+  color: #9c4a18;
+  border-bottom-color: #c06021;
+}
+
+.cedula-trigger {
+  align-self: flex-start;
+  margin-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px dashed #c06021;
+  color: #c06021;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.cedula-trigger:hover {
+  background: #c06021;
+  color: #fffaf1;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 33, 45, 0.72);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 1000;
+}
+
+.modal-card {
+  background: #fffaf1;
+  border-radius: 24px;
+  padding: 28px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 28px 60px rgba(19, 33, 45, 0.35);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #13212d;
+}
+
+.cedula-modal .cedula-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.cedula-file {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 12px 20px;
+  border-radius: 14px;
+}
+
+.cedula-video {
+  width: 100%;
+  max-height: 360px;
+  border-radius: 16px;
+  background: #000;
+  object-fit: cover;
+  margin-bottom: 12px;
+}
+
+.cedula-processing,
+.cedula-error {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.cedula-confirm .preview-meta {
+  background: #fff;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(19, 33, 45, 0.12);
+}
+
+.consent-section {
+  grid-column: 1 / -1;
+  border: 1.5px solid rgba(19, 33, 45, 0.15);
+  border-radius: 18px;
+  padding: 20px 22px;
+  margin: 6px 0 4px;
+  background: rgba(255, 250, 241, 0.6);
+}
+
+.consent-section legend {
+  padding: 0 8px;
+  font-family: var(--heading-font, inherit);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c06021;
+}
+
+.consent-section .helper-text {
+  margin: 6px 0 14px;
+}
+
+.consent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px dashed rgba(19, 33, 45, 0.12);
+  margin-bottom: 12px;
+}
+
+.consent-item > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.consent-item strong {
+  display: block;
+  color: #13212d;
+  margin-bottom: 2px;
+}
+
+.consent-item .helper-text {
+  margin: 0;
+}
+
+.consent-item .cedula-trigger {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.consent-checkbox {
+  padding: 6px 0 0;
+  background: transparent;
+  border: none;
+}
+
+@media (max-width: 640px) {
+  .consent-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .consent-item .cedula-trigger {
+    align-self: stretch;
+    justify-content: center;
+  }
+}
+
+.migration-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid #c06021;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(192, 96, 33, 0.15);
+}
+
+.migration-banner strong {
+  color: #c06021;
+  font-size: 1.3rem;
+}
+
+.migration-banner > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.migration-banner .helper-text {
+  margin: 4px 0 0;
+  color: #5a3410;
+}
+
+.migration-banner .submit-button {
+  flex-shrink: 0;
+  width: auto;
+  padding: 12px 24px;
+}
+
+@media (max-width: 640px) {
+  .migration-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .migration-banner .submit-button {
+    width: 100%;
+  }
 }

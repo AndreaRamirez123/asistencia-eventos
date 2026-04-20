@@ -1,6 +1,6 @@
 function AttendeeTableSection({
   attendees,
-  backendStatus,
+  empresasMap = {},
   filterState,
   filteredCount,
   handleDelete,
@@ -18,10 +18,9 @@ function AttendeeTableSection({
       <div className="panel-heading table-heading">
         <div>
           <p className="eyebrow">Control de asistentes</p>
-          <h2>Listado operativo del backend</h2>
+          <h2>Listado operativo</h2>
           <p className="section-copy">
-            Este bloque muestra los registros creados desde el panel admin mientras el backend este
-            activo.
+            Este bloque muestra los registros creados.
           </p>
           <p className="section-copy">Coincidencias visibles: {filteredCount}</p>
         </div>
@@ -64,22 +63,14 @@ function AttendeeTableSection({
             type="button"
             className="ghost-action"
             onClick={() => loadAttendees()}
-            disabled={backendStatus !== 'online' || isLoadingAttendees}
+            disabled={isLoadingAttendees}
           >
             {isLoadingAttendees ? 'Actualizando...' : 'Actualizar lista'}
           </button>
         </div>
       </div>
 
-      {backendStatus !== 'online' ? (
-        <div className="empty-state">
-          <h3>Backend no conectado</h3>
-          <p>
-            Inicia `backend` con `npm start` para ver aqui los asistentes reales creados desde la
-            API.
-          </p>
-        </div>
-      ) : attendees.length === 0 ? (
+      {attendees.length === 0 ? (
         <div className="empty-state">
           <h3>Sin asistentes registrados todavia</h3>
           <p>
@@ -92,6 +83,7 @@ function AttendeeTableSection({
           <div className="attendee-row attendee-head" role="row">
             <span>Nombre</span>
             <span>Documento</span>
+            <span>Empresa</span>
             <span>Categoria</span>
             <span>Estado</span>
             <span>Creado</span>
@@ -102,6 +94,7 @@ function AttendeeTableSection({
             <div key={item.id} className="attendee-row" role="row">
               <span>{item.fullName || 'Sin nombre'}</span>
               <span>{item.documentId || 'Sin documento'}</span>
+              <span>{empresasMap[item.empresaId] || '—'}</span>
               <span>{item.attendeeType || 'general'}</span>
               <span>{item.status || 'pendiente'}</span>
               <span>{formatDate(item.createdAt)}</span>

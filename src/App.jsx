@@ -3,10 +3,13 @@ import { isFirebaseConfigured } from './firebase'
 import {
   deleteAttendee,
   listAttendees,
+  migrateOrphanAttendees,
   registerAttendee,
   updateAttendee,
   updateAttendeeStatus,
 } from './attendeesStore'
+import { listEmpresas } from './empresasStore'
+import { listEventos } from './eventosStore'
 import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
@@ -14,10 +17,8 @@ import DeleteConfirmModal from './components/DeleteConfirmModal'
 import LoginPage from './components/LoginPage'
 import PublicRegistrationPage from './components/PublicRegistrationPage'
 import ScannerPage from './components/ScannerPage'
-import { authFetch, clearSession, getStoredUser, getToken } from './auth'
+import { logout as firebaseLogout, subscribeToAuthState } from './auth'
 import './App.css'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000'
 
 const initialForm = {
   fullName: '',
@@ -84,6 +85,8 @@ function buildAttendeePayload(form, overrides = {}) {
     hasFaceConsent: form.hasFaceConsent,
     status: overrides.status || 'approved',
     source: overrides.source || 'admin-panel',
+    empresaId: overrides.empresaId || '',
+    eventoId: overrides.eventoId || '',
   }
 }
 
@@ -134,18 +137,22 @@ function App() {
   const [publicSubmission, setPublicSubmission] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [publicErrorMessage, setPublicErrorMessage] = useState('')
-  const [backendStatus, setBackendStatus] = useState('checking')
   const [attendees, setAttendees] = useState([])
+  const [empresas, setEmpresas] = useState([])
+  const [eventos, setEventos] = useState([])
+  const [isMigrating, setIsMigrating] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [isAuthChecking, setIsAuthChecking] = useState(true)
 
   const handleLogout = async () => {
     try {
-      await authFetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST' })
-    } catch {
-      // ignore network errors on logout
+      await firebaseLogout()
+    } catch (error) {
+      console.error(error)
     }
-    clearSession()
+    setCurrentUser(null)
     window.location.href = '/admin/login'
   }
 
@@ -183,37 +190,24 @@ function App() {
   }, [])
 
   useEffect(() => {
-    let isMounted = true
-
-    async function checkBackend() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/health`)
-        if (!response.ok) {
-          throw new Error('Backend no disponible')
-        }
-
-        if (isMounted) {
-          setBackendStatus('online')
-        }
-      } catch {
-        if (isMounted) {
-          setBackendStatus('offline')
-        }
-      }
-    }
-
-    checkBackend()
-
-    return () => {
-      isMounted = false
-    }
+    const unsubscribe = subscribeToAuthState((user) => {
+      setCurrentUser(user)
+      setIsAuthChecking(false)
+    })
+    return unsubscribe
   }, [])
 
   useEffect(() => {
-    if (isFirebaseConfigured && currentView === 'admin') {
+    if (isFirebaseConfigured && currentView === 'admin' && currentUser) {
       loadAttendees()
+      listEmpresas()
+        .then(setEmpresas)
+        .catch((error) => console.error(error))
+      listEventos()
+        .then(setEventos)
+        .catch((error) => console.error(error))
     }
-  }, [currentView])
+  }, [currentView, currentUser])
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -230,6 +224,22 @@ function App() {
     setPublicForm((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const handleAdminCedulaFill = (data) => {
+    setForm((current) => ({
+      ...current,
+      fullName: data.fullName || current.fullName,
+      documentId: data.documentId || current.documentId,
+    }))
+  }
+
+  const handlePublicCedulaFill = (data) => {
+    setPublicForm((current) => ({
+      ...current,
+      fullName: data.fullName || current.fullName,
+      documentId: data.documentId || current.documentId,
     }))
   }
 
@@ -334,6 +344,8 @@ function App() {
       const attendee = buildAttendeePayload(form, {
         source: 'admin-panel',
         status: 'approved',
+        empresaId: activeEmpresaId,
+        eventoId: activeEventoId,
       })
 
       if (editingAttendeeId) {
@@ -377,6 +389,8 @@ function App() {
       const attendee = buildAttendeePayload(publicForm, {
         source: 'public-registration',
         status: 'pre-registered',
+        empresaId: activeEmpresaId,
+        eventoId: activeEventoId,
       })
 
       const result = await registerAttendee(attendee)
@@ -406,14 +420,69 @@ function App() {
     const pending = attendees.filter(
       (item) => item.status === 'pre-registered' || item.status === 'pending',
     ).length
+    const empresasCount = empresas.filter((e) => e.active !== false).length
 
     return [
+      { value: String(empresasCount), label: 'empresas activas' },
       { value: String(total), label: 'registros totales' },
       { value: String(approved), label: 'aprobados' },
       { value: String(checkedIn), label: 'check-ins confirmados' },
       { value: String(pending), label: 'pendientes' },
     ]
-  }, [attendees])
+  }, [attendees, empresas])
+
+  const empresasMap = useMemo(() => {
+    const map = {}
+    for (const empresa of empresas) {
+      map[empresa.id] = empresa.nombre || empresa.id
+    }
+    return map
+  }, [empresas])
+
+  const activeEmpresaId = useMemo(() => {
+    const active = empresas.find((e) => e.active !== false) || empresas[0]
+    return active?.id || ''
+  }, [empresas])
+
+  const activeEventoId = useMemo(() => {
+    const active = eventos.find((e) => e.active !== false) || eventos[0]
+    return active?.id || ''
+  }, [eventos])
+
+  const orphanAttendeesCount = useMemo(
+    () => attendees.filter((a) => !a.empresaId || !a.eventoId).length,
+    [attendees],
+  )
+
+  const handleMigrateOrphans = async () => {
+    const defaultEmpresa = empresas.find((e) => e.active !== false) || empresas[0]
+    const defaultEvento = eventos.find((e) => e.active !== false) || eventos[0]
+
+    if (!defaultEmpresa || !defaultEvento) {
+      setErrorMessage(
+        'Debes tener al menos una empresa y un evento creados antes de migrar.',
+      )
+      return
+    }
+
+    setIsMigrating(true)
+    setErrorMessage('')
+
+    try {
+      const result = await migrateOrphanAttendees({
+        empresaId: defaultEmpresa.id,
+        eventoId: defaultEvento.id,
+      })
+      await loadAttendees({ silent: true })
+      window.alert(
+        `Migracion completa.\nAsignados: ${result.migrated}\nYa estaban migrados: ${result.skipped}\nTotal: ${result.total}`,
+      )
+    } catch (error) {
+      setErrorMessage(error.message || 'No fue posible migrar asistentes.')
+    } finally {
+      setIsMigrating(false)
+    }
+  }
 
   const normalizedQuery = filters.query.trim().toLowerCase()
   const filteredAttendees = attendees.filter((item) => {
@@ -434,13 +503,13 @@ function App() {
   if (currentView === 'public') {
     return (
       <PublicRegistrationPage
-        backendStatus={backendStatus}
         errorMessage={publicErrorMessage}
         form={publicForm}
         handleChange={handlePublicChange}
         handleSubmit={handlePublicSubmit}
         isSubmitting={isPublicSubmitting}
         submission={publicSubmission}
+        onCedulaFill={handlePublicCedulaFill}
       />
     )
   }
@@ -449,22 +518,30 @@ function App() {
     return <LoginPage />
   }
 
-  const currentUser = getStoredUser()
-  const hasToken = Boolean(getToken())
+  if (isAuthChecking) {
+    return (
+      <div className="app-shell" style={{ padding: 40 }}>
+        <p>Verificando sesion...</p>
+      </div>
+    )
+  }
 
-  if (!hasToken || !currentUser) {
+  if (!currentUser) {
     window.location.href = '/admin/login'
     return null
   }
 
+  const ADMIN_ROLES = ['admin', 'superadmin', 'admin_empresa']
+  const SCANNER_ROLES = [...ADMIN_ROLES, 'staff']
+
   if (currentView === 'scanner') {
-    if (!['admin', 'staff'].includes(currentUser.role)) {
+    if (!SCANNER_ROLES.includes(currentUser.role)) {
       return <LoginPage />
     }
     return <ScannerPage currentUser={currentUser} onLogout={handleLogout} />
   }
 
-  if (currentUser.role !== 'admin') {
+  if (!ADMIN_ROLES.includes(currentUser.role)) {
     window.location.href = '/scanner'
     return null
   }
@@ -473,7 +550,6 @@ function App() {
     <div className="app-shell">
       <AdminHero
         attendeesCount={attendees.length}
-        backendStatus={backendStatus}
         isFirebaseConfigured={isFirebaseConfigured}
         metrics={liveMetrics}
         currentUser={currentUser}
@@ -481,6 +557,26 @@ function App() {
       />
 
       <main className="content-grid">
+        {orphanAttendeesCount > 0 && currentUser?.role === 'superadmin' ? (
+          <div className="migration-banner">
+            <div>
+              <strong>{orphanAttendeesCount}</strong> asistente(s) sin empresa o evento asignado.
+              <p className="helper-text">
+                Asigna a todos la empresa y evento activos para que aparezcan correctamente en el
+                listado.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="submit-button"
+              onClick={handleMigrateOrphans}
+              disabled={isMigrating}
+            >
+              {isMigrating ? 'Migrando...' : 'Migrar automaticamente'}
+            </button>
+          </div>
+        ) : null}
+
         <AdminRegistrationPanel
           editingAttendeeId={editingAttendeeId}
           errorMessage={errorMessage}
@@ -491,11 +587,12 @@ function App() {
           modeLabel={modeLabel}
           onCancelEdit={handleCancelEdit}
           submission={submission}
+          onCedulaFill={handleAdminCedulaFill}
         />
 
         <AttendeeTableSection
           attendees={filteredAttendees}
-          backendStatus={backendStatus}
+          empresasMap={empresasMap}
           filterState={filters}
           filteredCount={filteredAttendees.length}
           handleDelete={handleRequestDelete}

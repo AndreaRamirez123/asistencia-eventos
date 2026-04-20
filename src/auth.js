@@ -1,49 +1,102 @@
-const TOKEN_KEY = 'asistencia-evento:token'
-const USER_KEY = 'asistencia-evento:user'
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db, isFirebaseConfigured } from './firebase'
 
-export function getToken() {
-  try {
-    return localStorage.getItem(TOKEN_KEY) || ''
-  } catch {
-    return ''
+const USERS_COLLECTION = 'eventoUsuarios'
+
+export async function loginWithEmail(email, password) {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('Firebase Auth no esta configurado. Revisa .env.local.')
+  }
+
+  const credential = await signInWithEmailAndPassword(auth, email.trim(), password)
+  const firebaseUser = credential.user
+  const profile = await fetchUserProfile(firebaseUser.uid)
+
+  if (!profile) {
+    await signOut(auth)
+    throw new Error(
+      'Tu cuenta existe pero no tiene un rol asignado. Contacta al administrador del evento.',
+    )
+  }
+
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    role: profile.role,
+    displayName: profile.displayName || deriveNameFromEmail(firebaseUser.email),
   }
 }
 
-export function getStoredUser() {
+export async function logout() {
+  if (auth) {
+    await signOut(auth)
+  }
+}
+
+export async function fetchUserProfile(uid) {
+  if (!db || !uid) {
+    return null
+  }
+
   try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
+    const ref = doc(db, USERS_COLLECTION, uid)
+    const snap = await getDoc(ref)
+    if (!snap.exists()) {
+      return null
+    }
+    const data = snap.data()
+    if (data.active === false) {
+      return null
+    }
+    return {
+      role: data.role || '',
+      displayName: data.displayName || '',
+    }
+  } catch (error) {
+    console.error('No fue posible consultar el perfil del usuario.', error)
     return null
   }
 }
 
-export function saveSession(token, user) {
-  localStorage.setItem(TOKEN_KEY, token)
-  localStorage.setItem(USER_KEY, JSON.stringify(user))
+function deriveNameFromEmail(email) {
+  if (!email) return ''
+  const local = email.split('@')[0] || ''
+  return local
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
 }
 
-export function clearSession() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
-}
-
-export function authHeaders() {
-  const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-export async function authFetch(url, options = {}) {
-  const headers = {
-    ...(options.headers || {}),
-    ...authHeaders(),
+export function subscribeToAuthState(callback) {
+  if (!auth) {
+    callback(null)
+    return () => {}
   }
-  const response = await fetch(url, { ...options, headers })
-  if (response.status === 401) {
-    clearSession()
-    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-      window.location.href = '/admin/login'
+
+  return onAuthStateChanged(auth, async (firebaseUser) => {
+    if (!firebaseUser) {
+      callback(null)
+      return
     }
-  }
-  return response
+
+    const profile = await fetchUserProfile(firebaseUser.uid)
+    if (!profile) {
+      callback(null)
+      return
+    }
+
+    callback({
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      role: profile.role,
+      displayName: profile.displayName || deriveNameFromEmail(firebaseUser.email),
+    })
+  })
 }
