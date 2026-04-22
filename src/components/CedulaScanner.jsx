@@ -244,8 +244,17 @@ function CedulaScanner({ onExtract, onClose }) {
 
   const stopCamera = () => {
     if (controlsRef.current?.stop) {
-      controlsRef.current.stop()
+      try {
+        controlsRef.current.stop()
+      } catch {}
       controlsRef.current = null
+    }
+    const video = videoRef.current
+    if (video?.srcObject) {
+      try {
+        video.srcObject.getTracks().forEach((t) => t.stop())
+      } catch {}
+      video.srcObject = null
     }
   }
 
@@ -265,6 +274,19 @@ function CedulaScanner({ onExtract, onClose }) {
 
   const startCamera = async () => {
     setErrorMessage('')
+
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+      setErrorMessage(
+        'Este navegador no permite acceso a la camara en esta URL. Esto pasa cuando el sitio usa HTTPS con certificado no confiable (o HTTP en IP local). Usa la opcion "Subir foto" o abre el sitio en HTTPS confiable (ej. ngrok o cloudflared).',
+      )
+      setStep('error')
+      return
+    }
+
     setStep('camera')
 
     try {
@@ -339,6 +361,33 @@ function CedulaScanner({ onExtract, onClose }) {
     }
   }
 
+  const captureFrameForOcr = async () => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth) {
+      setErrorMessage('La camara aun no esta lista. Espera un segundo e intenta de nuevo.')
+      setStep('error')
+      return
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    stopCamera()
+
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.92),
+    )
+    if (!blob) {
+      setErrorMessage('No se pudo capturar la foto. Intenta subir una imagen manualmente.')
+      setStep('error')
+      return
+    }
+    await tryOcr(blob)
+  }
+
   const handleFileUpload = async (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -402,14 +451,15 @@ function CedulaScanner({ onExtract, onClose }) {
               <button type="button" className="submit-button" onClick={startCamera}>
                 Usar camara
               </button>
-              <label className="ghost-action cedula-file">
+              <label className="ghost-action cedula-file" htmlFor="cedula-file-input">
                 Subir foto
                 <input
+                  id="cedula-file-input"
                   type="file"
                   accept="image/*"
                   capture="environment"
                   onChange={handleFileUpload}
-                  hidden
+                  className="cedula-file-input"
                 />
               </label>
             </div>
@@ -421,17 +471,40 @@ function CedulaScanner({ onExtract, onClose }) {
 
         {step === 'camera' ? (
           <div className="cedula-camera">
-            <video ref={videoRef} className="cedula-video" />
-            <p className="helper-text">Apunta al codigo de barras o QR de la cedula.</p>
-            <button type="button" className="ghost-action" onClick={retry}>
-              Cancelar escaneo
-            </button>
+            <video
+              ref={videoRef}
+              className="cedula-video"
+              autoPlay
+              muted
+              playsInline
+            />
+            <p className="helper-text">
+              Apunta al <strong>codigo de barras o QR</strong> del reverso. Si no se detecta,
+              toca "Capturar foto" y usamos OCR sobre el frente.
+            </p>
+            <div className="cedula-buttons">
+              <button
+                type="button"
+                className="submit-button"
+                onClick={captureFrameForOcr}
+              >
+                Capturar foto
+              </button>
+              <button type="button" className="ghost-action" onClick={retry}>
+                Cancelar escaneo
+              </button>
+            </div>
           </div>
         ) : null}
 
         {step === 'processing' ? (
           <div className="cedula-processing">
             <p>Buscando codigo en la imagen...</p>
+            <div className="cedula-buttons">
+              <button type="button" className="ghost-action" onClick={close}>
+                Cancelar
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -441,9 +514,15 @@ function CedulaScanner({ onExtract, onClose }) {
               <strong>Leyendo texto con OCR...</strong>
             </p>
             <p className="helper-text">
-              La primera vez toma hasta 30 segundos porque descarga el modelo de reconocimiento.
-              Las siguientes son mas rapidas.
+              La primera vez toma hasta 30 segundos porque descarga el modelo de reconocimiento
+              (~20 MB). Si tu conexion es lenta o el modelo no se descarga, puedes cancelar y
+              llenar los datos manualmente.
             </p>
+            <div className="cedula-buttons">
+              <button type="button" className="ghost-action" onClick={close}>
+                Cancelar y llenar manual
+              </button>
+            </div>
           </div>
         ) : null}
 

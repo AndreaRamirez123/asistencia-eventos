@@ -46,6 +46,7 @@ const initialPublicForm = {
   empresaInvitadaId: '',
   attendeeType: 'general',
   hasFaceConsent: false,
+  surveyAnswers: {},
 }
 
 const initialFilters = {
@@ -107,6 +108,7 @@ function buildAttendeePayload(form, overrides = {}) {
     source: overrides.source || 'admin-panel',
     empresaId: overrides.empresaId || '',
     eventoId: overrides.eventoId || '',
+    surveyAnswers: form.surveyAnswers || {},
   }
 }
 
@@ -324,9 +326,22 @@ function App() {
   const handlePublicChange = (event) => {
     const { name, value, type, checked } = event.target
 
+    setPublicForm((current) => {
+      const next = {
+        ...current,
+        [name]: type === 'checkbox' ? checked : value,
+      }
+      if (name === 'empresaInvitadaId') {
+        next.surveyAnswers = {}
+      }
+      return next
+    })
+  }
+
+  const handlePublicSurveyChange = (questionId, value) => {
     setPublicForm((current) => ({
       ...current,
-      [name]: type === 'checkbox' ? checked : value,
+      surveyAnswers: { ...(current.surveyAnswers || {}), [questionId]: value },
     }))
   }
 
@@ -490,6 +505,29 @@ function App() {
     setPublicErrorMessage('')
 
     try {
+      const selectedEmpresa = empresasInvitadas.find(
+        (e) => e.id === publicForm.empresaInvitadaId,
+      )
+      if (
+        selectedEmpresa?.encuestaHabilitada &&
+        selectedEmpresa?.encuestaObligatoria
+      ) {
+        const preguntas = Array.isArray(selectedEmpresa.encuestaPreguntas)
+          ? selectedEmpresa.encuestaPreguntas
+          : []
+        const missing = preguntas.find((p) => {
+          const value = publicForm.surveyAnswers?.[p.id]
+          return !value || String(value).trim() === ''
+        })
+        if (missing) {
+          setPublicErrorMessage(
+            'Debes responder todas las preguntas de la encuesta antes de continuar.',
+          )
+          setIsPublicSubmitting(false)
+          return
+        }
+      }
+
       const attendee = buildAttendeePayload(publicForm, {
         source: 'public-registration',
         status: 'pre-registered',
@@ -660,6 +698,7 @@ function App() {
         errorMessage={publicErrorMessage}
         form={publicForm}
         handleChange={handlePublicChange}
+        handleSurveyChange={handlePublicSurveyChange}
         handleSubmit={handlePublicSubmit}
         isSubmitting={isPublicSubmitting}
         submission={publicSubmission}

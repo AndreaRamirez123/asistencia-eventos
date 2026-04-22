@@ -5,6 +5,7 @@ function PublicRegistrationPage({
   errorMessage,
   form,
   handleChange,
+  handleSurveyChange,
   handleSubmit,
   isSubmitting,
   submission,
@@ -17,6 +18,16 @@ function PublicRegistrationPage({
     onCedulaFill?.(data)
     setShowScanner(false)
   }
+
+  const selectedEmpresa = empresasInvitadas.find(
+    (e) => e.id === form.empresaInvitadaId,
+  )
+  const encuestaActiva = Boolean(selectedEmpresa?.encuestaHabilitada)
+  const encuestaObligatoria = Boolean(selectedEmpresa?.encuestaObligatoria)
+  const preguntas =
+    encuestaActiva && Array.isArray(selectedEmpresa?.encuestaPreguntas)
+      ? selectedEmpresa.encuestaPreguntas
+      : []
   return (
     <div className="public-shell">
       <header className="public-hero">
@@ -42,6 +53,27 @@ function PublicRegistrationPage({
 
         <div className="registration-layout">
           <form className="attendee-form" onSubmit={handleSubmit}>
+            <div className="cedula-shortcut">
+              <div>
+                <strong>
+                  ¿Tienes tu cedula a la mano?{' '}
+                  <span className="cedula-optional">(opcional)</span>
+                </strong>
+                <p className="helper-text">
+                  Escanea el codigo de barras del reverso y se llenan automaticamente{' '}
+                  <strong>nombres, apellidos y numero de documento</strong>. La imagen no se
+                  almacena. Si prefieres, puedes omitir este paso y llenar los datos manualmente.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="ghost-action cedula-trigger"
+                onClick={() => setShowScanner(true)}
+              >
+                Escanear cedula
+              </button>
+            </div>
+
             <label className="field">
               <span>Nombre completo</span>
               <input
@@ -140,40 +172,95 @@ function PublicRegistrationPage({
               </select>
             </label>
 
-            <fieldset className="consent-section">
-              <legend>Apoyos opcionales al registro</legend>
-              <p className="helper-text">
-                Estas opciones son voluntarias. Los datos se tratan conforme a la Ley 1581 de 2012
-                (habeas data) y solo se usan para fines del registro al evento.
-              </p>
+            {preguntas.length > 0 ? (
+              <fieldset className="encuesta-section">
+                <legend>
+                  {encuestaObligatoria
+                    ? 'Encuesta (obligatoria)'
+                    : 'Encuesta (opcional)'}
+                </legend>
+                <p className="helper-text">
+                  {encuestaObligatoria
+                    ? 'Responde estas preguntas para poder continuar con el registro.'
+                    : 'Ayudanos respondiendo estas preguntas. Puedes omitirlas si prefieres.'}
+                </p>
 
-              <div className="consent-item">
-                <div>
-                  <strong>Escanear cedula para autocompletar</strong>
-                  <p className="helper-text">
-                    Se lee el codigo de barras del reverso y se rellenan nombre y documento. La
-                    imagen no se almacena.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="ghost-action cedula-trigger"
-                  onClick={() => setShowScanner(true)}
-                >
-                  Escanear cedula
-                </button>
-              </div>
+                {preguntas.map((pregunta) => {
+                  const value = form.surveyAnswers?.[pregunta.id] || ''
+                  const required = encuestaObligatoria
 
-              <label className="checkbox-field consent-checkbox">
-                <input
-                  type="checkbox"
-                  name="hasFaceConsent"
-                  checked={form.hasFaceConsent}
-                  onChange={handleChange}
-                />
-                <span>Autorizo reconocimiento facial opcional como apoyo al ingreso.</span>
-              </label>
-            </fieldset>
+                  if (pregunta.tipo === 'opcion') {
+                    return (
+                      <label key={pregunta.id} className="field">
+                        <span>{pregunta.label}</span>
+                        <select
+                          value={value}
+                          onChange={(event) =>
+                            handleSurveyChange?.(pregunta.id, event.target.value)
+                          }
+                          required={required}
+                        >
+                          <option value="">Selecciona...</option>
+                          {(pregunta.opciones || []).map((op) => (
+                            <option key={op} value={op}>
+                              {op}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )
+                  }
+
+                  if (pregunta.tipo === 'si-no') {
+                    return (
+                      <label key={pregunta.id} className="field">
+                        <span>{pregunta.label}</span>
+                        <select
+                          value={value}
+                          onChange={(event) =>
+                            handleSurveyChange?.(pregunta.id, event.target.value)
+                          }
+                          required={required}
+                        >
+                          <option value="">Selecciona...</option>
+                          <option value="si">Si</option>
+                          <option value="no">No</option>
+                        </select>
+                      </label>
+                    )
+                  }
+
+                  return (
+                    <label key={pregunta.id} className="field">
+                      <span>{pregunta.label}</span>
+                      <input
+                        type="text"
+                        value={value}
+                        onChange={(event) =>
+                          handleSurveyChange?.(pregunta.id, event.target.value)
+                        }
+                        required={required}
+                      />
+                    </label>
+                  )
+                })}
+              </fieldset>
+            ) : null}
+
+            <label className="checkbox-field consent-inline">
+              <input
+                type="checkbox"
+                name="hasFaceConsent"
+                checked={form.hasFaceConsent}
+                onChange={handleChange}
+              />
+              <span>
+                Autorizo reconocimiento facial opcional como apoyo al ingreso.
+                <small className="helper-text">
+                  Voluntario. Datos tratados conforme a la Ley 1581 de 2012 (habeas data).
+                </small>
+              </span>
+            </label>
 
             {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
 

@@ -1,10 +1,251 @@
-import { useState } from 'react'
-import { addEmpresaInvitada, removeEmpresaInvitada } from '../eventosStore'
+import { useEffect, useState } from 'react'
+import {
+  addEmpresaInvitada,
+  removeEmpresaInvitada,
+  updateEmpresaInvitada,
+} from '../eventosStore'
+
+function createQuestion() {
+  return {
+    id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    tipo: 'texto',
+    label: '',
+    opciones: [],
+  }
+}
+
+function serializePreguntas(preguntas) {
+  return JSON.stringify(
+    preguntas.map((p) => ({
+      id: p.id,
+      tipo: p.tipo,
+      label: p.label || '',
+      opciones: p.opciones || [],
+    })),
+  )
+}
+
+function EncuestaEditor({ evento, empresa, onChange }) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [localError, setLocalError] = useState('')
+
+  const habilitada = Boolean(empresa.encuestaHabilitada)
+  const obligatoria = Boolean(empresa.encuestaObligatoria)
+  const savedPreguntas = Array.isArray(empresa.encuestaPreguntas)
+    ? empresa.encuestaPreguntas
+    : []
+
+  const [draftPreguntas, setDraftPreguntas] = useState(savedPreguntas)
+
+  useEffect(() => {
+    setDraftPreguntas(savedPreguntas)
+  }, [empresa.id, serializePreguntas(savedPreguntas)])
+
+  const isDirty =
+    serializePreguntas(draftPreguntas) !== serializePreguntas(savedPreguntas)
+
+  const persist = async (changes) => {
+    setIsSaving(true)
+    setLocalError('')
+    try {
+      const next = await updateEmpresaInvitada(evento, empresa.id, changes)
+      onChange?.(next)
+    } catch (error) {
+      setLocalError(error.message || 'No fue posible guardar la encuesta.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const toggleHabilitada = (event) => {
+    persist({ encuestaHabilitada: event.target.checked })
+  }
+
+  const toggleObligatoria = (event) => {
+    persist({ encuestaObligatoria: event.target.checked })
+  }
+
+  const handleSaveDraft = () => {
+    const cleaned = draftPreguntas
+      .map((p) => ({
+        ...p,
+        label: (p.label || '').trim(),
+        opciones:
+          p.tipo === 'opcion'
+            ? (p.opciones || []).map((o) => String(o).trim()).filter(Boolean)
+            : [],
+      }))
+      .filter((p) => p.label)
+    persist({ encuestaPreguntas: cleaned })
+  }
+
+  const handleDiscardDraft = () => {
+    setDraftPreguntas(savedPreguntas)
+  }
+
+  const addPregunta = () => {
+    setDraftPreguntas((current) => [...current, createQuestion()])
+  }
+
+  const removePregunta = (id) => {
+    setDraftPreguntas((current) => current.filter((p) => p.id !== id))
+  }
+
+  const updatePregunta = (id, changes) => {
+    setDraftPreguntas((current) =>
+      current.map((p) => (p.id === id ? { ...p, ...changes } : p)),
+    )
+  }
+
+  return (
+    <div className="encuesta-editor">
+      <div className="encuesta-toggles">
+        <label className="checkbox-field">
+          <input
+            type="checkbox"
+            checked={habilitada}
+            onChange={toggleHabilitada}
+            disabled={isSaving}
+          />
+          <span>Activar encuesta para esta empresa</span>
+        </label>
+
+        {habilitada ? (
+          <label className="checkbox-field">
+            <input
+              type="checkbox"
+              checked={obligatoria}
+              onChange={toggleObligatoria}
+              disabled={isSaving}
+            />
+            <span>Responder encuesta es obligatorio</span>
+          </label>
+        ) : null}
+      </div>
+
+      {habilitada ? (
+        <div className="encuesta-preguntas">
+          {draftPreguntas.length === 0 ? (
+            <p className="helper-text">Aun no hay preguntas. Agrega la primera abajo.</p>
+          ) : (
+            <ul className="encuesta-list">
+              {draftPreguntas.map((pregunta, index) => (
+                <li key={pregunta.id} className="encuesta-item">
+                  <div className="encuesta-item-head">
+                    <strong>Pregunta {index + 1}</strong>
+                    <button
+                      type="button"
+                      className="mini-action danger"
+                      onClick={() => removePregunta(pregunta.id)}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+
+                  <label className="field">
+                    <span>Texto de la pregunta</span>
+                    <input
+                      type="text"
+                      value={pregunta.label || ''}
+                      onChange={(event) =>
+                        updatePregunta(pregunta.id, { label: event.target.value })
+                      }
+                      placeholder="Ej. ¿Como te enteraste del evento?"
+                    />
+                  </label>
+
+                  <label className="field">
+                    <span>Tipo</span>
+                    <select
+                      value={pregunta.tipo}
+                      onChange={(event) => {
+                        const tipo = event.target.value
+                        updatePregunta(pregunta.id, {
+                          tipo,
+                          opciones: tipo === 'opcion' ? pregunta.opciones || [] : [],
+                        })
+                      }}
+                    >
+                      <option value="texto">Texto libre</option>
+                      <option value="opcion">Opcion multiple</option>
+                      <option value="si-no">Si / No</option>
+                    </select>
+                  </label>
+
+                  {pregunta.tipo === 'opcion' ? (
+                    <label className="field">
+                      <span>Opciones (separadas por coma)</span>
+                      <input
+                        type="text"
+                        value={(pregunta.opciones || []).join(', ')}
+                        onChange={(event) =>
+                          updatePregunta(pregunta.id, {
+                            opciones: event.target.value
+                              .split(',')
+                              .map((o) => o)
+                          })
+                        }
+                        placeholder="Ej. Redes, Amigo, Email"
+                      />
+                    </label>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="encuesta-actions">
+            <button
+              type="button"
+              className="ghost-action"
+              onClick={addPregunta}
+            >
+              + Agregar pregunta
+            </button>
+
+            <div className="encuesta-save-bar">
+              <span
+                className={`encuesta-status ${isDirty ? 'dirty' : 'clean'}`}
+              >
+                {isSaving
+                  ? 'Guardando...'
+                  : isDirty
+                    ? 'Cambios sin guardar'
+                    : 'Guardado'}
+              </span>
+              {isDirty ? (
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={handleDiscardDraft}
+                  disabled={isSaving}
+                >
+                  Descartar
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="submit-button"
+                onClick={handleSaveDraft}
+                disabled={isSaving || !isDirty}
+              >
+                {isSaving ? 'Guardando...' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {localError ? <p className="feedback error">{localError}</p> : null}
+    </div>
+  )
+}
 
 function EmpresasInvitadasPanel({ evento, onChange }) {
   const [newName, setNewName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [removingId, setRemovingId] = useState('')
+  const [expandedId, setExpandedId] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
   const empresas = Array.isArray(evento?.empresasInvitadas) ? evento.empresasInvitadas : []
@@ -88,19 +329,50 @@ function EmpresasInvitadasPanel({ evento, onChange }) {
         </div>
       ) : (
         <ul className="empresas-invitadas-list">
-          {empresas.map((empresa) => (
-            <li key={empresa.id} className="empresa-invitada-item">
-              <span>{empresa.nombre}</span>
-              <button
-                type="button"
-                className="mini-action danger"
-                onClick={() => handleRemove(empresa.id)}
-                disabled={removingId === empresa.id}
-              >
-                {removingId === empresa.id ? 'Quitando...' : 'Quitar'}
-              </button>
-            </li>
-          ))}
+          {empresas.map((empresa) => {
+            const isExpanded = expandedId === empresa.id
+            const preguntasCount = Array.isArray(empresa.encuestaPreguntas)
+              ? empresa.encuestaPreguntas.length
+              : 0
+            return (
+              <li key={empresa.id} className="empresa-invitada-item">
+                <div className="empresa-invitada-row">
+                  <span>{empresa.nombre}</span>
+                  <div className="empresa-invitada-actions">
+                    <button
+                      type="button"
+                      className="mini-action"
+                      onClick={() =>
+                        setExpandedId(isExpanded ? '' : empresa.id)
+                      }
+                    >
+                      {isExpanded
+                        ? 'Ocultar encuesta'
+                        : empresa.encuestaHabilitada
+                          ? `Encuesta (${preguntasCount})`
+                          : 'Configurar encuesta'}
+                    </button>
+                    <button
+                      type="button"
+                      className="mini-action danger"
+                      onClick={() => handleRemove(empresa.id)}
+                      disabled={removingId === empresa.id}
+                    >
+                      {removingId === empresa.id ? 'Quitando...' : 'Quitar'}
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded ? (
+                  <EncuestaEditor
+                    evento={evento}
+                    empresa={empresa}
+                    onChange={onChange}
+                  />
+                ) : null}
+              </li>
+            )
+          })}
         </ul>
       )}
     </section>

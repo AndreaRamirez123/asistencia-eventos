@@ -262,8 +262,78 @@
 
 .registration-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.75fr);
   gap: 18px;
+}
+
+.consent-inline {
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 4px;
+}
+
+.consent-inline > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #13212d;
+}
+
+.consent-inline .helper-text {
+  margin: 0;
+  font-size: 12px;
+}
+
+.cedula-shortcut {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(255, 209, 102, 0.08));
+  border: 1px solid rgba(255, 168, 38, 0.35);
+}
+
+.cedula-shortcut strong {
+  color: #13212d;
+  font-size: 15px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.cedula-shortcut .cedula-optional {
+  color: rgba(19, 33, 45, 0.55);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.cedula-shortcut .helper-text strong {
+  display: inline;
+  font-size: inherit;
+  margin: 0;
+}
+
+.cedula-shortcut .helper-text {
+  margin: 0;
+  color: rgba(19, 33, 45, 0.75);
+}
+
+.cedula-shortcut .cedula-trigger {
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .cedula-shortcut {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cedula-shortcut .cedula-trigger {
+    width: 100%;
+  }
 }
 
 .attendee-form {
@@ -368,6 +438,9 @@
     radial-gradient(circle at top, rgba(255, 209, 102, 0.18), transparent 38%),
     rgba(19, 33, 45, 0.97);
   color: #eff6fb;
+  align-self: start;
+  position: sticky;
+  top: 24px;
 }
 
 .preview-card h3 {
@@ -987,6 +1060,16 @@
   cursor: pointer;
   padding: 12px 20px;
   border-radius: 14px;
+  position: relative;
+}
+
+.cedula-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .cedula-video {
@@ -996,6 +1079,31 @@
   background: #000;
   object-fit: cover;
   margin-bottom: 12px;
+  display: block;
+}
+
+@media (max-width: 620px) {
+  .modal-card.cedula-modal {
+    padding: 18px;
+    max-height: 96vh;
+  }
+
+  .cedula-video {
+    max-height: 42vh;
+  }
+
+  .cedula-buttons {
+    position: sticky;
+    bottom: 0;
+    background: #fffaf1;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+
+  .modal-header .mini-action {
+    padding: 10px 16px;
+    font-size: 15px;
+  }
 }
 
 .cedula-processing,
@@ -1184,17 +1292,161 @@
 
 .empresa-invitada-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
   padding: 14px 18px;
   border-radius: 14px;
   background: rgba(255, 250, 241, 0.7);
   border: 1px solid rgba(19, 33, 45, 0.12);
 }
 
-.empresa-invitada-item span {
+.empresa-invitada-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.empresa-invitada-row > span {
   color: #13212d;
   font-weight: 600;
+}
+
+.empresa-invitada-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.encuesta-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(19, 33, 45, 0.04);
+  border: 1px dashed rgba(19, 33, 45, 0.18);
+}
+
+.encuesta-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.encuesta-preguntas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.encuesta-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.encuesta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fffaf1;
+  border: 1px solid rgba(19, 33, 45, 0.1);
+}
+
+.encuesta-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.encuesta-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.encuesta-save-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(19, 33, 45, 0.15);
+}
+
+.encuesta-status {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.encuesta-status.dirty {
+  color: #c2410c;
+}
+
+.encuesta-status.clean {
+  color: #16a34a;
+}
+
+.encuesta-section {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(19, 33, 45, 0.12);
+  border-radius: 18px;
+  padding: 22px 24px 26px;
+  background: linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(255, 250, 241, 0.55));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin-top: 6px;
+  box-shadow: 0 2px 10px rgba(19, 33, 45, 0.04);
+}
+
+.encuesta-section legend + .helper-text,
+.encuesta-section > legend {
+  grid-column: 1 / -1;
+}
+
+.encuesta-section > .helper-text {
+  grid-column: 1 / -1;
+}
+
+.encuesta-section legend {
+  font-weight: 700;
+  color: #13212d;
+  padding: 4px 12px;
+  background: #fffaf1;
+  border: 1px solid rgba(19, 33, 45, 0.12);
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.encuesta-section .helper-text {
+  margin: -4px 0 4px;
+  color: rgba(19, 33, 45, 0.7);
+}
+
+.encuesta-section .field {
+  margin: 0;
+}
+
+.encuesta-section .field > span {
+  font-weight: 600;
+  color: #13212d;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.encuesta-section .field input,
+.encuesta-section .field select {
+  background: #fff;
 }
 
 .qr-viewer-modal .qr-viewer-body {

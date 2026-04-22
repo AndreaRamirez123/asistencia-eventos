@@ -48,6 +48,11 @@ export function normalizeDocumentId(value) {
 }
 
 function normalizeAttendee(payload) {
+  const surveyAnswers =
+    payload.surveyAnswers && typeof payload.surveyAnswers === 'object'
+      ? payload.surveyAnswers
+      : {}
+
   return {
     fullName: String(payload.fullName || '').trim(),
     documentId: normalizeDocumentId(payload.documentId),
@@ -61,6 +66,7 @@ function normalizeAttendee(payload) {
     source: String(payload.source || 'admin-panel').trim(),
     empresaId: String(payload.empresaId || '').trim(),
     eventoId: String(payload.eventoId || '').trim(),
+    surveyAnswers,
   }
 }
 

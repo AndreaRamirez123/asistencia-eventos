@@ -70,3 +70,12 @@ export async function removeEmpresaInvitada(evento, empresaInvitadaId) {
   await updateEvento(evento.id, { empresasInvitadas: next })
   return next
 }
+
+export async function updateEmpresaInvitada(evento, empresaInvitadaId, changes) {
+  const current = Array.isArray(evento.empresasInvitadas) ? evento.empresasInvitadas : []
+  const next = current.map((e) =>
+    e.id === empresaInvitadaId ? { ...e, ...changes } : e,
+  )
+  await updateEvento(evento.id, { empresasInvitadas: next })
+  return next
+}
