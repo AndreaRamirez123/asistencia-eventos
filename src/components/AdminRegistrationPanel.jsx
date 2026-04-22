@@ -12,6 +12,7 @@ function AdminRegistrationPanel({
   onCancelEdit,
   submission,
   onCedulaFill,
+  empresasInvitadas = [],
 }) {
   const [showScanner, setShowScanner] = useState(false)
 
@@ -80,15 +81,48 @@ function AdminRegistrationPanel({
             />
           </label>
 
-          <label className="field">
-            <span>Empresa o institucion</span>
-            <input
-              name="organization"
-              value={form.organization}
-              onChange={handleChange}
-              placeholder="Ej. Universidad o empresa"
-            />
-          </label>
+          {empresasInvitadas.length > 0 ? (
+            <>
+              <label className="field">
+                <span>Empresa o institucion</span>
+                <select
+                  name="empresaInvitadaId"
+                  value={form.empresaInvitadaId || ''}
+                  onChange={handleChange}
+                >
+                  <option value="">Selecciona...</option>
+                  {empresasInvitadas.map((empresa) => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.nombre}
+                    </option>
+                  ))}
+                  <option value="__otra__">Otra (especificar)</option>
+                </select>
+              </label>
+
+              {form.empresaInvitadaId === '__otra__' ? (
+                <label className="field">
+                  <span>Nombre de la otra empresa</span>
+                  <input
+                    name="organization"
+                    value={form.organization}
+                    onChange={handleChange}
+                    placeholder="Escribe la empresa"
+                  />
+                </label>
+              ) : null}
+            </>
+          ) : (
+            <label className="field">
+              <span>Empresa o institucion</span>
+              <input
+                name="organization"
+                value={form.organization}
+                onChange={handleChange}
+                placeholder="Ej. Universidad o empresa"
+              />
+            </label>
+          )}
 
           <label className="field">
             <span>Categoria</span>

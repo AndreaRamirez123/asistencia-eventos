@@ -9,6 +9,7 @@ function PublicRegistrationPage({
   isSubmitting,
   submission,
   onCedulaFill,
+  empresasInvitadas = [],
 }) {
   const [showScanner, setShowScanner] = useState(false)
 
@@ -86,15 +87,48 @@ function PublicRegistrationPage({
               />
             </label>
 
-            <label className="field">
-              <span>Empresa o institucion</span>
-              <input
-                name="organization"
-                value={form.organization}
-                onChange={handleChange}
-                placeholder="Ej. Universidad o empresa"
-              />
-            </label>
+            {empresasInvitadas.length > 0 ? (
+              <>
+                <label className="field">
+                  <span>Empresa o institucion</span>
+                  <select
+                    name="empresaInvitadaId"
+                    value={form.empresaInvitadaId || ''}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecciona...</option>
+                    {empresasInvitadas.map((empresa) => (
+                      <option key={empresa.id} value={empresa.id}>
+                        {empresa.nombre}
+                      </option>
+                    ))}
+                    <option value="__otra__">Otra (especificar)</option>
+                  </select>
+                </label>
+
+                {form.empresaInvitadaId === '__otra__' ? (
+                  <label className="field">
+                    <span>Nombre de la otra empresa</span>
+                    <input
+                      name="organization"
+                      value={form.organization}
+                      onChange={handleChange}
+                      placeholder="Escribe la empresa"
+                    />
+                  </label>
+                ) : null}
+              </>
+            ) : (
+              <label className="field">
+                <span>Empresa o institucion</span>
+                <input
+                  name="organization"
+                  value={form.organization}
+                  onChange={handleChange}
+                  placeholder="Ej. Universidad o empresa"
+                />
+              </label>
+            )}
 
             <label className="field">
               <span>Categoria</span>
@@ -152,9 +186,10 @@ function PublicRegistrationPage({
             <p className="eyebrow">Confirmacion</p>
             {submission ? (
               <>
-                <h3>Registro completado</h3>
+                <h3>Registro completado &#10003;</h3>
                 <p className="preview-copy">
-                  {submission.attendee.fullName}, tu registro quedo guardado correctamente.
+                  {submission.attendee.fullName}, tu registro quedo guardado. El dia del evento
+                  muestra este QR al staff para ingresar, o simplemente di tu numero de documento.
                 </p>
                 <img
                   className="qr-preview"
@@ -162,9 +197,9 @@ function PublicRegistrationPage({
                   alt={`QR de ${submission.attendee.fullName}`}
                 />
                 <div className="preview-meta">
-                  <span>ID: {submission.recordId}</span>
+                  <span>Documento: {submission.attendee.documentId}</span>
                   <span>Estado: {submission.attendee.status}</span>
-                  <span>Guarda este QR para el ingreso</span>
+                  <span>&#128274; Guarda este QR, lo necesitas para ingresar.</span>
                 </div>
                 <div className="preview-actions">
                   <a

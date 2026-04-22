@@ -1,18 +1,26 @@
 function AttendeeTableSection({
   attendees,
   empresasMap = {},
+  empresasInvitadas = [],
   filterState,
   filteredCount,
   handleDelete,
   handleEdit,
   handleFilterChange,
   handleStatusAction,
+  handleExportCsv,
+  handleViewQr,
+  handleBulkApprove,
+  isBulkApproving = false,
   formatDate,
   isDeletingId,
   isUpdatingStatusId,
   isLoadingAttendees,
   loadAttendees,
 }) {
+  const pendingIds = attendees
+    .filter((a) => a.status === 'pre-registered' || a.status === 'pending')
+    .map((a) => a.id)
   return (
     <section id="asistentes" className="panel">
       <div className="panel-heading table-heading">
@@ -59,15 +67,67 @@ function AttendeeTableSection({
             </select>
           </label>
 
+          {empresasInvitadas.length > 0 ? (
+            <label className="toolbar-field">
+              <span>Empresa</span>
+              <select
+                name="empresa"
+                value={filterState.empresa || 'all'}
+                onChange={handleFilterChange}
+              >
+                <option value="all">Todas</option>
+                {empresasInvitadas.map((empresa) => (
+                  <option key={empresa.id} value={empresa.id}>
+                    {empresa.nombre}
+                  </option>
+                ))}
+                <option value="__otra__">Otras</option>
+              </select>
+            </label>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="table-actions-bar">
+        <button
+          type="button"
+          className="ghost-action"
+          onClick={() => loadAttendees()}
+          disabled={isLoadingAttendees}
+        >
+          {isLoadingAttendees ? 'Actualizando...' : 'Actualizar lista'}
+        </button>
+
+        {handleBulkApprove ? (
+          <button
+            type="button"
+            className="ghost-action bulk-approve-action"
+            onClick={() => handleBulkApprove(pendingIds)}
+            disabled={isBulkApproving || pendingIds.length === 0}
+            title={
+              pendingIds.length === 0
+                ? 'No hay asistentes pendientes por aprobar'
+                : `Aprobar los ${pendingIds.length} pendientes visibles`
+            }
+          >
+            {isBulkApproving
+              ? 'Aprobando...'
+              : pendingIds.length === 0
+                ? 'Todos aprobados'
+                : `Aprobar todos (${pendingIds.length})`}
+          </button>
+        ) : null}
+
+        {handleExportCsv ? (
           <button
             type="button"
             className="ghost-action"
-            onClick={() => loadAttendees()}
-            disabled={isLoadingAttendees}
+            onClick={handleExportCsv}
+            disabled={attendees.length === 0}
           >
-            {isLoadingAttendees ? 'Actualizando...' : 'Actualizar lista'}
+            Exportar CSV
           </button>
-        </div>
+        ) : null}
       </div>
 
       {attendees.length === 0 ? (
@@ -94,7 +154,7 @@ function AttendeeTableSection({
             <div key={item.id} className="attendee-row" role="row">
               <span>{item.fullName || 'Sin nombre'}</span>
               <span>{item.documentId || 'Sin documento'}</span>
-              <span>{empresasMap[item.empresaId] || '—'}</span>
+              <span>{item.organization || '—'}</span>
               <span>{item.attendeeType || 'general'}</span>
               <span>{item.status || 'pendiente'}</span>
               <span>{formatDate(item.createdAt)}</span>
@@ -107,6 +167,16 @@ function AttendeeTableSection({
                     disabled={isUpdatingStatusId === item.id}
                   >
                     {isUpdatingStatusId === item.id ? 'Actualizando...' : 'Aprobar'}
+                  </button>
+                ) : null}
+
+                {handleViewQr ? (
+                  <button
+                    type="button"
+                    className="mini-action"
+                    onClick={() => handleViewQr(item)}
+                  >
+                    Ver QR
                   </button>
                 ) : null}
 

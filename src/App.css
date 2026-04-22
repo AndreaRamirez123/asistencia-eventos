@@ -431,15 +431,49 @@
 
 .attendee-table {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0 8px 8px 4px;
+  border-radius: 18px;
+  scroll-behavior: smooth;
+}
+
+.attendee-table::-webkit-scrollbar {
+  width: 10px;
+}
+
+.attendee-table::-webkit-scrollbar-track {
+  background: rgba(19, 33, 45, 0.05);
+  border-radius: 10px;
+}
+
+.attendee-table::-webkit-scrollbar-thumb {
+  background: rgba(19, 33, 45, 0.25);
+  border-radius: 10px;
+}
+
+.attendee-table::-webkit-scrollbar-thumb:hover {
+  background: rgba(19, 33, 45, 0.4);
+}
+
+.attendee-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fffaf1;
+  border: 1px solid rgba(19, 33, 45, 0.12);
+  box-shadow: 0 6px 14px rgba(19, 33, 45, 0.12);
+  font-weight: 700;
+  color: var(--heading);
 }
 
 .attendee-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1.1fr 0.9fr 0.9fr 0.7fr 0.8fr 0.9fr 1.8fr;
+  gap: 14px;
   align-items: center;
-  padding: 16px 18px;
+  padding: 14px 18px;
   border-radius: 18px;
   background: var(--panel-soft);
   text-align: left;
@@ -480,8 +514,6 @@
 }
 
 .attendee-head {
-  background: transparent;
-  border: 1px dashed var(--border-strong);
   color: var(--muted-strong);
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -733,14 +765,17 @@
 }
 
 .scanner-frame {
+  position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   aspect-ratio: 1;
-  border-radius: 24px;
+  border-radius: 28px;
   overflow: hidden;
-  background: #000;
-  border: 2px solid rgba(255, 250, 241, 0.2);
-  margin-bottom: 18px;
+  background: radial-gradient(circle at center, #13212d 0%, #0a141c 100%);
+  margin: 0 auto 22px;
+  box-shadow:
+    0 20px 50px rgba(19, 33, 45, 0.35),
+    inset 0 0 0 2px rgba(255, 178, 115, 0.25);
 }
 
 .scanner-frame video {
@@ -751,7 +786,77 @@
 
 .scanner-frame .qr-placeholder {
   width: 100%;
+  height: 100%;
   margin: 0;
+  border-radius: 0;
+  background: linear-gradient(135deg, #13212d, #1f3340);
+  color: #8db4d1;
+}
+
+.scanner-frame::before,
+.scanner-frame::after {
+  content: '';
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border: 4px solid #ffb273;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.scanner-frame::before {
+  top: 18px;
+  left: 18px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 14px;
+}
+
+.scanner-frame::after {
+  bottom: 18px;
+  right: 18px;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 14px;
+}
+
+.scanner-frame > div[role='presentation'],
+.scanner-frame > div:first-child {
+  position: relative;
+  z-index: 1;
+}
+
+.scanner-frame .scan-corners-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(19, 33, 45, 0.4), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.attendee-form .helper-text {
+  text-align: center;
+  margin: 0 auto 10px;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.manual-checkin {
+  margin-top: 14px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, rgba(255, 250, 241, 0.6) 0%, rgba(255, 243, 224, 0.5) 100%);
+  border: 1px dashed rgba(192, 96, 33, 0.3);
+  border-radius: 18px;
+}
+
+.manual-checkin .field span {
+  font-size: 0.88rem;
+  color: var(--muted-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .scanner-context-banner {
@@ -868,7 +973,7 @@
   color: #13212d;
 }
 
-.cedula-modal .cedula-buttons {
+.cedula-buttons {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
@@ -1018,4 +1123,733 @@
   .migration-banner .submit-button {
     width: 100%;
   }
+}
+
+.empresas-invitadas-form {
+  margin-bottom: 20px;
+}
+
+.empresas-inline-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.empresas-inline-row input {
+  flex: 1;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--heading);
+  font: inherit;
+}
+
+.empresas-inline-row .submit-button {
+  width: auto;
+  min-width: 120px;
+  padding: 0 22px;
+  grid-column: unset;
+}
+
+.empresas-invitadas-list {
+  list-style: none;
+  padding: 4px;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+  max-height: 40vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.empresas-invitadas-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.empresas-invitadas-list::-webkit-scrollbar-track {
+  background: rgba(19, 33, 45, 0.05);
+  border-radius: 10px;
+}
+
+.empresas-invitadas-list::-webkit-scrollbar-thumb {
+  background: rgba(19, 33, 45, 0.25);
+  border-radius: 10px;
+}
+
+.empresas-invitadas-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(19, 33, 45, 0.4);
+}
+
+.empresa-invitada-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 250, 241, 0.7);
+  border: 1px solid rgba(19, 33, 45, 0.12);
+}
+
+.empresa-invitada-item span {
+  color: #13212d;
+  font-weight: 600;
+}
+
+.qr-viewer-modal .qr-viewer-body {
+  text-align: center;
+}
+
+.qr-viewer-modal .qr-preview {
+  width: min(100%, 260px);
+  margin: 18px auto;
+}
+
+.qr-viewer-modal .cedula-buttons {
+  justify-content: center;
+}
+
+.qr-viewer-modal .cedula-buttons .submit-button,
+.qr-viewer-modal .cedula-buttons .ghost-action {
+  width: auto;
+  min-height: 44px;
+  padding: 0 22px;
+  grid-column: unset;
+}
+
+.attendee-row .table-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: flex-start;
+  align-content: center;
+  align-items: center;
+}
+
+.attendee-row .mini-action {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* ============================================
+   GUIA VISUAL DEL SCANNER
+   ============================================ */
+
+.scanner-instructions {
+  background: linear-gradient(135deg, #fffaf1 0%, #fff3e0 100%);
+  border: 1px solid rgba(192, 96, 33, 0.25);
+  border-radius: 24px;
+  padding: 24px 28px;
+  margin: 0 0 20px;
+  box-shadow: 0 8px 20px rgba(192, 96, 33, 0.08);
+}
+
+.scanner-instructions .panel-heading {
+  margin-bottom: 12px;
+}
+
+.scanner-instructions .eyebrow {
+  color: #c06021;
+}
+
+.scanner-instructions h2 {
+  margin: 0;
+  color: #13212d;
+}
+
+.instructions-visual {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 24px;
+}
+
+.scan-animation {
+  position: relative;
+  width: min(100%, 360px);
+  height: 220px;
+  background: radial-gradient(circle at center, #13212d 0%, #0a141c 100%);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgba(255, 178, 115, 0.18);
+}
+
+/* Viewfinder del scanner (fijo en el fondo) */
+.scanner-viewfinder {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  z-index: 1;
+}
+
+.vf-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #ffb273;
+  pointer-events: none;
+}
+
+.vf-tl {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 8px;
+}
+
+.vf-tr {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  border-top-right-radius: 8px;
+}
+
+.vf-bl {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-bottom-left-radius: 8px;
+}
+
+.vf-br {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 8px;
+}
+
+/* Celular del asistente que pasa por encima */
+.user-phone-moving {
+  position: absolute;
+  top: 50%;
+  left: -80px;
+  transform: translateY(-50%);
+  width: 90px;
+  height: 150px;
+  background: linear-gradient(135deg, #1f3340 0%, #13212d 100%);
+  border-radius: 14px;
+  border: 2.5px solid #091018;
+  padding: 10px 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+  animation: phoneOverScanner 3.5s ease-in-out infinite;
+}
+
+.user-phone-speaker {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 26px;
+  height: 4px;
+  background: #0a141c;
+  border-radius: 3px;
+}
+
+.user-phone-home {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 4px;
+  background: #8db4d1;
+  border-radius: 3px;
+  opacity: 0.6;
+}
+
+.user-phone-screen {
+  width: 100%;
+  height: 100%;
+  background: #fffaf1;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.qr-on-screen {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: #fffaf1;
+}
+
+.qr-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #13212d;
+  background: #fffaf1;
+}
+
+.qr-corner-tl {
+  top: 2px;
+  left: 2px;
+}
+
+.qr-corner-tr {
+  top: 2px;
+  right: 2px;
+}
+
+.qr-corner-bl {
+  bottom: 2px;
+  left: 2px;
+}
+
+.qr-dots {
+  position: absolute;
+  inset: 22px 10px 10px 22px;
+  background-image:
+    radial-gradient(circle, #13212d 22%, transparent 24%),
+    radial-gradient(circle, #13212d 22%, transparent 24%);
+  background-size: 9px 9px;
+  background-position: 0 0, 4.5px 4.5px;
+}
+
+/* Rayo de escaneo que aparece cuando el celular esta sobre el scanner */
+.scan-beam {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #22c55e 20%, #22c55e 80%, transparent);
+  border-radius: 3px;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.95), 0 0 40px rgba(34, 197, 94, 0.6);
+  z-index: 3;
+  opacity: 0;
+  animation: beamSweep 3.5s ease-in-out infinite;
+}
+
+/* Check verde al final */
+.scan-check {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  width: 60px;
+  height: 60px;
+  background: #22c55e;
+  color: white;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 900;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+  z-index: 4;
+  animation: checkReveal 3.2s ease-in-out infinite;
+}
+
+@keyframes phoneOverScanner {
+  0% {
+    left: -80px;
+    transform: translateY(-50%) rotate(-10deg);
+  }
+  35%, 55% {
+    left: 50%;
+    margin-left: -45px;
+    transform: translateY(-50%) rotate(0deg);
+  }
+  85% {
+    left: calc(100% + 20px);
+    transform: translateY(-50%) rotate(10deg);
+  }
+  100% {
+    left: calc(100% + 20px);
+    opacity: 0;
+  }
+}
+
+@keyframes beamSweep {
+  0%, 35% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(0.3);
+  }
+  42%, 52% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(1);
+  }
+  60%, 100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scaleX(0.3);
+  }
+}
+
+@keyframes checkReveal {
+  0%, 62% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  72% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 1;
+  }
+  82%, 92% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+}
+
+.instructions-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.instruction-step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 14px;
+  border-left: 4px solid #c06021;
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent, #ffb273), var(--accent-strong, #c06021));
+  color: #091018;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.instruction-step strong {
+  display: block;
+  color: #13212d;
+  font-size: 1.05rem;
+  margin-bottom: 2px;
+}
+
+.instruction-step p {
+  margin: 0;
+  color: #5a3410;
+  font-size: 0.95rem;
+}
+
+.instructions-hint {
+  margin: 0;
+  padding: 12px 16px;
+  background: rgba(192, 96, 33, 0.08);
+  border-radius: 12px;
+  font-size: 0.92rem;
+  color: #5a3410;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .scan-animation {
+    height: 190px;
+  }
+  .user-phone {
+    width: 90px;
+    height: 160px;
+  }
+  .qr-on-screen {
+    width: 66px;
+    height: 66px;
+  }
+  .qr-corner {
+    width: 13px;
+    height: 13px;
+  }
+  .scan-check {
+    width: 50px;
+    height: 50px;
+    font-size: 1.6rem;
+  }
+}
+
+/* Cuando el preview-card muestra la guia en vez del resultado */
+.preview-card-guide {
+  background: rgba(255, 255, 255, 0.4) !important;
+  color: #13212d !important;
+  border-color: rgba(192, 96, 33, 0.25) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.preview-card-guide .scanner-instructions {
+  margin: 0;
+  border: none;
+  border-radius: 24px;
+  box-shadow: none;
+}
+
+/* Layout del scanner especificamente (usa :has para evitar afectar otros forms) */
+.public-panel:has(.scanner-frame) .registration-layout {
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.attendee-form:has(> .scanner-frame) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.attendee-form:has(> .scanner-frame) > .submit-button {
+  width: 100%;
+  max-width: 380px;
+}
+
+.attendee-form:has(> .scanner-frame) .manual-checkin {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.attendee-form:has(> .scanner-frame) .manual-checkin .field {
+  gap: 6px;
+}
+
+.attendee-form:has(> .scanner-frame) .manual-checkin .submit-button {
+  grid-column: unset;
+  width: 100%;
+}
+
+/* ============================================
+   ANIMACION DE RESULTADO DEL SCANNER
+   ============================================ */
+
+.result-animation {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 10px auto 18px;
+  display: grid;
+  place-items: center;
+  animation: resultPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.result-icon {
+  position: relative;
+  z-index: 2;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: white;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+}
+
+.result-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  border: 3px solid currentColor;
+  opacity: 0.7;
+  animation: ringPulse 1.6s ease-out infinite;
+}
+
+/* OK = verde con check que rebota */
+.result-ok {
+  color: #22c55e;
+}
+.result-ok .result-icon {
+  background: #22c55e;
+  animation: checkBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+/* Duplicate = naranja con ! que vibra */
+.result-duplicate {
+  color: #f59e0b;
+}
+.result-duplicate .result-icon {
+  background: #f59e0b;
+  animation: shake 0.5s ease-in-out 0.1s both;
+}
+
+/* Not-approved = amarillo con hourglass */
+.result-not-approved {
+  color: #eab308;
+}
+.result-not-approved .result-icon {
+  background: #eab308;
+  font-size: 2.2rem;
+  animation: tilt 0.8s ease-in-out 0.15s both;
+}
+
+/* Not-found y otros errores = rojo con X */
+.result-not-found,
+.result-invalid,
+.result-error {
+  color: #ef4444;
+}
+.result-not-found .result-icon,
+.result-invalid .result-icon,
+.result-error .result-icon {
+  background: #ef4444;
+  animation: shake 0.5s ease-in-out 0.1s both;
+}
+
+@keyframes resultPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes checkBounce {
+  0% {
+    transform: scale(0.5);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  80% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes tilt {
+  0%, 100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-12deg);
+  }
+  75% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Mobile: apilar scanner e instrucciones vertical */
+@media (max-width: 720px) {
+  .public-panel:has(.scanner-frame) .registration-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+  .public-panel:has(.scanner-frame) .preview-card,
+  .public-panel:has(.scanner-frame) .preview-card-guide {
+    width: 100%;
+  }
+}
+
+.bulk-approve-action {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #fff !important;
+  border-color: #16a34a !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.bulk-approve-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+
+.bulk-approve-action:disabled {
+  background: #e5e7eb !important;
+  color: #6b7280 !important;
+  border-color: #d1d5db !important;
+  box-shadow: none;
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.table-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.table-actions-bar .ghost-action {
+  min-height: 40px;
+  padding: 0 16px;
+  white-space: nowrap;
+  font-size: 0.9rem;
 }

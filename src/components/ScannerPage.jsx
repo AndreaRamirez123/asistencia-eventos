@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { performCheckin } from '../attendeesStore'
+import ScannerInstructions from './ScannerInstructions'
 
 const ACCESS_POINT_KEY = 'asistencia-evento:accessPoint'
 
@@ -98,7 +99,7 @@ function ScannerPage({ currentUser, onLogout }) {
     }
 
     if (!payload) {
-      payload = /^\d{5,}$/.test(value) ? { documentId: value } : { qrToken: value }
+      payload = /^\d+$/.test(value) ? { documentId: value } : { qrToken: value }
     }
 
     await sendCheckin(payload)
@@ -288,10 +289,28 @@ function ScannerPage({ currentUser, onLogout }) {
             </form>
           </div>
 
-          <aside className="preview-card">
-            <p className="eyebrow">Resultado</p>
+          <aside className={`preview-card${lastResult && feedback ? '' : ' preview-card-guide'}`}>
             {lastResult && feedback ? (
               <>
+                <p className="eyebrow">Resultado</p>
+                <div
+                  className={`result-animation result-${lastResult.status}`}
+                  key={lastResult.scannedAt}
+                  aria-hidden="true"
+                >
+                  <span className="result-icon">
+                    {lastResult.status === 'ok'
+                      ? '\u2713'
+                      : lastResult.status === 'duplicate'
+                        ? '!'
+                        : lastResult.status === 'not-approved'
+                          ? '\u23F3'
+                          : lastResult.status === 'not-found'
+                            ? '?'
+                            : '\u2715'}
+                  </span>
+                  <span className="result-ring" />
+                </div>
                 <h3>{feedback.title}</h3>
                 <span className={`status-pill ${feedback.tone}`}>{lastResult.status}</span>
                 {lastResult.attendee ? (
@@ -312,15 +331,7 @@ function ScannerPage({ currentUser, onLogout }) {
                 )}
               </>
             ) : (
-              <>
-                <h3>Esperando escaneo</h3>
-                <p className="preview-copy">
-                  Aqui aparecera la informacion del asistente despues de cada escaneo.
-                </p>
-                <div className="qr-placeholder" aria-hidden="true">
-                  <span>QR</span>
-                </div>
-              </>
+              <ScannerInstructions />
             )}
           </aside>
         </div>

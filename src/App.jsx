@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { isFirebaseConfigured } from './firebase'
 import {
+  bulkApproveAttendees,
   deleteAttendee,
+  isAttendeeOrphan,
   listAttendees,
   migrateOrphanAttendees,
   registerAttendee,
+  subscribeToAttendees,
   updateAttendee,
   updateAttendeeStatus,
 } from './attendeesStore'
@@ -14,8 +17,10 @@ import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
+import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import LoginPage from './components/LoginPage'
 import PublicRegistrationPage from './components/PublicRegistrationPage'
+import QrViewerModal from './components/QrViewerModal'
 import ScannerPage from './components/ScannerPage'
 import { logout as firebaseLogout, subscribeToAuthState } from './auth'
 import './App.css'
@@ -26,6 +31,7 @@ const initialForm = {
   email: '',
   phone: '',
   organization: '',
+  empresaInvitadaId: '',
   attendeeType: 'general',
   notes: '',
   hasFaceConsent: false,
@@ -37,6 +43,7 @@ const initialPublicForm = {
   email: '',
   phone: '',
   organization: '',
+  empresaInvitadaId: '',
   attendeeType: 'general',
   hasFaceConsent: false,
 }
@@ -45,6 +52,7 @@ const initialFilters = {
   query: '',
   attendeeType: 'all',
   status: 'all',
+  empresa: 'all',
 }
 
 function getCurrentView() {
@@ -74,12 +82,24 @@ function createQrToken() {
 }
 
 function buildAttendeePayload(form, overrides = {}) {
+  const empresasInvitadas = overrides.empresasInvitadas || []
+  const isCustom = form.empresaInvitadaId === '__otra__'
+  const matched = !isCustom && form.empresaInvitadaId
+    ? empresasInvitadas.find((e) => e.id === form.empresaInvitadaId)
+    : null
+
+  const resolvedEmpresaInvitadaId = matched ? matched.id : ''
+  const resolvedOrganization = matched
+    ? matched.nombre
+    : (form.organization || '').trim()
+
   return {
     fullName: form.fullName.trim(),
     documentId: form.documentId.trim(),
     email: form.email.trim().toLowerCase(),
     phone: form.phone.trim(),
-    organization: form.organization.trim(),
+    organization: resolvedOrganization,
+    empresaInvitadaId: resolvedEmpresaInvitadaId,
     attendeeType: form.attendeeType,
     notes: form.notes?.trim?.() || '',
     hasFaceConsent: form.hasFaceConsent,
@@ -88,6 +108,67 @@ function buildAttendeePayload(form, overrides = {}) {
     empresaId: overrides.empresaId || '',
     eventoId: overrides.eventoId || '',
   }
+}
+
+function downloadAttendeesCsv(attendees) {
+  const headers = [
+    'Nombre',
+    'Documento',
+    'Email',
+    'Telefono',
+    'Empresa',
+    'Categoria',
+    'Estado',
+    'Fuente',
+    'Creado',
+    'Check-in',
+    'Punto de acceso',
+    'Validado por',
+  ]
+
+  const toCsv = (value) => {
+    const str = value === null || value === undefined ? '' : String(value)
+    return `"${str.replace(/"/g, '""')}"`
+  }
+
+  const formatForCsv = (value) => {
+    if (!value) return ''
+    try {
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return String(value)
+      return date.toISOString()
+    } catch {
+      return String(value)
+    }
+  }
+
+  const rows = attendees.map((a) => [
+    a.fullName || '',
+    a.documentId || '',
+    a.email || '',
+    a.phone || '',
+    a.organization || '',
+    a.attendeeType || '',
+    a.status || '',
+    a.source || '',
+    formatForCsv(a.createdAt),
+    formatForCsv(a.checkedInAt),
+    a.checkinPoint || '',
+    a.checkedInByName || a.checkedInBy || '',
+  ])
+
+  const csvLines = [headers, ...rows].map((row) => row.map(toCsv).join(','))
+  const csv = '\uFEFF' + csvLines.join('\n')
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `asistentes-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 function formatDate(value) {
@@ -133,6 +214,7 @@ function App() {
   const [isDeletingId, setIsDeletingId] = useState('')
   const [isUpdatingStatusId, setIsUpdatingStatusId] = useState('')
   const [pendingDeleteAttendee, setPendingDeleteAttendee] = useState(null)
+  const [viewingQrAttendee, setViewingQrAttendee] = useState(null)
   const [submission, setSubmission] = useState(null)
   const [publicSubmission, setPublicSubmission] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
@@ -141,6 +223,7 @@ function App() {
   const [empresas, setEmpresas] = useState([])
   const [eventos, setEventos] = useState([])
   const [isMigrating, setIsMigrating] = useState(false)
+  const [isBulkApproving, setIsBulkApproving] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
@@ -198,15 +281,35 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isFirebaseConfigured && currentView === 'admin' && currentUser) {
-      loadAttendees()
-      listEmpresas()
-        .then(setEmpresas)
-        .catch((error) => console.error(error))
-      listEventos()
-        .then(setEventos)
-        .catch((error) => console.error(error))
+    if (!isFirebaseConfigured) return
+
+    listEmpresas()
+      .then(setEmpresas)
+      .catch((error) => console.error(error))
+    listEventos()
+      .then(setEventos)
+      .catch((error) => console.error(error))
+  }, [])
+
+  useEffect(() => {
+    if (!isFirebaseConfigured || currentView !== 'admin' || !currentUser) {
+      return
     }
+
+    setIsLoadingAttendees(true)
+    const unsubscribe = subscribeToAttendees(
+      (items) => {
+        setAttendees(items)
+        setIsLoadingAttendees(false)
+      },
+      (error) => {
+        console.error(error)
+        setErrorMessage(error.message || 'No fue posible consultar asistentes.')
+        setIsLoadingAttendees(false)
+      },
+    )
+
+    return unsubscribe
   }, [currentView, currentUser])
 
   const handleChange = (event) => {
@@ -346,6 +449,7 @@ function App() {
         status: 'approved',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
+        empresasInvitadas,
       })
 
       if (editingAttendeeId) {
@@ -391,6 +495,7 @@ function App() {
         status: 'pre-registered',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
+        empresasInvitadas,
       })
 
       const result = await registerAttendee(attendee)
@@ -420,16 +525,21 @@ function App() {
     const pending = attendees.filter(
       (item) => item.status === 'pre-registered' || item.status === 'pending',
     ).length
-    const empresasCount = empresas.filter((e) => e.active !== false).length
+
+    const empresasRepresentadas = new Set()
+    for (const a of attendees) {
+      const key = (a.organization || '').trim().toLowerCase()
+      if (key) empresasRepresentadas.add(key)
+    }
 
     return [
-      { value: String(empresasCount), label: 'empresas activas' },
       { value: String(total), label: 'registros totales' },
       { value: String(approved), label: 'aprobados' },
       { value: String(checkedIn), label: 'check-ins confirmados' },
       { value: String(pending), label: 'pendientes' },
+      { value: String(empresasRepresentadas.size), label: 'empresas representadas' },
     ]
-  }, [attendees, empresas])
+  }, [attendees])
 
   const empresasMap = useMemo(() => {
     const map = {}
@@ -444,13 +554,27 @@ function App() {
     return active?.id || ''
   }, [empresas])
 
-  const activeEventoId = useMemo(() => {
-    const active = eventos.find((e) => e.active !== false) || eventos[0]
-    return active?.id || ''
+  const activeEvento = useMemo(() => {
+    return eventos.find((e) => e.active !== false) || eventos[0] || null
   }, [eventos])
 
+  const activeEventoId = activeEvento?.id || ''
+
+  const empresasInvitadas = useMemo(() => {
+    return Array.isArray(activeEvento?.empresasInvitadas) ? activeEvento.empresasInvitadas : []
+  }, [activeEvento])
+
+  const handleEmpresasInvitadasChange = (next) => {
+    if (!activeEvento) return
+    setEventos((current) =>
+      current.map((e) =>
+        e.id === activeEvento.id ? { ...e, empresasInvitadas: next } : e,
+      ),
+    )
+  }
+
   const orphanAttendeesCount = useMemo(
-    () => attendees.filter((a) => !a.empresaId || !a.eventoId).length,
+    () => attendees.filter(isAttendeeOrphan).length,
     [attendees],
   )
 
@@ -484,6 +608,31 @@ function App() {
     }
   }
 
+  const handleBulkApprove = async (ids) => {
+    if (!ids || ids.length === 0) return
+    const confirmed = window.confirm(
+      `Vas a aprobar ${ids.length} asistente(s) pendiente(s). Todos pasaran a estado "approved" y podran hacer check-in. Continuar?`,
+    )
+    if (!confirmed) return
+
+    setIsBulkApproving(true)
+    setErrorMessage('')
+
+    try {
+      const result = await bulkApproveAttendees(ids)
+      setAttendees((current) =>
+        current.map((item) =>
+          ids.includes(item.id) ? { ...item, status: 'approved' } : item,
+        ),
+      )
+      window.alert(`${result.updated} asistentes aprobados correctamente.`)
+    } catch (error) {
+      setErrorMessage(error.message || 'No fue posible aprobar en masa.')
+    } finally {
+      setIsBulkApproving(false)
+    }
+  }
+
   const normalizedQuery = filters.query.trim().toLowerCase()
   const filteredAttendees = attendees.filter((item) => {
     const matchesQuery =
@@ -497,7 +646,12 @@ function App() {
 
     const matchesStatus = filters.status === 'all' || item.status === filters.status
 
-    return matchesQuery && matchesType && matchesStatus
+    const matchesEmpresa =
+      filters.empresa === 'all' ||
+      (filters.empresa === '__otra__' && !item.empresaInvitadaId) ||
+      item.empresaInvitadaId === filters.empresa
+
+    return matchesQuery && matchesType && matchesStatus && matchesEmpresa
   })
 
   if (currentView === 'public') {
@@ -510,6 +664,7 @@ function App() {
         isSubmitting={isPublicSubmitting}
         submission={publicSubmission}
         onCedulaFill={handlePublicCedulaFill}
+        empresasInvitadas={empresasInvitadas}
       />
     )
   }
@@ -588,11 +743,22 @@ function App() {
           onCancelEdit={handleCancelEdit}
           submission={submission}
           onCedulaFill={handleAdminCedulaFill}
+          empresasInvitadas={empresasInvitadas}
+        />
+
+        <EmpresasInvitadasPanel
+          evento={activeEvento}
+          onChange={handleEmpresasInvitadasChange}
         />
 
         <AttendeeTableSection
           attendees={filteredAttendees}
           empresasMap={empresasMap}
+          empresasInvitadas={empresasInvitadas}
+          handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
+          handleViewQr={setViewingQrAttendee}
+          handleBulkApprove={handleBulkApprove}
+          isBulkApproving={isBulkApproving}
           filterState={filters}
           filteredCount={filteredAttendees.length}
           handleDelete={handleRequestDelete}
@@ -613,6 +779,13 @@ function App() {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
+
+      {viewingQrAttendee ? (
+        <QrViewerModal
+          attendee={viewingQrAttendee}
+          onClose={() => setViewingQrAttendee(null)}
+        />
+      ) : null}
     </div>
   )
 }

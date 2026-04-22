@@ -5,11 +5,13 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
@@ -102,6 +104,19 @@ export async function listAttendees() {
   return snap.docs.map(mapDoc)
 }
 
+export function subscribeToAttendees(onChange, onError) {
+  ensureFirestore()
+  const attendeesRef = collection(db, COLLECTION_NAME)
+  const q = query(attendeesRef, orderBy('createdAt', 'desc'))
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map(mapDoc)),
+    (error) => {
+      if (onError) onError(error)
+    },
+  )
+}
+
 export async function registerAttendee(payload) {
   ensureFirestore()
   const attendee = normalizeAttendee(payload)
@@ -182,11 +197,47 @@ export async function updateAttendeeStatus(id, status) {
   return { id, status, updatedAt: new Date().toISOString() }
 }
 
+export async function bulkApproveAttendees(attendeeIds) {
+  ensureFirestore()
+  if (!attendeeIds || attendeeIds.length === 0) {
+    return { updated: 0 }
+  }
+
+  // Firestore batch soporta maximo 500 operaciones por batch
+  const chunks = []
+  for (let i = 0; i < attendeeIds.length; i += 450) {
+    chunks.push(attendeeIds.slice(i, i + 450))
+  }
+
+  let updated = 0
+  for (const chunk of chunks) {
+    const batch = writeBatch(db)
+    for (const id of chunk) {
+      const ref = doc(db, COLLECTION_NAME, id)
+      batch.update(ref, {
+        status: 'approved',
+        updatedAt: serverTimestamp(),
+      })
+    }
+    await batch.commit()
+    updated += chunk.length
+  }
+
+  return { updated }
+}
+
 export async function deleteAttendee(id) {
   ensureFirestore()
   const ref = doc(db, COLLECTION_NAME, id)
   await deleteDoc(ref)
   return { id }
+}
+
+export function isAttendeeOrphan(attendee) {
+  if (!attendee.empresaId || !attendee.eventoId) return true
+  const normalizedDoc = normalizeDocumentId(attendee.documentId)
+  if (normalizedDoc && normalizedDoc !== attendee.documentId) return true
+  return false
 }
 
 export async function migrateOrphanAttendees({ empresaId, eventoId }) {
@@ -204,8 +255,15 @@ export async function migrateOrphanAttendees({ empresaId, eventoId }) {
   for (const docSnap of snap.docs) {
     const data = docSnap.data()
     const updates = {}
+
     if (!data.empresaId) updates.empresaId = empresaId
     if (!data.eventoId) updates.eventoId = eventoId
+
+    // Normalizar documentId si aun no esta normalizado
+    const normalizedDoc = normalizeDocumentId(data.documentId)
+    if (normalizedDoc && normalizedDoc !== data.documentId) {
+      updates.documentId = normalizedDoc
+    }
 
     if (Object.keys(updates).length === 0) {
       skipped += 1
@@ -248,7 +306,7 @@ export async function performCheckin({
   if (snap.empty) {
     return {
       status: 'not-found',
-      message: 'QR no reconocido. Verifica el registro del asistente.',
+      message: `No se encontro ningun asistente con ${field}: "${value}". Verifica el valor o usa el documento del asistente.`,
     }
   }
 
