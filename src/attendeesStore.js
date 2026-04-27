@@ -66,6 +66,7 @@ function normalizeAttendee(payload) {
     source: String(payload.source || 'admin-panel').trim(),
     empresaId: String(payload.empresaId || '').trim(),
     eventoId: String(payload.eventoId || '').trim(),
+    nit: String(payload.nit || '').replace(/[^\d]/g, ''),
     surveyAnswers,
   }
 }

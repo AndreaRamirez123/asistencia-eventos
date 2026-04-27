@@ -11,6 +11,8 @@ function PublicRegistrationPage({
   submission,
   onCedulaFill,
   empresasInvitadas = [],
+  kioskMode = false,
+  onResetSubmission,
 }) {
   const [showScanner, setShowScanner] = useState(false)
 
@@ -28,6 +30,39 @@ function PublicRegistrationPage({
     encuestaActiva && Array.isArray(selectedEmpresa?.encuestaPreguntas)
       ? selectedEmpresa.encuestaPreguntas
       : []
+
+  if (kioskMode && submission) {
+    return (
+      <div className="kiosk-success">
+        <div className="kiosk-success-card">
+          <p className="eyebrow">Registro completado</p>
+          <h1>¡Listo, {submission.attendee.fullName.split(' ')[0] || 'bienvenido'}!</h1>
+          <p className="kiosk-copy">
+            Muestra este codigo QR al personal de la entrada para ingresar al evento.
+          </p>
+          <img
+            className="kiosk-qr"
+            src={submission.qrDataUrl}
+            alt={`QR de ${submission.attendee.fullName}`}
+          />
+          <div className="kiosk-meta">
+            <span>Documento: {submission.attendee.documentId}</span>
+          </div>
+          <button
+            type="button"
+            className="submit-button kiosk-reset"
+            onClick={() => onResetSubmission?.()}
+          >
+            Registrar otra persona
+          </button>
+          <p className="helper-text kiosk-tip">
+            Tip: tambien puedes descargar el QR haciendo captura de pantalla.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="public-shell">
       <header className="public-hero">
@@ -170,6 +205,19 @@ function PublicRegistrationPage({
                 <option value="speaker">Speaker</option>
                 <option value="press">Prensa</option>
               </select>
+            </label>
+
+            <label className="field">
+              <span>
+                NIT <span className="cedula-optional">(opcional)</span>
+              </span>
+              <input
+                name="nit"
+                value={form.nit || ''}
+                onChange={handleChange}
+                placeholder="Solo si representas a una empresa"
+                inputMode="numeric"
+              />
             </label>
 
             {preguntas.length > 0 ? (

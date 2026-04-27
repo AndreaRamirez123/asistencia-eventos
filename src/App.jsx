@@ -18,6 +18,7 @@ import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
+import KioskoQrPanel from './components/KioskoQrPanel'
 import LoginPage from './components/LoginPage'
 import PublicRegistrationPage from './components/PublicRegistrationPage'
 import QrViewerModal from './components/QrViewerModal'
@@ -43,6 +44,7 @@ const initialPublicForm = {
   email: '',
   phone: '',
   organization: '',
+  nit: '',
   empresaInvitadaId: '',
   attendeeType: 'general',
   hasFaceConsent: false,
@@ -108,6 +110,7 @@ function buildAttendeePayload(form, overrides = {}) {
     source: overrides.source || 'admin-panel',
     empresaId: overrides.empresaId || '',
     eventoId: overrides.eventoId || '',
+    nit: (form.nit || '').trim(),
     surveyAnswers: form.surveyAnswers || {},
   }
 }
@@ -206,10 +209,20 @@ async function parseApiResponse(response) {
   }
 }
 
+function getPublicUrlOptions() {
+  if (typeof window === 'undefined') return { empresaParam: '', kiosk: false }
+  const params = new URLSearchParams(window.location.search)
+  return {
+    empresaParam: params.get('empresa') || '',
+    kiosk: params.get('kiosk') === '1',
+  }
+}
+
 function App() {
   const [currentView, setCurrentView] = useState(getCurrentView)
   const [form, setForm] = useState(initialForm)
   const [publicForm, setPublicForm] = useState(initialPublicForm)
+  const [publicUrlOptions] = useState(getPublicUrlOptions)
   const [editingAttendeeId, setEditingAttendeeId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPublicSubmitting, setIsPublicSubmitting] = useState(false)
@@ -292,6 +305,15 @@ function App() {
       .then(setEventos)
       .catch((error) => console.error(error))
   }, [])
+
+  useEffect(() => {
+    const target = publicUrlOptions.empresaParam
+    if (!target || currentView !== 'public') return
+    setPublicForm((current) => {
+      if (current.empresaInvitadaId === target) return current
+      return { ...current, empresaInvitadaId: target, surveyAnswers: {} }
+    })
+  }, [publicUrlOptions.empresaParam, currentView])
 
   useEffect(() => {
     if (!isFirebaseConfigured || currentView !== 'admin' || !currentUser) {
@@ -704,6 +726,11 @@ function App() {
         submission={publicSubmission}
         onCedulaFill={handlePublicCedulaFill}
         empresasInvitadas={empresasInvitadas}
+        kioskMode={publicUrlOptions.kiosk}
+        onResetSubmission={() => {
+          setPublicSubmission(null)
+          setPublicForm(initialPublicForm)
+        }}
       />
     )
   }
@@ -732,7 +759,13 @@ function App() {
     if (!SCANNER_ROLES.includes(currentUser.role)) {
       return <LoginPage />
     }
-    return <ScannerPage currentUser={currentUser} onLogout={handleLogout} />
+    return (
+      <ScannerPage
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        evento={activeEvento}
+      />
+    )
   }
 
   if (!ADMIN_ROLES.includes(currentUser.role)) {
@@ -788,6 +821,16 @@ function App() {
         <EmpresasInvitadasPanel
           evento={activeEvento}
           onChange={handleEmpresasInvitadasChange}
+        />
+
+        <KioskoQrPanel
+          empresasInvitadas={empresasInvitadas}
+          evento={activeEvento}
+          onEventoChange={(nextEvento) =>
+            setEventos((current) =>
+              current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+            )
+          }
         />
 
         <AttendeeTableSection

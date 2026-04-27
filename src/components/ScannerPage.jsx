@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Scanner } from '@yudiel/react-qr-scanner'
+import QRCode from 'qrcode'
 import { performCheckin } from '../attendeesStore'
 import ScannerInstructions from './ScannerInstructions'
+import KioskoInstructions from './KioskoInstructions'
 
 const ACCESS_POINT_KEY = 'asistencia-evento:accessPoint'
 
@@ -33,7 +35,7 @@ const feedbackStyles = {
   error: { tone: 'alert', title: 'Error de conexion' },
 }
 
-function ScannerPage({ currentUser, onLogout }) {
+function ScannerPage({ currentUser, onLogout, evento }) {
   const [accessPoint, setAccessPoint] = useState(loadStoredAccessPoint)
   const [isScanning, setIsScanning] = useState(true)
   const [cameraSupported, setCameraSupported] = useState(true)
@@ -180,6 +182,87 @@ function ScannerPage({ currentUser, onLogout }) {
 
   const feedback = lastResult ? feedbackStyles[lastResult.status] || feedbackStyles.error : null
 
+  const kioskoEnabled = Boolean(evento?.registroEnSitio)
+  const kioskoEmpresaId = evento?.registroEnSitioEmpresaId || ''
+  const [showStaffMode, setShowStaffMode] = useState(false)
+
+  const kioskoUrl = useMemo(() => {
+    if (typeof window === 'undefined') return ''
+    const params = new URLSearchParams({ kiosk: '1' })
+    if (kioskoEmpresaId) params.set('empresa', kioskoEmpresaId)
+    return `${window.location.origin}/registro?${params.toString()}`
+  }, [kioskoEmpresaId])
+
+  const [kioskoQrDataUrl, setKioskoQrDataUrl] = useState('')
+  useEffect(() => {
+    if (!kioskoEnabled) return
+    let cancelled = false
+    QRCode.toDataURL(kioskoUrl, {
+      width: 720,
+      margin: 2,
+      color: { dark: '#13212d', light: '#fffaf1' },
+    })
+      .then((dataUrl) => {
+        if (!cancelled) setKioskoQrDataUrl(dataUrl)
+      })
+      .catch(() => {
+        if (!cancelled) setKioskoQrDataUrl('')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [kioskoEnabled, kioskoUrl])
+
+  if (kioskoEnabled && !showStaffMode) {
+    return (
+      <div className="scanner-kiosko">
+        <header className="scanner-kiosko-head">
+          <div>
+            <p className="eyebrow">Registro en sitio</p>
+            <h1>Escanea este QR para registrarte</h1>
+            <p className="hero-text">
+              Apunta la camara de tu celular al codigo. Llena tus datos y recibe tu QR de
+              ingreso.
+            </p>
+          </div>
+          <div className="scanner-kiosko-actions">
+            <button
+              type="button"
+              className="ghost-action"
+              onClick={() => setShowStaffMode(true)}
+            >
+              Modo staff (validar QR)
+            </button>
+            {onLogout ? (
+              <button type="button" className="ghost-action" onClick={onLogout}>
+                Cerrar sesion
+              </button>
+            ) : null}
+          </div>
+        </header>
+
+        <div className="scanner-kiosko-body">
+          <div className="scanner-kiosko-qr-wrap">
+            {kioskoQrDataUrl ? (
+              <img
+                className="scanner-kiosko-qr"
+                src={kioskoQrDataUrl}
+                alt="QR de registro"
+              />
+            ) : (
+              <div className="qr-placeholder">
+                <span>Generando...</span>
+              </div>
+            )}
+            <p className="scanner-kiosko-url">{kioskoUrl}</p>
+          </div>
+
+          <KioskoInstructions />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="public-shell">
       <header className="public-hero">
@@ -207,6 +290,15 @@ function ScannerPage({ currentUser, onLogout }) {
             <a href="/admin" className="secondary-action">
               Ir al panel admin
             </a>
+          ) : null}
+          {kioskoEnabled ? (
+            <button
+              type="button"
+              className="ghost-action"
+              onClick={() => setShowStaffMode(false)}
+            >
+              Volver a modo kiosko
+            </button>
           ) : null}
           {onLogout ? (
             <button type="button" className="ghost-action" onClick={onLogout}>
