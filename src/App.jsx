@@ -3,6 +3,7 @@ import { isFirebaseConfigured } from './firebase'
 import {
   bulkApproveAttendees,
   deleteAttendee,
+  findAttendeeByDocument,
   isAttendeeOrphan,
   listAttendees,
   migrateOrphanAttendees,
@@ -234,6 +235,7 @@ function App() {
   const [publicSubmission, setPublicSubmission] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [publicErrorMessage, setPublicErrorMessage] = useState('')
+  const [publicLookupStatus, setPublicLookupStatus] = useState('idle')
   const [attendees, setAttendees] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [eventos, setEventos] = useState([])
@@ -358,6 +360,10 @@ function App() {
       }
       return next
     })
+
+    if (name === 'documentId') {
+      setPublicLookupStatus('idle')
+    }
   }
 
   const handlePublicSurveyChange = (questionId, value) => {
@@ -365,6 +371,36 @@ function App() {
       ...current,
       surveyAnswers: { ...(current.surveyAnswers || {}), [questionId]: value },
     }))
+  }
+
+  const handlePublicDocumentLookup = async (documentValue) => {
+    const cleaned = String(documentValue || '').trim()
+    if (cleaned.length < 5) {
+      setPublicLookupStatus('idle')
+      return
+    }
+    setPublicLookupStatus('searching')
+    try {
+      const found = await findAttendeeByDocument(cleaned)
+      if (!found) {
+        setPublicLookupStatus('not-found')
+        return
+      }
+      setPublicForm((current) => ({
+        ...current,
+        fullName: current.fullName || found.fullName || '',
+        email: current.email || found.email || '',
+        phone: current.phone || found.phone || '',
+        organization: current.organization || found.organization || '',
+        nit: current.nit || found.nit || '',
+        empresaInvitadaId:
+          current.empresaInvitadaId || found.empresaInvitadaId || '',
+      }))
+      setPublicLookupStatus('found')
+    } catch (error) {
+      console.error('Lookup fallido', error)
+      setPublicLookupStatus('idle')
+    }
   }
 
   const handleAdminCedulaFill = (data) => {
@@ -376,6 +412,9 @@ function App() {
   }
 
   const handlePublicCedulaFill = (data) => {
+    if (data.documentId) {
+      handlePublicDocumentLookup(data.documentId)
+    }
     setPublicForm((current) => ({
       ...current,
       fullName: data.fullName || current.fullName,
@@ -722,6 +761,8 @@ function App() {
         handleChange={handlePublicChange}
         handleSurveyChange={handlePublicSurveyChange}
         handleSubmit={handlePublicSubmit}
+        handleDocumentLookup={handlePublicDocumentLookup}
+        lookupStatus={publicLookupStatus}
         isSubmitting={isPublicSubmitting}
         submission={publicSubmission}
         onCedulaFill={handlePublicCedulaFill}
@@ -730,6 +771,7 @@ function App() {
         onResetSubmission={() => {
           setPublicSubmission(null)
           setPublicForm(initialPublicForm)
+          setPublicLookupStatus('idle')
         }}
       />
     )

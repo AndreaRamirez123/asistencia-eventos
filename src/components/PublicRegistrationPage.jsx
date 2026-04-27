@@ -7,6 +7,8 @@ function PublicRegistrationPage({
   handleChange,
   handleSurveyChange,
   handleSubmit,
+  handleDocumentLookup,
+  lookupStatus = 'idle',
   isSubmitting,
   submission,
   onCedulaFill,
@@ -126,9 +128,22 @@ function PublicRegistrationPage({
                 name="documentId"
                 value={form.documentId}
                 onChange={handleChange}
+                onBlur={(event) => handleDocumentLookup?.(event.target.value)}
                 placeholder="Ej. 1032456789"
                 required
               />
+              {lookupStatus === 'searching' ? (
+                <small className="lookup-feedback">Buscando registros previos...</small>
+              ) : lookupStatus === 'found' ? (
+                <small className="lookup-feedback found">
+                  &#10003; Te encontramos en eventos anteriores. Revisa que tus datos esten al
+                  dia.
+                </small>
+              ) : lookupStatus === 'not-found' ? (
+                <small className="lookup-feedback">
+                  Es tu primer registro. Completa los datos abajo.
+                </small>
+              ) : null}
             </label>
 
             <label className="field">

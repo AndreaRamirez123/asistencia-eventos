@@ -266,6 +266,19 @@
   gap: 18px;
 }
 
+.lookup-feedback {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(19, 33, 45, 0.65);
+  font-weight: 500;
+}
+
+.lookup-feedback.found {
+  color: #16a34a;
+  font-weight: 600;
+}
+
 .kiosko-mode {
   padding: 16px 18px;
   margin-bottom: 16px;
@@ -566,6 +579,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .field {
@@ -573,6 +587,7 @@
   gap: 8px;
   color: var(--heading);
   font-weight: 600;
+  align-content: start;
 }
 
 .field-wide {

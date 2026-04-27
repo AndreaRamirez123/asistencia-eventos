@@ -111,6 +111,25 @@ export async function listAttendees() {
   return snap.docs.map(mapDoc)
 }
 
+export async function findAttendeeByDocument(documentId) {
+  ensureFirestore()
+  const cleaned = normalizeDocumentId(documentId)
+  if (!cleaned || cleaned.length < 5) return null
+
+  const attendeesRef = collection(db, COLLECTION_NAME)
+  const q = query(attendeesRef, where('documentId', '==', cleaned))
+  const snap = await getDocs(q)
+  if (snap.empty) return null
+
+  const items = snap.docs.map(mapDoc)
+  items.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return dateB - dateA
+  })
+  return items[0]
+}
+
 export function subscribeToAttendees(onChange, onError) {
   ensureFirestore()
   const attendeesRef = collection(db, COLLECTION_NAME)
