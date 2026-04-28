@@ -72,6 +72,7 @@ function normalizeAttendee(payload) {
   }
 }
 
+
 function validateAttendee(attendee) {
   const errors = []
   if (!attendee.fullName) errors.push('El nombre completo es obligatorio.')

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   addEmpresaInvitada,
   removeEmpresaInvitada,
@@ -22,6 +22,39 @@ function serializePreguntas(preguntas) {
       label: p.label || '',
       opciones: p.opciones || [],
     })),
+  )
+}
+
+function OpcionesInput({ pregunta, onUpdate }) {
+  const initialText = (pregunta.opciones || []).join(', ')
+  const [text, setText] = useState(initialText)
+  const lastSyncedRef = useRef(initialText)
+
+  useEffect(() => {
+    const externalText = (pregunta.opciones || []).join(', ')
+    if (externalText !== lastSyncedRef.current) {
+      lastSyncedRef.current = externalText
+      setText(externalText)
+    }
+  }, [pregunta.opciones])
+
+  const commit = (value) => {
+    const opciones = value
+      .split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)
+    lastSyncedRef.current = opciones.join(', ')
+    onUpdate(pregunta.id, { opciones })
+  }
+
+  return (
+    <input
+      type="text"
+      value={text}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={(event) => commit(event.target.value)}
+      placeholder="Ej. Redes, Amigo, Email"
+    />
   )
 }
 
@@ -175,18 +208,7 @@ function EncuestaEditor({ evento, empresa, onChange }) {
                   {pregunta.tipo === 'opcion' ? (
                     <label className="field">
                       <span>Opciones (separadas por coma)</span>
-                      <input
-                        type="text"
-                        value={(pregunta.opciones || []).join(', ')}
-                        onChange={(event) =>
-                          updatePregunta(pregunta.id, {
-                            opciones: event.target.value
-                              .split(',')
-                              .map((o) => o)
-                          })
-                        }
-                        placeholder="Ej. Redes, Amigo, Email"
-                      />
+                      <OpcionesInput pregunta={pregunta} onUpdate={updatePregunta} />
                     </label>
                   ) : null}
                 </li>

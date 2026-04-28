@@ -14,11 +14,14 @@ import {
 } from './attendeesStore'
 import { listEmpresas } from './empresasStore'
 import { listEventos } from './eventosStore'
+import { subscribeToRatings } from './ratingsStore'
 import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import AdminSection from './components/AdminSection'
+import CalificacionPage from './components/CalificacionPage'
+import CalificacionPanel from './components/CalificacionPanel'
 import CategoriasPanel from './components/CategoriasPanel'
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import KioskoQrPanel from './components/KioskoQrPanel'
@@ -69,6 +72,10 @@ function getCurrentView() {
 
   if (path === '/registro') {
     return 'public'
+  }
+
+  if (path === '/calificar') {
+    return 'rating'
   }
 
   if (path === '/admin/login' || path === '/login') {
@@ -246,6 +253,7 @@ function App() {
   const [empresas, setEmpresas] = useState([])
   const [eventos, setEventos] = useState([])
   const [eventosLoaded, setEventosLoaded] = useState(false)
+  const [ratings, setRatings] = useState([])
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
@@ -337,6 +345,17 @@ function App() {
       return { ...current, registrationMode: 'onsite' }
     })
   }, [publicUrlOptions.kiosk, currentView])
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return
+    if (currentView !== 'admin' || !currentUser) return
+    const unsubscribe = subscribeToRatings(
+      eventos[0]?.id || '',
+      (items) => setRatings(items),
+      (error) => console.error('No fue posible cargar calificaciones', error),
+    )
+    return unsubscribe
+  }, [eventos, currentView, currentUser])
 
   useEffect(() => {
     if (!isFirebaseConfigured || currentView !== 'admin' || !currentUser) {
@@ -665,6 +684,12 @@ function App() {
       if (key) empresasRepresentadas.add(key)
     }
 
+    const ratingsTotal = ratings.length
+    const ratingAvg =
+      ratingsTotal > 0
+        ? (ratings.reduce((acc, r) => acc + (r.stars || 0), 0) / ratingsTotal).toFixed(1)
+        : '0.0'
+
     return [
       { value: String(total), label: 'registros totales' },
       { value: String(peopleAtEvent), label: 'personas en el evento' },
@@ -672,8 +697,9 @@ function App() {
       { value: String(checkedIn), label: 'check-ins confirmados' },
       { value: String(pending), label: 'pendientes' },
       { value: String(empresasRepresentadas.size), label: 'empresas representadas' },
+      { value: `${ratingAvg} ★`, label: `calificación (${ratingsTotal})` },
     ]
-  }, [attendees])
+  }, [attendees, ratings])
 
   const empresasMap = useMemo(() => {
     const map = {}
@@ -830,6 +856,16 @@ function App() {
     )
   }
 
+  if (currentView === 'rating') {
+    return (
+      <CalificacionPage
+        evento={activeEvento}
+        empresasInvitadas={empresasInvitadas}
+        eventoLoaded={eventosLoaded}
+      />
+    )
+  }
+
   if (currentView === 'login') {
     return <LoginPage />
   }
@@ -960,6 +996,24 @@ function App() {
           <KioskoQrPanel
             empresasInvitadas={empresasInvitadas}
             evento={activeEvento}
+            onEventoChange={(nextEvento) =>
+              setEventos((current) =>
+                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+              )
+            }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="calificacion"
+          title="Calificación del evento"
+          subtitle="Encuesta de satisfacción post-evento"
+          defaultOpen={false}
+        >
+          <CalificacionPanel
+            evento={activeEvento}
+            ratings={ratings}
+            empresasInvitadas={empresasInvitadas}
             onEventoChange={(nextEvento) =>
               setEventos((current) =>
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
