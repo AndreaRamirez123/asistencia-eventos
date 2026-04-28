@@ -13,6 +13,7 @@ function AdminRegistrationPanel({
   submission,
   onCedulaFill,
   empresasInvitadas = [],
+  categorias = [],
 }) {
   const [showScanner, setShowScanner] = useState(false)
 
@@ -127,11 +128,11 @@ function AdminRegistrationPanel({
           <label className="field">
             <span>Categoria</span>
             <select name="attendeeType" value={form.attendeeType} onChange={handleChange}>
-              <option value="general">General</option>
-              <option value="vip">VIP</option>
-              <option value="speaker">Speaker</option>
-              <option value="staff">Staff</option>
-              <option value="press">Prensa</option>
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
             </select>
           </label>
 

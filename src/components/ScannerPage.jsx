@@ -35,6 +35,16 @@ const feedbackStyles = {
   error: { tone: 'alert', title: 'Error de conexion' },
 }
 
+const EXPRESS_MODE_KEY = 'asistencia-evento:expressMode'
+
+function loadExpressMode() {
+  try {
+    return localStorage.getItem(EXPRESS_MODE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function ScannerPage({ currentUser, onLogout, evento }) {
   const [accessPoint, setAccessPoint] = useState(loadStoredAccessPoint)
   const [isScanning, setIsScanning] = useState(true)
@@ -43,12 +53,19 @@ function ScannerPage({ currentUser, onLogout, evento }) {
   const [lastResult, setLastResult] = useState(null)
   const [history, setHistory] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [expressMode, setExpressMode] = useState(loadExpressMode)
   const lastTokenRef = useRef({ token: '', at: 0 })
+  const autoResumeRef = useRef(null)
 
   const sendCheckin = async (payload) => {
     setIsSubmitting(true)
     setIsScanning(false)
+    if (autoResumeRef.current) {
+      clearTimeout(autoResumeRef.current)
+      autoResumeRef.current = null
+    }
 
+    let result
     try {
       const data = await performCheckin({
         ...payload,
@@ -57,7 +74,7 @@ function ScannerPage({ currentUser, onLogout, evento }) {
         checkedInByName: currentUser?.displayName || '',
       })
 
-      const result = {
+      result = {
         status: data.status,
         message: data.message,
         attendee: data.item || null,
@@ -68,15 +85,28 @@ function ScannerPage({ currentUser, onLogout, evento }) {
       setLastResult(result)
       setHistory((current) => [result, ...current].slice(0, 8))
     } catch (error) {
-      setLastResult({
+      result = {
         status: 'error',
         message: error.message || 'No fue posible registrar el check-in.',
         attendee: null,
         accessPoint,
         scannedAt: new Date().toISOString(),
-      })
+      }
+      setLastResult(result)
     } finally {
       setIsSubmitting(false)
+    }
+
+    const okStatuses = ['ok', 'duplicate']
+    const shouldAutoResume = okStatuses.includes(result?.status)
+    if (shouldAutoResume) {
+      const delay = expressMode ? 800 : 1500
+      autoResumeRef.current = setTimeout(() => {
+        setLastResult(null)
+        lastTokenRef.current = { token: '', at: 0 }
+        setIsScanning(true)
+        autoResumeRef.current = null
+      }, delay)
     }
   }
 
@@ -125,6 +155,22 @@ function ScannerPage({ currentUser, onLogout, evento }) {
       // localStorage not available, ignore
     }
   }, [accessPoint])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXPRESS_MODE_KEY, expressMode ? '1' : '0')
+    } catch {
+      // ignore
+    }
+  }, [expressMode])
+
+  useEffect(() => {
+    return () => {
+      if (autoResumeRef.current) {
+        clearTimeout(autoResumeRef.current)
+      }
+    }
+  }, [])
 
   const resumeScan = () => {
     setLastResult(null)
@@ -285,6 +331,14 @@ function ScannerPage({ currentUser, onLogout, evento }) {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="checkbox-field express-toggle" title="Reduce el tiempo entre escaneos para flujos rapidos (40+ personas/min)">
+            <input
+              type="checkbox"
+              checked={expressMode}
+              onChange={(event) => setExpressMode(event.target.checked)}
+            />
+            <span>Modo Express (alta velocidad)</span>
           </label>
           {['admin', 'superadmin', 'admin_empresa'].includes(currentUser?.role) ? (
             <a href="/admin" className="secondary-action">

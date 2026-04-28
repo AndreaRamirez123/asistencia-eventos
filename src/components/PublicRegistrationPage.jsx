@@ -13,7 +13,10 @@ function PublicRegistrationPage({
   submission,
   onCedulaFill,
   empresasInvitadas = [],
+  categorias = [],
   kioskMode = false,
+  eventoModoRegistro = 'pre',
+  eventoLoaded = true,
   onResetSubmission,
 }) {
   const [showScanner, setShowScanner] = useState(false)
@@ -33,32 +36,48 @@ function PublicRegistrationPage({
       ? selectedEmpresa.encuestaPreguntas
       : []
 
-  if (kioskMode && submission) {
+  const showModeToggle = eventoModoRegistro === 'both' && !kioskMode
+  const effectiveMode =
+    kioskMode || eventoModoRegistro === 'onsite'
+      ? 'onsite'
+      : eventoModoRegistro === 'pre'
+        ? 'pre'
+        : form.registrationMode || 'pre'
+  const isOnSite = effectiveMode === 'onsite'
+
+  if (!eventoLoaded) {
+    return (
+      <div className="public-shell">
+        <div className="public-loading">
+          <div className="public-loading-spinner" aria-hidden="true" />
+          <p>Cargando configuración del evento...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isOnSite && submission) {
     return (
       <div className="kiosk-success">
         <div className="kiosk-success-card">
+          <div className="kiosk-success-check" aria-hidden="true">&#10003;</div>
           <p className="eyebrow">Registro completado</p>
-          <h1>¡Listo, {submission.attendee.fullName.split(' ')[0] || 'bienvenido'}!</h1>
+          <h1>¡Bienvenido, {submission.attendee.fullName.split(' ')[0] || 'asistente'}!</h1>
           <p className="kiosk-copy">
-            Muestra este codigo QR al personal de la entrada para ingresar al evento.
+            Tu registro quedo guardado. Ya puedes ingresar al evento.
           </p>
-          <img
-            className="kiosk-qr"
-            src={submission.qrDataUrl}
-            alt={`QR de ${submission.attendee.fullName}`}
-          />
-          <div className="kiosk-meta">
-            <span>Documento: {submission.attendee.documentId}</span>
+          <div className="kiosk-meta-card">
+            <div>
+              <span className="kiosk-meta-label">Nombre</span>
+              <strong>{submission.attendee.fullName}</strong>
+            </div>
+            <div>
+              <span className="kiosk-meta-label">Documento</span>
+              <strong>{submission.attendee.documentId}</strong>
+            </div>
           </div>
-          <button
-            type="button"
-            className="submit-button kiosk-reset"
-            onClick={() => onResetSubmission?.()}
-          >
-            Registrar otra persona
-          </button>
           <p className="helper-text kiosk-tip">
-            Tip: tambien puedes descargar el QR haciendo captura de pantalla.
+            Si el staff te lo solicita, muestra esta pantalla con tu nombre y documento.
           </p>
         </div>
       </div>
@@ -70,10 +89,13 @@ function PublicRegistrationPage({
       <header className="public-hero">
         <div>
           <p className="eyebrow">Registro publico del evento</p>
-          <h1>Inscribete y recibe tu codigo QR de asistencia.</h1>
+          <h1>
+            {isOnSite
+              ? 'Registrate y entra al evento.'
+              : 'Inscribete y recibe tu codigo QR de asistencia.'}
+          </h1>
           <p className="hero-text">
-             Diligencia tus datos y quedarás
-            registrado para el evento.
+            Diligencia tus datos y quedarás registrado para el evento.
           </p>
         </div>
 
@@ -84,12 +106,46 @@ function PublicRegistrationPage({
           <p className="eyebrow">Formulario del asistente</p>
           <h2>Completa tu informacion</h2>
           <p className="section-copy">
-            Al finalizar se genera tu confirmacion con QR para el ingreso al evento.
+            {isOnSite
+              ? 'Al finalizar quedaras registrado y podras ingresar al evento.'
+              : 'Al finalizar se genera tu confirmacion con QR para el ingreso al evento.'}
           </p>
         </div>
 
-        <div className="registration-layout">
+        <div className={`registration-layout ${isOnSite ? 'no-preview' : ''}`}>
           <form className="attendee-form" onSubmit={handleSubmit}>
+            {showModeToggle ? (
+              <fieldset className="registration-mode">
+                <legend>¿Cuándo te vas a registrar?</legend>
+                <label className={`mode-option ${form.registrationMode === 'pre' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="registrationMode"
+                    value="pre"
+                    checked={form.registrationMode === 'pre'}
+                    onChange={handleChange}
+                  />
+                  <div>
+                    <strong>Desde casa (anticipado)</strong>
+                    <p>Recibo un código QR para mostrar al ingresar al evento.</p>
+                  </div>
+                </label>
+                <label className={`mode-option ${form.registrationMode === 'onsite' ? 'active' : ''}`}>
+                  <input
+                    type="radio"
+                    name="registrationMode"
+                    value="onsite"
+                    checked={form.registrationMode === 'onsite'}
+                    onChange={handleChange}
+                  />
+                  <div>
+                    <strong>Ya estoy en el evento</strong>
+                    <p>Solo me registro y entro. No necesito QR.</p>
+                  </div>
+                </label>
+              </fieldset>
+            ) : null}
+
             <div className="cedula-shortcut">
               <div>
                 <strong>
@@ -123,15 +179,29 @@ function PublicRegistrationPage({
             </label>
 
             <label className="field">
-              <span>Documento</span>
-              <input
-                name="documentId"
-                value={form.documentId}
-                onChange={handleChange}
-                onBlur={(event) => handleDocumentLookup?.(event.target.value)}
-                placeholder="Ej. 1032456789"
-                required
-              />
+              <span>Documento o NIT</span>
+              <div className="document-input-row">
+                <select
+                  name="documentType"
+                  value={form.documentType || 'CC'}
+                  onChange={handleChange}
+                  className="document-type-select"
+                >
+                  <option value="CC">CC</option>
+                  <option value="NIT">NIT</option>
+                  <option value="CE">CE</option>
+                  <option value="TI">TI</option>
+                  <option value="PA">PA</option>
+                </select>
+                <input
+                  name="documentId"
+                  value={form.documentId}
+                  onChange={handleChange}
+                  onBlur={(event) => handleDocumentLookup?.(event.target.value)}
+                  placeholder="Ej. 1032456789"
+                  required
+                />
+              </div>
               {lookupStatus === 'searching' ? (
                 <small className="lookup-feedback">Buscando registros previos...</small>
               ) : lookupStatus === 'found' ? (
@@ -215,25 +285,49 @@ function PublicRegistrationPage({
             <label className="field">
               <span>Categoria</span>
               <select name="attendeeType" value={form.attendeeType} onChange={handleChange}>
-                <option value="general">General</option>
-                <option value="vip">VIP</option>
-                <option value="speaker">Speaker</option>
-                <option value="press">Prensa</option>
+                {categorias.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nombre}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label className="field">
-              <span>
-                NIT <span className="cedula-optional">(opcional)</span>
-              </span>
-              <input
-                name="nit"
-                value={form.nit || ''}
-                onChange={handleChange}
-                placeholder="Solo si representas a una empresa"
-                inputMode="numeric"
-              />
+              <span>¿Llevas acompañantes?</span>
+              <select
+                name="hasCompanions"
+                value={form.hasCompanions ? 'si' : 'no'}
+                onChange={(event) =>
+                  handleChange({
+                    target: {
+                      name: 'hasCompanions',
+                      type: 'checkbox',
+                      checked: event.target.value === 'si',
+                    },
+                  })
+                }
+              >
+                <option value="no">No, voy solo</option>
+                <option value="si">Si, llevo acompañantes</option>
+              </select>
             </label>
+
+            {form.hasCompanions ? (
+              <label className="field">
+                <span>¿Cuántos acompañantes?</span>
+                <input
+                  type="number"
+                  name="companionsCount"
+                  value={form.companionsCount || ''}
+                  onChange={handleChange}
+                  min="1"
+                  max="20"
+                  placeholder="Ej. 2"
+                  required
+                />
+              </label>
+            ) : null}
 
             {preguntas.length > 0 ? (
               <fieldset className="encuesta-section">
@@ -332,47 +426,50 @@ function PublicRegistrationPage({
             </button>
           </form>
 
-          <aside className="preview-card">
-            <p className="eyebrow">Confirmacion</p>
-            {submission ? (
-              <>
-                <h3>Registro completado &#10003;</h3>
-                <p className="preview-copy">
-                  {submission.attendee.fullName}, tu registro quedo guardado. El dia del evento
-                  muestra este QR al staff para ingresar, o simplemente di tu numero de documento.
-                </p>
-                <img
-                  className="qr-preview"
-                  src={submission.qrDataUrl}
-                  alt={`QR de ${submission.attendee.fullName}`}
-                />
-                <div className="preview-meta">
-                  <span>Documento: {submission.attendee.documentId}</span>
-                  <span>Estado: {submission.attendee.status}</span>
-                  <span>&#128274; Guarda este QR, lo necesitas para ingresar.</span>
-                </div>
-                <div className="preview-actions">
-                  <a
-                    className="primary-action download-action"
-                    href={submission.qrDataUrl}
-                    download={`qr-${submission.attendee.documentId || submission.recordId}.png`}
-                  >
-                    Descargar QR
-                  </a>
-                </div>
-              </>
-            ) : (
-              <>
-                <h3>Tu QR aparecera aqui</h3>
-                <p className="preview-copy">
-                  Despues de registrarte, este espacio mostrara tu confirmacion con codigo QR.
-                </p>
-                <div className="qr-placeholder" aria-hidden="true">
-                  <span>QR</span>
-                </div>
-              </>
-            )}
-          </aside>
+          {!isOnSite ? (
+            <aside className="preview-card">
+              <p className="eyebrow">Confirmacion</p>
+              {submission ? (
+                <>
+                  <h3>Registro completado &#10003;</h3>
+                  <p className="preview-copy">
+                    {submission.attendee.fullName}, tu registro quedo guardado. El dia del evento
+                    muestra este QR al staff para ingresar, o simplemente di tu numero de
+                    documento.
+                  </p>
+                  <img
+                    className="qr-preview"
+                    src={submission.qrDataUrl}
+                    alt={`QR de ${submission.attendee.fullName}`}
+                  />
+                  <div className="preview-meta">
+                    <span>Documento: {submission.attendee.documentId}</span>
+                    <span>Estado: {submission.attendee.status}</span>
+                    <span>&#128274; Guarda este QR, lo necesitas para ingresar.</span>
+                  </div>
+                  <div className="preview-actions">
+                    <a
+                      className="primary-action download-action"
+                      href={submission.qrDataUrl}
+                      download={`qr-${submission.attendee.documentId || submission.recordId}.png`}
+                    >
+                      Descargar QR
+                    </a>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3>Tu QR aparecera aqui</h3>
+                  <p className="preview-copy">
+                    Despues de registrarte, este espacio mostrara tu confirmacion con codigo QR.
+                  </p>
+                  <div className="qr-placeholder" aria-hidden="true">
+                    <span>QR</span>
+                  </div>
+                </>
+              )}
+            </aside>
+          ) : null}
         </div>
       </section>
 

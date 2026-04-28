@@ -18,6 +18,8 @@ import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
+import AdminSection from './components/AdminSection'
+import CategoriasPanel from './components/CategoriasPanel'
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import KioskoQrPanel from './components/KioskoQrPanel'
 import LoginPage from './components/LoginPage'
@@ -41,14 +43,17 @@ const initialForm = {
 
 const initialPublicForm = {
   fullName: '',
+  documentType: 'CC',
   documentId: '',
   email: '',
   phone: '',
   organization: '',
-  nit: '',
   empresaInvitadaId: '',
   attendeeType: 'general',
   hasFaceConsent: false,
+  hasCompanions: false,
+  companionsCount: '',
+  registrationMode: 'pre',
   surveyAnswers: {},
 }
 
@@ -111,7 +116,8 @@ function buildAttendeePayload(form, overrides = {}) {
     source: overrides.source || 'admin-panel',
     empresaId: overrides.empresaId || '',
     eventoId: overrides.eventoId || '',
-    nit: (form.nit || '').trim(),
+    documentType: form.documentType || 'CC',
+    companionsCount: form.hasCompanions ? Number(form.companionsCount) || 0 : 0,
     surveyAnswers: form.surveyAnswers || {},
   }
 }
@@ -239,6 +245,7 @@ function App() {
   const [attendees, setAttendees] = useState([])
   const [empresas, setEmpresas] = useState([])
   const [eventos, setEventos] = useState([])
+  const [eventosLoaded, setEventosLoaded] = useState(false)
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
@@ -304,8 +311,14 @@ function App() {
       .then(setEmpresas)
       .catch((error) => console.error(error))
     listEventos()
-      .then(setEventos)
-      .catch((error) => console.error(error))
+      .then((items) => {
+        setEventos(items)
+        setEventosLoaded(true)
+      })
+      .catch((error) => {
+        console.error(error)
+        setEventosLoaded(true)
+      })
   }, [])
 
   useEffect(() => {
@@ -316,6 +329,14 @@ function App() {
       return { ...current, empresaInvitadaId: target, surveyAnswers: {} }
     })
   }, [publicUrlOptions.empresaParam, currentView])
+
+  useEffect(() => {
+    if (currentView !== 'public' || !publicUrlOptions.kiosk) return
+    setPublicForm((current) => {
+      if (current.registrationMode === 'onsite') return current
+      return { ...current, registrationMode: 'onsite' }
+    })
+  }, [publicUrlOptions.kiosk, currentView])
 
   useEffect(() => {
     if (!isFirebaseConfigured || currentView !== 'admin' || !currentUser) {
@@ -392,7 +413,7 @@ function App() {
         email: current.email || found.email || '',
         phone: current.phone || found.phone || '',
         organization: current.organization || found.organization || '',
-        nit: current.nit || found.nit || '',
+        documentType: found.documentType || current.documentType || 'CC',
         empresaInvitadaId:
           current.empresaInvitadaId || found.empresaInvitadaId || '',
       }))
@@ -589,9 +610,16 @@ function App() {
         }
       }
 
+      const eventoModo =
+        activeEvento?.modoRegistro ||
+        (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+      const isOnSite =
+        publicUrlOptions.kiosk ||
+        eventoModo === 'onsite' ||
+        (eventoModo === 'both' && publicForm.registrationMode === 'onsite')
       const attendee = buildAttendeePayload(publicForm, {
-        source: 'public-registration',
-        status: 'pre-registered',
+        source: isOnSite ? 'kiosk-registration' : 'public-registration',
+        status: isOnSite ? 'approved' : 'pre-registered',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
         empresasInvitadas,
@@ -625,6 +653,12 @@ function App() {
       (item) => item.status === 'pre-registered' || item.status === 'pending',
     ).length
 
+    const totalCompanions = attendees.reduce(
+      (sum, item) => sum + (Number(item.companionsCount) || 0),
+      0,
+    )
+    const peopleAtEvent = total + totalCompanions
+
     const empresasRepresentadas = new Set()
     for (const a of attendees) {
       const key = (a.organization || '').trim().toLowerCase()
@@ -633,6 +667,7 @@ function App() {
 
     return [
       { value: String(total), label: 'registros totales' },
+      { value: String(peopleAtEvent), label: 'personas en el evento' },
       { value: String(approved), label: 'aprobados' },
       { value: String(checkedIn), label: 'check-ins confirmados' },
       { value: String(pending), label: 'pendientes' },
@@ -661,6 +696,18 @@ function App() {
 
   const empresasInvitadas = useMemo(() => {
     return Array.isArray(activeEvento?.empresasInvitadas) ? activeEvento.empresasInvitadas : []
+  }, [activeEvento])
+
+  const categoriasEvento = useMemo(() => {
+    if (Array.isArray(activeEvento?.categorias) && activeEvento.categorias.length > 0) {
+      return activeEvento.categorias
+    }
+    return [
+      { id: 'general', nombre: 'General' },
+      { id: 'vip', nombre: 'VIP' },
+      { id: 'speaker', nombre: 'Speaker' },
+      { id: 'press', nombre: 'Prensa' },
+    ]
   }, [activeEvento])
 
   const handleEmpresasInvitadasChange = (next) => {
@@ -767,7 +814,13 @@ function App() {
         submission={publicSubmission}
         onCedulaFill={handlePublicCedulaFill}
         empresasInvitadas={empresasInvitadas}
+        categorias={categoriasEvento}
         kioskMode={publicUrlOptions.kiosk}
+        eventoModoRegistro={
+          activeEvento?.modoRegistro ||
+          (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+        }
+        eventoLoaded={eventosLoaded}
         onResetSubmission={() => {
           setPublicSubmission(null)
           setPublicForm(initialPublicForm)
@@ -846,55 +899,104 @@ function App() {
           </div>
         ) : null}
 
-        <AdminRegistrationPanel
-          editingAttendeeId={editingAttendeeId}
-          errorMessage={errorMessage}
-          form={form}
-          handleChange={handleChange}
-          handleSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          modeLabel={modeLabel}
-          onCancelEdit={handleCancelEdit}
-          submission={submission}
-          onCedulaFill={handleAdminCedulaFill}
-          empresasInvitadas={empresasInvitadas}
-        />
+        <AdminSection
+          id="registro-manual"
+          title="Registro manual"
+          subtitle="Crear asistente desde el panel"
+          defaultOpen={false}
+        >
+          <AdminRegistrationPanel
+            editingAttendeeId={editingAttendeeId}
+            errorMessage={errorMessage}
+            form={form}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            modeLabel={modeLabel}
+            onCancelEdit={handleCancelEdit}
+            submission={submission}
+            onCedulaFill={handleAdminCedulaFill}
+            empresasInvitadas={empresasInvitadas}
+            categorias={categoriasEvento}
+          />
+        </AdminSection>
 
-        <EmpresasInvitadasPanel
-          evento={activeEvento}
-          onChange={handleEmpresasInvitadasChange}
-        />
+        <AdminSection
+          id="empresas-invitadas"
+          title="Empresas invitadas"
+          subtitle="Configurar empresas y sus encuestas"
+          badge={empresasInvitadas.length}
+          defaultOpen={false}
+        >
+          <EmpresasInvitadasPanel
+            evento={activeEvento}
+            onChange={handleEmpresasInvitadasChange}
+          />
+        </AdminSection>
 
-        <KioskoQrPanel
-          empresasInvitadas={empresasInvitadas}
-          evento={activeEvento}
-          onEventoChange={(nextEvento) =>
-            setEventos((current) =>
-              current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-            )
-          }
-        />
+        <AdminSection
+          id="categorias"
+          title="Categorías de asistentes"
+          subtitle="Tipos de asistente disponibles en el evento"
+          badge={categoriasEvento.length}
+          defaultOpen={false}
+        >
+          <CategoriasPanel
+            evento={activeEvento}
+            onChange={(nextEvento) =>
+              setEventos((current) =>
+                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+              )
+            }
+          />
+        </AdminSection>
 
-        <AttendeeTableSection
-          attendees={filteredAttendees}
-          empresasMap={empresasMap}
-          empresasInvitadas={empresasInvitadas}
-          handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
-          handleViewQr={setViewingQrAttendee}
-          handleBulkApprove={handleBulkApprove}
-          isBulkApproving={isBulkApproving}
-          filterState={filters}
-          filteredCount={filteredAttendees.length}
-          handleDelete={handleRequestDelete}
-          handleEdit={handleEdit}
-          handleFilterChange={handleFilterChange}
-          handleStatusAction={handleStatusAction}
-          formatDate={formatDate}
-          isDeletingId={isDeletingId}
-          isUpdatingStatusId={isUpdatingStatusId}
-          isLoadingAttendees={isLoadingAttendees}
-          loadAttendees={loadAttendees}
-        />
+        <AdminSection
+          id="evento-config"
+          title="Configuración del evento"
+          subtitle="Modo de registro y QR del evento"
+          defaultOpen={false}
+        >
+          <KioskoQrPanel
+            empresasInvitadas={empresasInvitadas}
+            evento={activeEvento}
+            onEventoChange={(nextEvento) =>
+              setEventos((current) =>
+                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+              )
+            }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="listado"
+          title="Listado de asistentes"
+          subtitle="Control y aprobación de asistentes"
+          badge={filteredAttendees.length}
+          defaultOpen={true}
+        >
+          <AttendeeTableSection
+            attendees={filteredAttendees}
+            empresasMap={empresasMap}
+            empresasInvitadas={empresasInvitadas}
+            categorias={categoriasEvento}
+            handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
+            handleViewQr={setViewingQrAttendee}
+            handleBulkApprove={handleBulkApprove}
+            isBulkApproving={isBulkApproving}
+            filterState={filters}
+            filteredCount={filteredAttendees.length}
+            handleDelete={handleRequestDelete}
+            handleEdit={handleEdit}
+            handleFilterChange={handleFilterChange}
+            handleStatusAction={handleStatusAction}
+            formatDate={formatDate}
+            isDeletingId={isDeletingId}
+            isUpdatingStatusId={isUpdatingStatusId}
+            isLoadingAttendees={isLoadingAttendees}
+            loadAttendees={loadAttendees}
+          />
+        </AdminSection>
       </main>
 
       <DeleteConfirmModal

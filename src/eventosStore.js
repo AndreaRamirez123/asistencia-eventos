@@ -79,3 +79,57 @@ export async function updateEmpresaInvitada(evento, empresaInvitadaId, changes) 
   await updateEvento(evento.id, { empresasInvitadas: next })
   return next
 }
+
+export const DEFAULT_CATEGORIAS = [
+  { id: 'general', nombre: 'General' },
+  { id: 'vip', nombre: 'VIP' },
+  { id: 'speaker', nombre: 'Speaker' },
+  { id: 'press', nombre: 'Prensa' },
+]
+
+export function getCategorias(evento) {
+  if (Array.isArray(evento?.categorias) && evento.categorias.length > 0) {
+    return evento.categorias
+  }
+  return DEFAULT_CATEGORIAS
+}
+
+export async function setCategorias(evento, categorias) {
+  if (!evento) {
+    throw new Error('Evento no especificado.')
+  }
+  await updateEvento(evento.id, { categorias })
+  return categorias
+}
+
+export async function addCategoria(evento, nombre) {
+  const cleanNombre = String(nombre || '').trim()
+  if (!cleanNombre) {
+    throw new Error('El nombre de la categoria es obligatorio.')
+  }
+  const current = getCategorias(evento)
+  const baseId = slugify(cleanNombre) || `cat-${Date.now()}`
+  let id = baseId
+  let suffix = 2
+  while (current.some((c) => c.id === id)) {
+    id = `${baseId}-${suffix}`
+    suffix += 1
+  }
+  const duplicateByName = current.some(
+    (c) => c.nombre.toLowerCase() === cleanNombre.toLowerCase(),
+  )
+  if (duplicateByName) {
+    throw new Error('Ya existe una categoria con ese nombre.')
+  }
+  const next = [...current, { id, nombre: cleanNombre }]
+  return setCategorias(evento, next)
+}
+
+export async function removeCategoria(evento, categoriaId) {
+  const current = getCategorias(evento)
+  const next = current.filter((c) => c.id !== categoriaId)
+  if (next.length === 0) {
+    throw new Error('Debe quedar al menos una categoria.')
+  }
+  return setCategorias(evento, next)
+}

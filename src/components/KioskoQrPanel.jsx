@@ -42,24 +42,28 @@ function KioskoQrPanel({ empresasInvitadas = [], evento, onEventoChange }) {
     empresasInvitadas.find((e) => e.id === selectedEmpresaId)?.nombre ||
     'Sin empresa (registro general)'
 
-  const registroEnSitio = Boolean(evento?.registroEnSitio)
+  const modoRegistro =
+    evento?.modoRegistro || (evento?.registroEnSitio ? 'onsite' : 'pre')
   const [isTogglingMode, setIsTogglingMode] = useState(false)
   const [modeError, setModeError] = useState('')
 
-  const handleToggleMode = async (event) => {
+  const handleModoChange = async (event) => {
     if (!evento) return
-    const next = event.target.checked
+    const next = event.target.value
     setIsTogglingMode(true)
     setModeError('')
     try {
+      const isOnsite = next === 'onsite' || next === 'both'
       await updateEvento(evento.id, {
-        registroEnSitio: next,
-        registroEnSitioEmpresaId: next ? selectedEmpresaId : '',
+        modoRegistro: next,
+        registroEnSitio: isOnsite,
+        registroEnSitioEmpresaId: isOnsite ? selectedEmpresaId : '',
       })
       onEventoChange?.({
         ...evento,
-        registroEnSitio: next,
-        registroEnSitioEmpresaId: next ? selectedEmpresaId : '',
+        modoRegistro: next,
+        registroEnSitio: isOnsite,
+        registroEnSitioEmpresaId: isOnsite ? selectedEmpresaId : '',
       })
     } catch (err) {
       setModeError(err.message || 'No fue posible guardar el modo.')
@@ -111,32 +115,58 @@ function KioskoQrPanel({ empresasInvitadas = [], evento, onEventoChange }) {
   return (
     <section className="panel">
       <div className="panel-heading">
-        <p className="eyebrow">Registro en sitio</p>
-        <h2>QR para imprimir en la entrada del evento</h2>
-        <p className="section-copy">
-          Genera un codigo QR para mostrar fisicamente en la entrada. Cuando el asistente lo
-          escanea con su celular, abre el formulario de registro, llena sus datos y recibe su QR
-          personal para ingresar al evento.
-        </p>
+        <p className="eyebrow">Configuración del evento</p>
+        <h2>Modo de registro y QR del evento</h2>
       </div>
 
       <div className="kiosko-mode">
-        <label className="checkbox-field">
-          <input
-            type="checkbox"
-            checked={registroEnSitio}
-            onChange={handleToggleMode}
-            disabled={isTogglingMode || !evento}
-          />
-          <span>
-            <strong>Usar modo "Registro en sitio" para este evento</strong>
-            <small className="helper-text">
-              Si lo activas, la vista del <strong>scanner</strong> mostrara este QR a pantalla
-              completa (para que la gente lo escanee al llegar). Si lo dejas desactivado, el
-              scanner funciona en modo normal: la camara lee los QR que traen los asistentes.
-            </small>
-          </span>
-        </label>
+        <p className="eyebrow">Modo de registro de este evento</p>
+        <div className="modo-options">
+          <label className={`modo-card ${modoRegistro === 'pre' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="modoRegistro"
+              value="pre"
+              checked={modoRegistro === 'pre'}
+              onChange={handleModoChange}
+              disabled={isTogglingMode}
+            />
+            <div>
+              <strong>Pre-registro desde casa</strong>
+              <p>Los asistentes se inscriben antes y llegan con su QR. El scanner valida los QR.</p>
+            </div>
+          </label>
+
+          <label className={`modo-card ${modoRegistro === 'onsite' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="modoRegistro"
+              value="onsite"
+              checked={modoRegistro === 'onsite'}
+              onChange={handleModoChange}
+              disabled={isTogglingMode}
+            />
+            <div>
+              <strong>Registro en sitio</strong>
+              <p>Los asistentes llegan al evento, escanean el QR de abajo y se registran ahí. No necesitan QR.</p>
+            </div>
+          </label>
+
+          <label className={`modo-card ${modoRegistro === 'both' ? 'active' : ''}`}>
+            <input
+              type="radio"
+              name="modoRegistro"
+              value="both"
+              checked={modoRegistro === 'both'}
+              onChange={handleModoChange}
+              disabled={isTogglingMode}
+            />
+            <div>
+              <strong>Ambos</strong>
+              <p>Permite las dos opciones. El asistente elige al abrir el formulario.</p>
+            </div>
+          </label>
+        </div>
         {modeError ? <p className="feedback error">{modeError}</p> : null}
       </div>
 

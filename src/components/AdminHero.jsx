@@ -9,20 +9,10 @@ function AdminHero({
     <header className="hero-panel">
       <div className="hero-copy">
         <p className="eyebrow">Panel administrativo del evento</p>
-        <h1>Centro de control para registro y accesos.</h1>
-        <p className="hero-text">
-          Esta vista queda orientada al admin para operar el evento, registrar personas
-          manualmente, supervisar entradas y resolver casos especiales en tiempo real.
-        </p>
+        <h1>Centro de control</h1>
 
         <div className="hero-actions">
-          <a href="#registro-admin" className="primary-action">
-            Registrar desde admin
-          </a>
-          <a href="#asistentes" className="secondary-action">
-            Ver asistentes
-          </a>
-          <a href="/scanner" className="secondary-action">
+          <a href="/scanner" className="primary-action">
             Abrir scanner QR
           </a>
           {onLogout ? (

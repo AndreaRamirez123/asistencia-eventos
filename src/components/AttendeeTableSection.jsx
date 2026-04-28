@@ -2,6 +2,7 @@ function AttendeeTableSection({
   attendees,
   empresasMap = {},
   empresasInvitadas = [],
+  categorias = [],
   filterState,
   filteredCount,
   handleDelete,
@@ -18,6 +19,7 @@ function AttendeeTableSection({
   isLoadingAttendees,
   loadAttendees,
 }) {
+  const categoriasMap = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]))
   const pendingIds = attendees
     .filter((a) => a.status === 'pre-registered' || a.status === 'pending')
     .map((a) => a.id)
@@ -49,11 +51,11 @@ function AttendeeTableSection({
             <span>Categoria</span>
             <select name="attendeeType" value={filterState.attendeeType} onChange={handleFilterChange}>
               <option value="all">Todas</option>
-              <option value="general">General</option>
-              <option value="vip">VIP</option>
-              <option value="speaker">Speaker</option>
-              <option value="staff">Staff</option>
-              <option value="press">Prensa</option>
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -145,55 +147,80 @@ function AttendeeTableSection({
             <span>Documento</span>
             <span>Empresa</span>
             <span>Categoria</span>
+            <span>Acompañantes</span>
+            <span>Origen</span>
             <span>Estado</span>
             <span>Creado</span>
             <span>Acciones</span>
           </div>
 
-          {attendees.map((item) => (
-            <div key={item.id} className="attendee-row" role="row">
-              <span>{item.fullName || 'Sin nombre'}</span>
-              <span>{item.documentId || 'Sin documento'}</span>
-              <span>{item.organization || '—'}</span>
-              <span>{item.attendeeType || 'general'}</span>
-              <span>{item.status || 'pendiente'}</span>
-              <span>{formatDate(item.createdAt)}</span>
-              <span className="table-actions">
-                {item.status === 'pre-registered' ? (
+          {attendees.map((item) => {
+            const isKiosk = item.source === 'kiosk-registration'
+            const companions = Number(item.companionsCount) || 0
+            return (
+              <div key={item.id} className="attendee-row" role="row">
+                <span>{item.fullName || 'Sin nombre'}</span>
+                <span>
+                  {item.documentType ? `${item.documentType} ` : ''}
+                  {item.documentId || 'Sin documento'}
+                </span>
+                <span>{item.organization || '—'}</span>
+                <span>{categoriasMap[item.attendeeType] || item.attendeeType || 'general'}</span>
+                <span>
+                  {companions > 0 ? (
+                    <strong>+{companions}</strong>
+                  ) : (
+                    <span className="muted-cell">—</span>
+                  )}
+                </span>
+                <span>
+                  {isKiosk ? (
+                    <span className="origin-badge kiosk">En sitio</span>
+                  ) : item.source === 'public-registration' ? (
+                    <span className="origin-badge public">Pre-registro</span>
+                  ) : (
+                    <span className="origin-badge admin">Admin</span>
+                  )}
+                </span>
+                <span>{item.status || 'pendiente'}</span>
+                <span>{formatDate(item.createdAt)}</span>
+                <span className="table-actions">
+                  {item.status === 'pre-registered' ? (
+                    <button
+                      type="button"
+                      className="mini-action success"
+                      onClick={() => handleStatusAction(item.id, 'approved')}
+                      disabled={isUpdatingStatusId === item.id}
+                    >
+                      {isUpdatingStatusId === item.id ? 'Actualizando...' : 'Aprobar'}
+                    </button>
+                  ) : null}
+
+                  {handleViewQr && !isKiosk ? (
+                    <button
+                      type="button"
+                      className="mini-action"
+                      onClick={() => handleViewQr(item)}
+                    >
+                      Ver QR
+                    </button>
+                  ) : null}
+
+                  <button type="button" className="mini-action" onClick={() => handleEdit(item)}>
+                    Editar
+                  </button>
                   <button
                     type="button"
-                    className="mini-action success"
-                    onClick={() => handleStatusAction(item.id, 'approved')}
-                    disabled={isUpdatingStatusId === item.id}
+                    className="mini-action danger"
+                    onClick={() => handleDelete(item)}
+                    disabled={isDeletingId === item.id}
                   >
-                    {isUpdatingStatusId === item.id ? 'Actualizando...' : 'Aprobar'}
+                    {isDeletingId === item.id ? 'Eliminando...' : 'Eliminar'}
                   </button>
-                ) : null}
-
-                {handleViewQr ? (
-                  <button
-                    type="button"
-                    className="mini-action"
-                    onClick={() => handleViewQr(item)}
-                  >
-                    Ver QR
-                  </button>
-                ) : null}
-
-                <button type="button" className="mini-action" onClick={() => handleEdit(item)}>
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  className="mini-action danger"
-                  onClick={() => handleDelete(item)}
-                  disabled={isDeletingId === item.id}
-                >
-                  {isDeletingId === item.id ? 'Eliminando...' : 'Eliminar'}
-                </button>
-              </span>
-            </div>
-          ))}
+                </span>
+              </div>
+            )
+          })}
         </div>
       )}
     </section>
