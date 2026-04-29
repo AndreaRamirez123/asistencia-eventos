@@ -24,6 +24,8 @@ import CalificacionPage from './components/CalificacionPage'
 import CalificacionPanel from './components/CalificacionPanel'
 import CategoriasPanel from './components/CategoriasPanel'
 import CerrarEventoPanel from './components/CerrarEventoPanel'
+import GestionEventosPanel from './components/GestionEventosPanel'
+import HorarioEventoPanel, { getEstadoEvento } from './components/HorarioEventoPanel'
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import KioskoQrPanel from './components/KioskoQrPanel'
 import LoginPage from './components/LoginPage'
@@ -357,13 +359,15 @@ function App() {
   useEffect(() => {
     if (!isFirebaseConfigured) return
     if (currentView !== 'admin' || !currentUser) return
+    // Cargamos TODAS las calificaciones; el filtro por evento se hace en cliente
+    // (eventRatings memo) para que al cambiar de evento activo se vea su data sin recargar.
     const unsubscribe = subscribeToRatings(
-      eventos[0]?.id || '',
+      '',
       (items) => setRatings(items),
       (error) => console.error('No fue posible cargar calificaciones', error),
     )
     return unsubscribe
-  }, [eventos, currentView, currentUser])
+  }, [currentView, currentUser])
 
   useEffect(() => {
     if (!isFirebaseConfigured || currentView !== 'admin' || !currentUser) {
@@ -412,6 +416,16 @@ function App() {
     if (name === 'documentId') {
       setPublicLookupStatus('idle')
     }
+
+    // Si cambia la empresa y ya hay documento escrito, re-disparar el lookup
+    // contra la NUEVA empresa para que reevalue match vs personalMatch.
+    if (name === 'empresaInvitadaId') {
+      const docActual = publicForm.documentId?.trim()
+      if (docActual && docActual.length >= 5) {
+        const nuevaEmpresa = value === '__otra__' ? '' : value
+        handlePublicDocumentLookup(docActual, nuevaEmpresa)
+      }
+    }
   }
 
   const handlePublicSurveyChange = (questionId, value) => {
@@ -421,7 +435,7 @@ function App() {
     }))
   }
 
-  const handlePublicDocumentLookup = async (documentValue) => {
+  const handlePublicDocumentLookup = async (documentValue, empresaOverride) => {
     const cleaned = String(documentValue || '').trim()
     if (cleaned.length < 5) {
       setPublicLookupStatus('idle')
@@ -429,22 +443,52 @@ function App() {
     }
     setPublicLookupStatus('searching')
     try {
-      const found = await findAttendeeByDocument(cleaned)
-      if (!found) {
-        setPublicLookupStatus('not-found')
+      const empresaActual =
+        empresaOverride !== undefined
+          ? empresaOverride
+          : publicForm.empresaInvitadaId || ''
+      const empresaNombre =
+        empresasInvitadas.find((e) => e.id === empresaActual)?.nombre || ''
+      const result = await findAttendeeByDocument(
+        cleaned,
+        empresaActual,
+        empresaNombre,
+      )
+
+      // Caso 1: Encontrado en la MISMA empresa actual → llenar todo
+      if (result.match) {
+        const found = result.match
+        setPublicForm((current) => ({
+          ...current,
+          fullName: current.fullName || found.fullName || '',
+          email: current.email || found.email || '',
+          phone: current.phone || found.phone || '',
+          organization: current.organization || found.organization || '',
+          documentType: found.documentType || current.documentType || 'CC',
+          empresaInvitadaId:
+            current.empresaInvitadaId || found.empresaInvitadaId || '',
+        }))
+        setPublicLookupStatus('found')
         return
       }
-      setPublicForm((current) => ({
-        ...current,
-        fullName: current.fullName || found.fullName || '',
-        email: current.email || found.email || '',
-        phone: current.phone || found.phone || '',
-        organization: current.organization || found.organization || '',
-        documentType: found.documentType || current.documentType || 'CC',
-        empresaInvitadaId:
-          current.empresaInvitadaId || found.empresaInvitadaId || '',
-      }))
-      setPublicLookupStatus('found')
+
+      // Caso 2: Existe en OTRA empresa → solo info personal, no de empresa
+      if (result.personalMatch) {
+        const found = result.personalMatch
+        setPublicForm((current) => ({
+          ...current,
+          fullName: current.fullName || found.fullName || '',
+          email: current.email || found.email || '',
+          phone: current.phone || found.phone || '',
+          documentType: found.documentType || current.documentType || 'CC',
+          // organization, nit y empresaInvitadaId quedan como están (vacíos o lo que el usuario ya puso)
+        }))
+        setPublicLookupStatus('found-other-empresa')
+        return
+      }
+
+      // Caso 3: Nunca registrado
+      setPublicLookupStatus('not-found')
     } catch (error) {
       console.error('Lookup fallido', error)
       setPublicLookupStatus('idle')
@@ -975,6 +1019,19 @@ function App() {
             {activeEvento?.archivado ? (
               <span className="evento-selector-badge">Solo lectura</span>
             ) : null}
+            {activeEvento && !activeEvento.archivado ? (
+              (() => {
+                const estado = getEstadoEvento(activeEvento)
+                return (
+                  <span
+                    className={`evento-estado-pill estado-${estado.codigo}`}
+                    title="Estado del evento basado en su horario"
+                  >
+                    {estado.label}
+                  </span>
+                )
+              })()
+            ) : null}
           </div>
         ) : null}
 
@@ -1068,6 +1125,22 @@ function App() {
         </AdminSection>
 
         <AdminSection
+          id="horario"
+          title="Horario del evento"
+          subtitle="Inicio, fin y estado actual"
+          defaultOpen={false}
+        >
+          <HorarioEventoPanel
+            evento={activeEvento}
+            onEventoChange={(nextEvento) =>
+              setEventos((current) =>
+                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+              )
+            }
+          />
+        </AdminSection>
+
+        <AdminSection
           id="calificacion"
           title="Calificación del evento"
           subtitle="Encuesta de satisfacción post-evento"
@@ -1082,6 +1155,32 @@ function App() {
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
               )
             }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="gestion-eventos"
+          title="Gestionar eventos guardados"
+          subtitle="Eliminar eventos archivados (uno o varios)"
+          badge={eventos.filter((e) => e.archivado).length}
+          defaultOpen={false}
+        >
+          <GestionEventosPanel
+            eventos={eventos}
+            activeEventoId={activeEventoId}
+            attendees={attendees}
+            ratings={ratings}
+            onEliminados={(ids) => {
+              const idSet = new Set(ids)
+              setEventos((current) => current.filter((e) => !idSet.has(e.id)))
+              setAttendees((current) =>
+                current.filter((a) => !idSet.has(a.eventoId)),
+              )
+              if (idSet.has(activeEventoId)) {
+                // si por algo eliminaron el activo (no debería, son archivados)
+                handleSelectEvento('')
+              }
+            }}
           />
         </AdminSection>
 
@@ -1104,6 +1203,19 @@ function App() {
                 return [nuevoEvento, ...updated]
               })
               handleSelectEvento(nuevoEvento.id)
+            }}
+            onEliminado={(eventoIdEliminado) => {
+              // Quitar del estado local y limpiar asistentes asociados
+              setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
+              setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
+              // Cambiar a otro evento (el primer no archivado, o el primero disponible)
+              setEventos((current) => {
+                const remaining = current
+                const next =
+                  remaining.find((e) => !e.archivado) || remaining[0]
+                handleSelectEvento(next?.id || '')
+                return current
+              })
             }}
           />
         </AdminSection>

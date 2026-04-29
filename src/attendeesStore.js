@@ -113,15 +113,23 @@ export async function listAttendees() {
   return snap.docs.map(mapDoc)
 }
 
-export async function findAttendeeByDocument(documentId) {
+export async function findAttendeeByDocument(
+  documentId,
+  empresaInvitadaId = '',
+  empresaInvitadaNombre = '',
+) {
   ensureFirestore()
   const cleaned = normalizeDocumentId(documentId)
-  if (!cleaned || cleaned.length < 5) return null
+  if (!cleaned || cleaned.length < 5) {
+    return { match: null, personalMatch: null }
+  }
 
   const attendeesRef = collection(db, COLLECTION_NAME)
   const q = query(attendeesRef, where('documentId', '==', cleaned))
   const snap = await getDocs(q)
-  if (snap.empty) return null
+  if (snap.empty) {
+    return { match: null, personalMatch: null }
+  }
 
   const items = snap.docs.map(mapDoc)
   items.sort((a, b) => {
@@ -129,7 +137,40 @@ export async function findAttendeeByDocument(documentId) {
     const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
     return dateB - dateA
   })
-  return items[0]
+
+  const nombreActualNorm = String(empresaInvitadaNombre || '')
+    .trim()
+    .toLowerCase()
+
+  // match: registro previo de la MISMA empresa-invitada actual
+  // Compara por id Y como fallback por nombre (organization), para que
+  // funcione con registros antiguos que no tienen empresaInvitadaId.
+  const sameEmpresa =
+    empresaInvitadaId || nombreActualNorm
+      ? items.find((it) => {
+          if (
+            empresaInvitadaId &&
+            it.empresaInvitadaId &&
+            it.empresaInvitadaId === empresaInvitadaId
+          ) {
+            return true
+          }
+          if (nombreActualNorm && it.organization) {
+            return (
+              String(it.organization).trim().toLowerCase() === nombreActualNorm
+            )
+          }
+          return false
+        })
+      : null
+
+  // personalMatch: cualquier registro previo (para traer solo info personal)
+  const personalMatch = items[0]
+
+  return {
+    match: sameEmpresa || null,
+    personalMatch: sameEmpresa ? null : personalMatch,
+  }
 }
 
 export function subscribeToAttendees(onChange, onError) {
@@ -162,14 +203,43 @@ export async function registerAttendee(payload) {
 
   const attendeesRef = collection(db, COLLECTION_NAME)
 
+  // Bloqueamos duplicado solo si ya existe un registro con
+  // (mismo documento) + (mismo evento) + (misma empresa, comparada por id o nombre).
+  // Eso permite que la misma persona se registre en distintos eventos
+  // o representando empresas diferentes en el mismo evento.
   const duplicateQuery = query(attendeesRef, where('documentId', '==', attendee.documentId))
   const duplicateSnap = await getDocs(duplicateQuery)
   if (!duplicateSnap.empty) {
-    const error = new Error(
-      'Ya existe un asistente registrado con este numero de documento.',
-    )
-    error.validations = ['Documento duplicado.']
-    throw error
+    const orgActualNorm = String(attendee.organization || '')
+      .trim()
+      .toLowerCase()
+    const isDuplicate = duplicateSnap.docs.some((d) => {
+      const data = d.data()
+      const sameEvento = (data.eventoId || '') === (attendee.eventoId || '')
+      if (!sameEvento) return false
+      // Compara empresa por id, o si alguno está vacío, por nombre
+      const sameEmpresaId =
+        attendee.empresaInvitadaId &&
+        data.empresaInvitadaId &&
+        data.empresaInvitadaId === attendee.empresaInvitadaId
+      const sameEmpresaName =
+        orgActualNorm &&
+        data.organization &&
+        String(data.organization).trim().toLowerCase() === orgActualNorm
+      const bothEmpty =
+        !attendee.empresaInvitadaId &&
+        !data.empresaInvitadaId &&
+        !attendee.organization &&
+        !data.organization
+      return sameEmpresaId || sameEmpresaName || bothEmpty
+    })
+    if (isDuplicate) {
+      const error = new Error(
+        'Ya estás registrado para este evento con esta empresa. Si quieres cambiar tus datos, pídele al admin que edite tu registro.',
+      )
+      error.validations = ['Documento duplicado en este evento + empresa.']
+      throw error
+    }
   }
 
   const qrToken = createQrToken()

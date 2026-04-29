@@ -1,4 +1,14 @@
-import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
 const COLLECTION_NAME = 'eventoEventos'
@@ -52,6 +62,98 @@ export async function createEvento(payload = {}) {
     ...data,
     createdAt: new Date().toISOString(),
   }
+}
+
+export async function countEventoData(eventoId) {
+  if (!isFirebaseConfigured || !db) return { asistentes: 0, calificaciones: 0 }
+  const result = { asistentes: 0, calificaciones: 0 }
+
+  try {
+    const asistentesRef = collection(db, 'eventoAsistentes')
+    const asistentesSnap = await getDocs(
+      query(asistentesRef, where('eventoId', '==', eventoId)),
+    )
+    result.asistentes = asistentesSnap.size
+  } catch (e) {
+    console.error('No se pudo contar asistentes', e)
+  }
+
+  try {
+    const calificacionesRef = collection(db, 'eventoCalificaciones')
+    const calificacionesSnap = await getDocs(
+      query(calificacionesRef, where('eventoId', '==', eventoId)),
+    )
+    result.calificaciones = calificacionesSnap.size
+  } catch (e) {
+    console.error('No se pudo contar calificaciones', e)
+  }
+
+  return result
+}
+
+export async function deleteEvento(eventoId, { borrarAsistentes = true } = {}) {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase no esta configurado.')
+  }
+  if (!eventoId) {
+    throw new Error('Falta el id del evento.')
+  }
+
+  const result = { eventoEliminado: false, asistentesEliminados: 0 }
+
+  // 1. Borrar asistentes asociados (si se eligió)
+  if (borrarAsistentes) {
+    try {
+      const asistentesRef = collection(db, 'eventoAsistentes')
+      const asistentesSnap = await getDocs(
+        query(asistentesRef, where('eventoId', '==', eventoId)),
+      )
+      for (const docSnap of asistentesSnap.docs) {
+        await deleteDoc(docSnap.ref)
+        result.asistentesEliminados += 1
+      }
+    } catch (e) {
+      console.error('Error borrando asistentes asociados', e)
+      throw new Error('No fue posible borrar los asistentes asociados.')
+    }
+  }
+
+  // 2. Borrar el evento
+  try {
+    const ref = doc(db, COLLECTION_NAME, eventoId)
+    await deleteDoc(ref)
+    result.eventoEliminado = true
+  } catch (e) {
+    console.error('Error borrando evento', e)
+    throw new Error(e.message || 'No fue posible eliminar el evento.')
+  }
+
+  return result
+}
+
+export async function bulkDeleteEventos(eventoIds, { borrarAsistentes = true } = {}) {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase no esta configurado.')
+  }
+  if (!Array.isArray(eventoIds) || eventoIds.length === 0) {
+    return { eliminados: 0, asistentesEliminados: 0, errores: [] }
+  }
+
+  const errores = []
+  let eliminados = 0
+  let asistentesEliminados = 0
+
+  for (const eventoId of eventoIds) {
+    try {
+      const result = await deleteEvento(eventoId, { borrarAsistentes })
+      if (result.eventoEliminado) eliminados += 1
+      asistentesEliminados += result.asistentesEliminados
+    } catch (error) {
+      errores.push({ eventoId, mensaje: error.message })
+    }
+  }
+
+  return { eliminados, asistentesEliminados, errores }
 }
 
 export async function closeEventAndCreateNew(currentEvento, options = {}) {

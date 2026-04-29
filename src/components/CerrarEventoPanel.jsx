@@ -1,7 +1,11 @@
-import { useState } from 'react'
-import { closeEventAndCreateNew } from '../eventosStore'
+import { useEffect, useState } from 'react'
+import {
+  closeEventAndCreateNew,
+  countEventoData,
+  deleteEvento,
+} from '../eventosStore'
 
-function CerrarEventoPanel({ evento, onCerrado }) {
+function CerrarEventoPanel({ evento, onCerrado, onEliminado }) {
   const [step, setStep] = useState('idle') // idle | confirm | running | done
   const [nombreNuevo, setNombreNuevo] = useState('')
   const [heredarEmpresas, setHeredarEmpresas] = useState(true)
@@ -9,7 +13,35 @@ function CerrarEventoPanel({ evento, onCerrado }) {
   const [heredarEncuestas, setHeredarEncuestas] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
 
+  // Estado del flujo de eliminar 
+  const [deleteStep, setDeleteStep] = useState('idle') // idle | confirm | running
+  const [counts, setCounts] = useState({ asistentes: 0, calificaciones: 0 })
+  const [confirmText, setConfirmText] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+
+  useEffect(() => {
+    if (deleteStep === 'confirm' && evento?.id) {
+      countEventoData(evento.id).then((data) => setCounts(data))
+    }
+  }, [deleteStep, evento?.id])
+
   if (!evento) return null
+
+  const handleEliminar = async () => {
+    if (confirmText.trim().toLowerCase() !== 'eliminar') {
+      setDeleteError('Escribe "eliminar" para confirmar.')
+      return
+    }
+    setDeleteStep('running')
+    setDeleteError('')
+    try {
+      await deleteEvento(evento.id, { borrarAsistentes: true })
+      onEliminado?.(evento.id)
+    } catch (error) {
+      setDeleteError(error.message || 'No fue posible eliminar el evento.')
+      setDeleteStep('confirm')
+    }
+  }
 
   if (evento.archivado) {
     return (
@@ -22,6 +54,83 @@ function CerrarEventoPanel({ evento, onCerrado }) {
               ? new Date(evento.fechaCierre).toLocaleString('es-CO')
               : '—'}. Los datos quedan disponibles solo para consulta.
           </p>
+        </div>
+
+        <div className="eliminar-evento-zone">
+          <h3>Zona peligrosa</h3>
+          <p className="helper-text">
+            Eliminar el evento borra el evento y <strong>todos sus asistentes</strong>. Las
+            calificaciones quedan en la base sin enlazar (no se pueden borrar por reglas de
+            seguridad). Esta acción es <strong>irreversible</strong>.
+          </p>
+
+          {deleteStep === 'idle' ? (
+            <button
+              type="button"
+              className="mini-action danger eliminar-btn"
+              onClick={() => setDeleteStep('confirm')}
+            >
+              Eliminar evento permanentemente
+            </button>
+          ) : null}
+
+          {deleteStep === 'confirm' || deleteStep === 'running' ? (
+            <div className="eliminar-confirm">
+              <p>
+                Vas a eliminar el evento <strong>{evento.nombre || evento.id}</strong>. Esto
+                borrará:
+              </p>
+              <ul>
+                <li><strong>{counts.asistentes}</strong> asistentes asociados</li>
+                <li>El documento del evento (configuración, encuestas, empresas)</li>
+              </ul>
+              <p>
+                Las <strong>{counts.calificaciones}</strong> calificaciones del evento se
+                quedan en la base pero no aparecerán en ningún lado.
+              </p>
+
+              <label className="field">
+                <span>Para confirmar, escribe <strong>eliminar</strong>:</span>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(event) => setConfirmText(event.target.value)}
+                  placeholder='eliminar'
+                  disabled={deleteStep === 'running'}
+                />
+              </label>
+
+              {deleteError ? <p className="feedback error">{deleteError}</p> : null}
+
+              <div className="cerrar-evento-actions">
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={() => {
+                    setDeleteStep('idle')
+                    setConfirmText('')
+                    setDeleteError('')
+                  }}
+                  disabled={deleteStep === 'running'}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="mini-action danger"
+                  onClick={handleEliminar}
+                  disabled={
+                    deleteStep === 'running' ||
+                    confirmText.trim().toLowerCase() !== 'eliminar'
+                  }
+                >
+                  {deleteStep === 'running'
+                    ? 'Eliminando...'
+                    : 'Sí, eliminar permanentemente'}
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
     )

@@ -206,8 +206,13 @@ function PublicRegistrationPage({
                 <small className="lookup-feedback">Buscando registros previos...</small>
               ) : lookupStatus === 'found' ? (
                 <small className="lookup-feedback found">
-                  &#10003; Te encontramos en eventos anteriores. Revisa que tus datos esten al
-                  dia.
+                  &#10003; Te encontramos en eventos anteriores con esta misma empresa. Revisa
+                  que tus datos esten al dia.
+                </small>
+              ) : lookupStatus === 'found-other-empresa' ? (
+                <small className="lookup-feedback partial">
+                  Te identificamos. Llenamos tu info personal pero como vienes con una empresa
+                  diferente, completa los datos de empresa abajo.
                 </small>
               ) : lookupStatus === 'not-found' ? (
                 <small className="lookup-feedback">
