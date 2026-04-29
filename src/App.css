@@ -14,7 +14,25 @@
   justify-content: space-between;
   gap: 24px;
   align-items: flex-end;
-  padding: 40px 24px 12px;
+  padding: 32px 24px 16px;
+}
+
+.public-hero h1 {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  margin-top: 4px;
+}
+
+.public-hero .eyebrow {
+  color: #ff9f43;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.public-hero .hero-text {
+  color: rgba(95, 109, 121, 0.9);
+  font-size: 14px;
+  margin-top: 6px;
+  max-width: 56ch;
 }
 
 .public-status {
@@ -25,6 +43,9 @@
 
 .public-panel {
   margin: 0 24px 40px;
+  padding: 28px;
+  border-radius: 28px;
+  box-shadow: 0 2px 6px rgba(19, 33, 45, 0.04), 0 24px 60px rgba(67, 43, 12, 0.08);
 }
 
 .hero-panel {
@@ -191,15 +212,21 @@
 
 .panel {
   padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 28px;
-  background: var(--surface);
+  border: 1px solid rgba(19, 33, 45, 0.08);
+  border-radius: 24px;
+  background: rgba(255, 252, 245, 0.92);
   backdrop-filter: blur(14px);
+  box-shadow: 0 1px 3px rgba(19, 33, 45, 0.04), 0 12px 32px rgba(67, 43, 12, 0.06);
 }
 
 .panel-heading {
   margin-bottom: 22px;
   text-align: left;
+}
+
+.panel-heading .eyebrow {
+  color: #ff9f43;
+  font-weight: 700;
 }
 
 .table-heading {
@@ -1478,13 +1505,13 @@
 .attendee-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
   align-items: start;
 }
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   color: var(--heading);
   font-weight: 600;
   align-content: start;
@@ -1495,26 +1522,44 @@
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 12px 14px;
+  min-height: 50px;
+  padding: 14px 16px;
   border-radius: 14px;
-  border: 1px solid var(--border-strong);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1.5px solid rgba(19, 33, 45, 0.1);
+  background: #ffffff;
   color: var(--heading);
   font: inherit;
+  font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.field input::placeholder {
-  color: var(--muted);
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(95, 109, 121, 0.7);
 }
 
-.field:has(input:focus),
-.field:has(select:focus) {
-  outline: 2px solid rgba(255, 159, 67, 0.22);
-  outline-offset: 6px;
-  border-radius: 14px;
+.field input:hover:not(:focus),
+.field select:hover:not(:focus),
+.field textarea:hover:not(:focus) {
+  border-color: rgba(255, 168, 38, 0.4);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #ffa826;
+  box-shadow: 0 0 0 4px rgba(255, 168, 38, 0.15);
+}
+
+.field > span {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
 }
 
 .checkbox-field {
@@ -1523,30 +1568,56 @@
   gap: 12px;
   align-items: flex-start;
   padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
-  background: var(--panel-soft);
+  border-radius: 14px;
+  border: 1.5px solid rgba(19, 33, 45, 0.08);
+  background: #ffffff;
+  transition: border-color 0.15s ease;
+}
+
+.checkbox-field:hover {
+  border-color: rgba(255, 168, 38, 0.4);
 }
 
 .checkbox-field input {
   margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: #ffa826;
+  cursor: pointer;
 }
 
 .submit-button {
   grid-column: 1 / -1;
-  min-height: 52px;
+  min-height: 54px;
+  padding: 0 24px;
   border: 0;
   border-radius: 16px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #091018;
+  background: linear-gradient(135deg, #ffd166, #ff9f43);
+  color: #13212d;
   font: inherit;
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.01em;
   cursor: pointer;
+  box-shadow: 0 6px 18px rgba(255, 159, 67, 0.32), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(255, 159, 67, 0.4), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  filter: brightness(1.03);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(255, 159, 67, 0.3);
 }
 
 .submit-button:disabled {
-  opacity: 0.7;
-  cursor: progress;
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .form-actions-row {
@@ -1950,8 +2021,35 @@
 @media (max-width: 720px) {
   .panel,
   .command-board {
-    padding: 20px;
-    border-radius: 24px;
+    padding: 18px 16px;
+    border-radius: 20px;
+  }
+
+  .public-panel {
+    margin: 0 12px 24px;
+    padding: 18px 16px;
+    border-radius: 22px;
+  }
+
+  .public-hero {
+    padding: 22px 16px 8px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    min-height: 52px;
+    font-size: 16px;
+    padding: 14px 14px;
+  }
+
+  .submit-button {
+    min-height: 56px;
+    font-size: 16px;
+  }
+
+  .field > span {
+    font-size: 13px;
   }
 
   .feed-row {

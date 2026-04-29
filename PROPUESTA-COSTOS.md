@@ -1,93 +1,88 @@
-# Costos de operación — App de registro y control de asistencia
+# Propuesta de costos — App de registro de asistentes
 
-## Contexto del proyecto
-
-| Concepto | Detalle |
-|---|---|
-| Tipo de aplicación | Plataforma web de registro de asistentes (transaccional, eventos puntuales) |
-| Patrón de carga | Picos altos durante el evento, mínimo entre eventos |
-| Stack | Firebase (Firestore, Authentication, Hosting) — sin servidor propio |
-| Procesamiento intensivo | En el navegador del usuario (QR, validación) |
-| Región | Firebase multi-región (default: us-central) |
-| Fuente de precios | Google Firebase Pricing Calculator (plan Blaze, abr 2026) |
+Plataforma web (marca blanca) | Stack: Firebase serverless | TC: 1 USD = $4.000 COP | Sin IVA
 
 ---
 
-## Costo mensual por escala de uso (USD)
+## 1. Supuestos del modelo
 
-Referencia base por asistente: ~3-5 escrituras + 10-20 lecturas Firestore.
+| Concepto | Valor | Notas |
+|---|---|---|
+| Lecturas Firestore | $0,06 USD/100k | Free: 50k/día |
+| Escrituras Firestore | $0,18 USD/100k | Free: 20k/día |
+| Almacenamiento Firestore | $0,18 USD/GB/mes | Free: 1 GB |
+| Hosting transferencia | $0,15 USD/GB | Free: 10 GB/mes |
+| Auth usuario adicional | $0,0055 USD/MAU | Free: 50k MAU/mes |
+| Lecturas por asistente | 20 | Login + consulta + dashboard + listas |
+| Escrituras por asistente | 5 | Registro + checkin + encuesta + calificación |
+| Bundle web | 5 MB | React + Vite + ZXing + libs |
+| Tarifa dev | $100.000 COP/h | Mid-senior Colombia |
+| Cloud Functions | $5 USD/mes | $0 si no se usan |
+| Egress multi-región | $2 USD/mes | Buffer |
+| Buffer contingencia | 40% | Sobre infra |
+| Setup inicial | 12 h | One-time |
+| Capacitación | 3 h | One-time |
+| Mantenimiento mensual | 7 h | Base |
+| Soporte por evento | 3 h | Adicional |
+| IA / OCR / QR / scan | $0 | Todo local en navegador |
 
-| Escala mensual | Firestore | Hosting | Auth | Total USD/mes | Total COP/mes |
+---
+
+## 2. Costo de operación por escenario (mensual)
+
+| | Piloto | Pequeño | Mediano | Grande | Recurrente |
 |---|---|---|---|---|---|
-| Sin eventos (idle) | $0 | $0 | $0 | **$0** | **$0** |
-| 1 evento ≤500 asistentes | $0 | $0 | $0 | **$0** | **$0** |
-| 1 evento 2.000 asistentes | $0,11 | $0,30 | $0 | **$0,41** | **~$1.640** |
-| 1 evento 5.000 asistentes | $0,28 | $0,75 | $0 | **$1,03** | **~$4.120** |
-| 1 evento 15.000 asistentes | $0,84 | $2,25 | $0 | **$3,09** | **~$12.360** |
-| 4 eventos × 5.000 asistentes | $1,12 | $3,00 | $0 | **$4,12** | **~$16.500** |
+| Eventos/mes | 1 | 1 | 1 | 1 | 4 |
+| Asistentes/evento | 500 | 2.000 | 5.000 | 15.000 | 5.000 |
+| Asistentes totales/mes | 500 | 2.000 | 5.000 | 15.000 | 20.000 |
+| Lecturas Firestore | 10.000 | 40.000 | 100.000 | 300.000 | 400.000 |
+| Lecturas cobradas | — | — | 50.000 | 250.000 | 200.000 |
+| Escrituras Firestore | 2.500 | 10.000 | 25.000 | 75.000 | 100.000 |
+| Escrituras cobradas | — | — | 5.000 | 55.000 | 20.000 |
+| Hosting GB transferidos | 2,4 | 9,8 | 24,4 | 73,2 | 97,7 |
+| Hosting GB cobrados | 0 | 0 | 14,4 | 63,2 | 87,7 |
+| Almacenamiento Firestore (GB) | 0,001 | 0,004 | 0,010 | 0,029 | 0,038 |
+| MAU | 500 | 2.000 | 5.000 | 15.000 | 20.000 |
+| Costo Firestore (USD) | — | — | $0,04 | $0,25 | $0,16 |
+| Costo Hosting (USD) | — | — | $2,16 | $9,49 | $13,15 |
+| Cloud Functions (USD) | $5 | $5 | $5 | $5 | $5 |
+| Egress (USD) | $2 | $2 | $2 | $2 | $2 |
+| IA / procesamiento | — | — | — | — | — |
+| Subtotal infra (USD) | $7,00 | $7,00 | $9,20 | $16,74 | $20,30 |
+| Buffer 40% (USD) | $2,80 | $2,80 | $3,68 | $6,69 | $8,12 |
+| **Infra total (USD)** | **$9,80** | **$9,80** | **$12,88** | **$23,43** | **$28,43** |
+| **Infra total (COP)** | **$39.200** | **$39.200** | **$51.526** | **$93.718** | **$113.705** |
+| Total horas humanas/mes | 5 | 7 | 10 | 15 | 24 |
+| **Costo humano (COP)** | **$500.000** | **$700.000** | **$1.000.000** | **$1.500.000** | **$2.400.000** |
+| **TOTAL mensual (COP)** | **$539.200** | **$739.200** | **$1.051.526** | **$1.593.718** | **$2.513.705** |
+| **Setup one-time (COP)** | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 |
 
-> Tipo de cambio referencia: 1 USD ≈ $4.000 COP.
-
-### Detalle de pricing Firebase (oficial)
-
-| Servicio | Free tier diario | Costo después del free tier |
-|---|---|---|
-| Firestore — lecturas | 50.000 / día | $0,06 USD por cada 100.000 |
-| Firestore — escrituras | 20.000 / día | $0,18 USD por cada 100.000 |
-| Firestore — almacenamiento | 1 GB | $0,18 USD por GB/mes |
-| Hosting — transferencia | 10 GB / mes | $0,15 USD por GB |
-| Authentication — usuarios activos | 50.000 / mes | $0,0055 USD por usuario adicional |
-
----
-
-## Costos fijos
-
-| Concepto | Costo |
-|---|---|
-| Certificado SSL | Incluido en Firebase Hosting |
-| Backup mensual de base de datos | Incluido en Firestore (no genera costo extra) |
-
----
-
-## Costos de IA y procesamiento
-
-**$0 / mes**, sin importar el volumen de uso.
-
-| Funcionalidad | Tecnología | Costo |
-|---|---|---|
-| Generación de QR | qrcode.js (local) | $0 |
-| Escaneo de QR con cámara | ZXing (local) | $0 |
-| OCR de cédula (deshabilitado actualmente) | Tesseract.js (local) | $0 |
-
-> **No se usan APIs de pago** (OpenAI, Google Vision, AWS Rekognition, Claude). Todo el procesamiento corre en el navegador del usuario, así que no factura nada por uso.
+> Cifras validables en Google Cloud Pricing Calculator (cloud.google.com/products/calculator) usando los valores de Firestore, Hosting y Auth de la tabla anterior.
 
 ---
 
-## Costos de tiempo humano (carga interna)
+## 3. Pricing al cliente y margen
 
-Tarifa referencia: **$80.000 - $150.000 COP por hora dev** (mid-senior en Colombia).
-
-| Concepto | Tiempo | Costo COP |
-|---|---|---|
-| Mantenimiento técnico mensual | 5-10 h | $400.000 - $1.500.000 |
-| Setup inicial de cliente nuevo | 8-16 h | $640.000 - $2.400.000 |
-| Capacitación al equipo del cliente | 2-4 h | $160.000 - $600.000 |
-
----
-
-## Recomendación
-
-Para un cliente con **1 evento mensual de hasta 5.000 asistentes**, el costo total de operación es de **~$4.000-5.000 COP/mes** en infraestructura, más el tiempo humano (mantenimiento + soporte) según el plan contratado.
-
-Para eventos masivos (15.000+ asistentes en un solo evento), el costo de infraestructura para ESE mes sube a **~$12.000-15.000 COP**, sigue siendo despreciable comparado con plataformas tradicionales (Cloud SQL u otros backends always-on cuestan $2.000+ USD/mes solo en servidores).
-
-### Por qué es tan económico
-
-- Usamos **Firebase serverless**: solo se paga por uso real, no por máquinas always-on.
-- El procesamiento de QR y validaciones corre en el **navegador del usuario**, no en nuestros servidores.
-- No hay servidor backend dedicado.
-- Auth, hosting y certificados SSL están en el plan gratuito de Firebase para nuestro volumen.
+| | Plan Básico | Plan Profesional | Plan Enterprise | Plan Recurrente |
+|---|---|---|---|---|
+| Cubre | 1 evento × 2.000 | 1 evento × 5.000 | 1 evento × 15.000 | 4 eventos × 5.000 |
+| Costo total mensual | $739.200 | $1.051.526 | $1.593.718 | $2.513.705 |
+| Costo setup | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 |
+| **Setup al cliente** | $1.500.000 | $2.000.000 | $3.000.000 | $2.500.000 |
+| **Cuota mensual al cliente** | **$1.200.000** | **$1.800.000** | **$2.800.000** | **$3.800.000** |
+| Margen mensual COP | $460.800 | $748.474 | $1.206.282 | $1.286.295 |
+| **Margen mensual %** | **38,4%** | **41,6%** | **43,1%** | **33,8%** |
+| Ingreso anual (setup + 12) | $15.900.000 | $23.600.000 | $36.600.000 | $48.100.000 |
+| Costo anual (setup + 12) | $10.370.400 | $14.118.315 | $20.624.614 | $31.664.458 |
+| Margen anual COP | $5.529.600 | $9.481.685 | $15.975.386 | $16.435.542 |
+| **Margen anual %** | **34,8%** | **40,2%** | **43,6%** | **34,2%** |
 
 ---
 
-*Costos calculados con pricing oficial Google Firebase plan Blaze. Tipo de cambio referencial 1 USD = $4.000 COP. Sin IVA.*
+## 4. Notas
+
+- Costo dominante = tiempo humano (>90%). Infra Firebase es <8% del total.
+- Validar 20 reads / 5 writes por asistente con evento real antes de firmar.
+- Eventos fuera del rango del plan: fee adicional aparte.
+- Cloud Functions, integraciones CRM, correos masivos, hardware (tablets, pendones) = cotización aparte.
+- SLA estricto durante eventos sube el tiempo humano comprometido.
