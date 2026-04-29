@@ -59,7 +59,6 @@ const initialPublicForm = {
   hasFaceConsent: false,
   hasCompanions: false,
   companionsCount: '',
-  registrationMode: 'pre',
   surveyAnswers: {},
 }
 
@@ -68,6 +67,7 @@ const initialFilters = {
   attendeeType: 'all',
   status: 'all',
   empresa: 'all',
+  origen: 'all',
 }
 
 function getCurrentView() {
@@ -347,14 +347,6 @@ function App() {
       return { ...current, empresaInvitadaId: target, surveyAnswers: {} }
     })
   }, [publicUrlOptions.empresaParam, currentView])
-
-  useEffect(() => {
-    if (currentView !== 'public' || !publicUrlOptions.kiosk) return
-    setPublicForm((current) => {
-      if (current.registrationMode === 'onsite') return current
-      return { ...current, registrationMode: 'onsite' }
-    })
-  }, [publicUrlOptions.kiosk, currentView])
 
   useEffect(() => {
     if (!isFirebaseConfigured) return
@@ -684,10 +676,7 @@ function App() {
       const eventoModo =
         activeEvento?.modoRegistro ||
         (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-      const isOnSite =
-        publicUrlOptions.kiosk ||
-        eventoModo === 'onsite' ||
-        (eventoModo === 'both' && publicForm.registrationMode === 'onsite')
+      const isOnSite = publicUrlOptions.kiosk || eventoModo === 'onsite'
       const attendee = buildAttendeePayload(publicForm, {
         source: isOnSite ? 'kiosk-registration' : 'public-registration',
         status: isOnSite ? 'approved' : 'pre-registered',
@@ -744,6 +733,20 @@ function App() {
   }, [eventos, activeEventoIdState])
 
   const activeEventoId = activeEvento?.id || ''
+
+  // Pre-selecciona el filtro de origen del listado segun el modo del evento activo
+  useEffect(() => {
+    const modo =
+      activeEvento?.modoRegistro ||
+      (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+    if (modo === 'pre' || modo === 'onsite') {
+      setFilters((current) =>
+        current.origen === 'all' || current.origen === modo
+          ? { ...current, origen: modo }
+          : current,
+      )
+    }
+  }, [activeEvento?.id, activeEvento?.modoRegistro, activeEvento?.registroEnSitio])
 
   const eventAttendees = useMemo(() => {
     if (!activeEventoId) return attendees
@@ -908,7 +911,13 @@ function App() {
       (filters.empresa === '__otra__' && !item.empresaInvitadaId) ||
       item.empresaInvitadaId === filters.empresa
 
-    return matchesQuery && matchesType && matchesStatus && matchesEmpresa
+    const matchesOrigen =
+      filters.origen === 'all' ||
+      (filters.origen === 'pre' && item.source === 'public-registration') ||
+      (filters.origen === 'onsite' && item.source === 'kiosk-registration') ||
+      (filters.origen === 'admin' && item.source === 'admin-panel')
+
+    return matchesQuery && matchesType && matchesStatus && matchesEmpresa && matchesOrigen
   })
 
   if (currentView === 'public') {
@@ -1074,6 +1083,10 @@ function App() {
             onCedulaFill={handleAdminCedulaFill}
             empresasInvitadas={empresasInvitadas}
             categorias={categoriasEvento}
+            eventoModoRegistro={
+              activeEvento?.modoRegistro ||
+              (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+            }
           />
         </AdminSection>
 

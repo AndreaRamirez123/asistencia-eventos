@@ -14,14 +14,9 @@ function buildRatingUrl(empresaId) {
 function CalificacionPanel({ evento, onEventoChange, ratings = [], empresasInvitadas = [] }) {
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [titulo, setTitulo] = useState(evento?.calificacionTitulo || '')
   const [selectedEmpresaId, setSelectedEmpresaId] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
-
-  useEffect(() => {
-    setTitulo(evento?.calificacionTitulo || '')
-  }, [evento?.id, evento?.calificacionTitulo])
 
   const url = useMemo(() => buildRatingUrl(selectedEmpresaId), [selectedEmpresaId])
   const habilitada = Boolean(evento?.calificacionHabilitada)
@@ -63,12 +58,6 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresasInvit
     persist({ calificacionHabilitada: event.target.checked })
   }
 
-  const commitTitulo = () => {
-    if (titulo !== (evento?.calificacionTitulo || '')) {
-      persist({ calificacionTitulo: titulo.trim() })
-    }
-  }
-
   const selectedLabel =
     empresasInvitadas.find((e) => e.id === selectedEmpresaId)?.nombre ||
     'Sin empresa (calificación general)'
@@ -94,17 +83,6 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresasInvit
       setCopyState('error')
       setTimeout(() => setCopyState(''), 2000)
     }
-  }
-
-  const handleShareWhatsapp = () => {
-    const text = `Califica el evento: ${url}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
-  }
-
-  const handleShareMailto = () => {
-    const subject = 'Califica el evento'
-    const body = `Hola,\n\nTu opinión es importante. Por favor califica el evento aquí:\n${url}\n\nGracias.`
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
   }
 
   const handlePrint = () => {
@@ -164,18 +142,6 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresasInvit
       <div className="kiosko-layout">
         <div className="kiosko-controls">
           <label className="field">
-            <span>Título de la calificación</span>
-            <input
-              type="text"
-              value={titulo}
-              onChange={(event) => setTitulo(event.target.value)}
-              onBlur={commitTitulo}
-              placeholder="¿Cómo estuvo el evento?"
-              maxLength={80}
-            />
-          </label>
-
-          <label className="field">
             <span>Empresa invitada (opcional)</span>
             <select
               value={selectedEmpresaId}
@@ -205,12 +171,6 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresasInvit
                 : copyState === 'error'
                   ? 'No se pudo copiar'
                   : 'Copiar URL'}
-            </button>
-            <button type="button" className="ghost-action" onClick={handleShareWhatsapp}>
-              Enviar por WhatsApp
-            </button>
-            <button type="button" className="ghost-action" onClick={handleShareMailto}>
-              Enviar por correo
             </button>
             {qrDataUrl ? (
               <a

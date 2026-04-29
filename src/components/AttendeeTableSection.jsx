@@ -69,6 +69,20 @@ function AttendeeTableSection({
             </select>
           </label>
 
+          <label className="toolbar-field">
+            <span>Origen</span>
+            <select
+              name="origen"
+              value={filterState.origen || 'all'}
+              onChange={handleFilterChange}
+            >
+              <option value="all">Todos</option>
+              <option value="pre">Pre-registro (con QR)</option>
+              <option value="onsite">En sitio (sin QR)</option>
+              <option value="admin">Manual (admin)</option>
+            </select>
+          </label>
+
           {empresasInvitadas.length > 0 ? (
             <label className="toolbar-field">
               <span>Empresa</span>

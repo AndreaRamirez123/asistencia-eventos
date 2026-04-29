@@ -321,6 +321,32 @@
   font-weight: 700;
 }
 
+@media (max-width: 720px) {
+  .evento-selector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .evento-selector label {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .evento-selector select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .evento-selector-badge,
+  .evento-estado-pill {
+    align-self: flex-start;
+  }
+}
+
 .horario-estado {
   display: flex;
   flex-direction: column;
@@ -997,7 +1023,7 @@
 
 .modo-options {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-top: 10px;
 }

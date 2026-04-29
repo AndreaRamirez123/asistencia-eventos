@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import CedulaScanner from './CedulaScanner'
 
+// Flag para mostrar/ocultar la lectura de cedula. Cambiar a true para reactivar.
+const SHOW_CEDULA_SCANNER = false
+// Flag para mostrar/ocultar el check de reconocimiento facial. Cambiar a true para reactivar.
+const SHOW_FACE_CONSENT = false
+
 function PublicRegistrationPage({
   errorMessage,
   form,
@@ -36,13 +41,9 @@ function PublicRegistrationPage({
       ? selectedEmpresa.encuestaPreguntas
       : []
 
-  const showModeToggle = eventoModoRegistro === 'both' && !kioskMode
+  const showModeToggle = false
   const effectiveMode =
-    kioskMode || eventoModoRegistro === 'onsite'
-      ? 'onsite'
-      : eventoModoRegistro === 'pre'
-        ? 'pre'
-        : form.registrationMode || 'pre'
+    kioskMode || eventoModoRegistro === 'onsite' ? 'onsite' : 'pre'
   const isOnSite = effectiveMode === 'onsite'
 
   if (!eventoLoaded) {
@@ -114,58 +115,28 @@ function PublicRegistrationPage({
 
         <div className={`registration-layout ${isOnSite ? 'no-preview' : ''}`}>
           <form className="attendee-form" onSubmit={handleSubmit}>
-            {showModeToggle ? (
-              <fieldset className="registration-mode">
-                <legend>¿Cuándo te vas a registrar?</legend>
-                <label className={`mode-option ${form.registrationMode === 'pre' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="registrationMode"
-                    value="pre"
-                    checked={form.registrationMode === 'pre'}
-                    onChange={handleChange}
-                  />
-                  <div>
-                    <strong>Desde casa (anticipado)</strong>
-                    <p>Recibo un código QR para mostrar al ingresar al evento.</p>
-                  </div>
-                </label>
-                <label className={`mode-option ${form.registrationMode === 'onsite' ? 'active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="registrationMode"
-                    value="onsite"
-                    checked={form.registrationMode === 'onsite'}
-                    onChange={handleChange}
-                  />
-                  <div>
-                    <strong>Ya estoy en el evento</strong>
-                    <p>Solo me registro y entro. No necesito QR.</p>
-                  </div>
-                </label>
-              </fieldset>
-            ) : null}
-
-            <div className="cedula-shortcut">
-              <div>
-                <strong>
-                  ¿Tienes tu cedula a la mano?{' '}
-                  <span className="cedula-optional">(opcional)</span>
-                </strong>
-                <p className="helper-text">
-                  Escanea el codigo de barras del reverso y se llenan automaticamente{' '}
-                  <strong>nombres, apellidos y numero de documento</strong>. La imagen no se
-                  almacena. Si prefieres, puedes omitir este paso y llenar los datos manualmente.
-                </p>
+            {SHOW_CEDULA_SCANNER ? (
+              <div className="cedula-shortcut">
+                <div>
+                  <strong>
+                    ¿Tienes tu cedula a la mano?{' '}
+                    <span className="cedula-optional">(opcional)</span>
+                  </strong>
+                  <p className="helper-text">
+                    Escanea el codigo de barras del reverso y se llenan automaticamente{' '}
+                    <strong>nombres, apellidos y numero de documento</strong>. La imagen no se
+                    almacena. Si prefieres, puedes omitir este paso y llenar los datos manualmente.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-action cedula-trigger"
+                  onClick={() => setShowScanner(true)}
+                >
+                  Escanear cedula
+                </button>
               </div>
-              <button
-                type="button"
-                className="ghost-action cedula-trigger"
-                onClick={() => setShowScanner(true)}
-              >
-                Escanear cedula
-              </button>
-            </div>
+            ) : null}
 
             <label className="field">
               <span>Nombre completo</span>
@@ -409,20 +380,22 @@ function PublicRegistrationPage({
               </fieldset>
             ) : null}
 
-            <label className="checkbox-field consent-inline">
-              <input
-                type="checkbox"
-                name="hasFaceConsent"
-                checked={form.hasFaceConsent}
-                onChange={handleChange}
-              />
-              <span>
-                Autorizo reconocimiento facial opcional como apoyo al ingreso.
-                <small className="helper-text">
-                  Voluntario. Datos tratados conforme a la Ley 1581 de 2012 (habeas data).
-                </small>
-              </span>
-            </label>
+            {SHOW_FACE_CONSENT ? (
+              <label className="checkbox-field consent-inline">
+                <input
+                  type="checkbox"
+                  name="hasFaceConsent"
+                  checked={form.hasFaceConsent}
+                  onChange={handleChange}
+                />
+                <span>
+                  Autorizo reconocimiento facial opcional como apoyo al ingreso.
+                  <small className="helper-text">
+                    Voluntario. Datos tratados conforme a la Ley 1581 de 2012 (habeas data).
+                  </small>
+                </span>
+              </label>
+            ) : null}
 
             {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
 
@@ -478,7 +451,7 @@ function PublicRegistrationPage({
         </div>
       </section>
 
-      {showScanner ? (
+      {SHOW_CEDULA_SCANNER && showScanner ? (
         <CedulaScanner onExtract={handleExtract} onClose={() => setShowScanner(false)} />
       ) : null}
     </div>

@@ -152,20 +152,6 @@ function KioskoQrPanel({ empresasInvitadas = [], evento, onEventoChange }) {
             </div>
           </label>
 
-          <label className={`modo-card ${modoRegistro === 'both' ? 'active' : ''}`}>
-            <input
-              type="radio"
-              name="modoRegistro"
-              value="both"
-              checked={modoRegistro === 'both'}
-              onChange={handleModoChange}
-              disabled={isTogglingMode}
-            />
-            <div>
-              <strong>Ambos</strong>
-              <p>Permite las dos opciones. El asistente elige al abrir el formulario.</p>
-            </div>
-          </label>
         </div>
         {modeError ? <p className="feedback error">{modeError}</p> : null}
       </div>

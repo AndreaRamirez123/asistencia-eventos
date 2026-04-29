@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import CedulaScanner from './CedulaScanner'
 
+// Flag para mostrar/ocultar la lectura de cedula. Cambiar a true para reactivar.
+const SHOW_CEDULA_SCANNER = false
+// Flag para mostrar/ocultar el check de reconocimiento facial. Cambiar a true para reactivar.
+const SHOW_FACE_CONSENT = false
+
 function AdminRegistrationPanel({
   editingAttendeeId,
   errorMessage,
@@ -14,7 +19,9 @@ function AdminRegistrationPanel({
   onCedulaFill,
   empresasInvitadas = [],
   categorias = [],
+  eventoModoRegistro = 'pre',
 }) {
+  const efectiveOnsite = eventoModoRegistro === 'onsite'
   const [showScanner, setShowScanner] = useState(false)
 
   const handleExtract = (data) => {
@@ -146,40 +153,46 @@ function AdminRegistrationPanel({
             />
           </label>
 
-          <fieldset className="consent-section">
-            <legend>Apoyos opcionales al registro</legend>
-            <p className="helper-text">
-              Estas opciones son voluntarias y el asistente debe autorizarlas. Los datos se tratan
-              conforme a la Ley 1581 de 2012 (habeas data).
-            </p>
+          {SHOW_CEDULA_SCANNER || SHOW_FACE_CONSENT ? (
+            <fieldset className="consent-section">
+              <legend>Apoyos opcionales al registro</legend>
+              <p className="helper-text">
+                Estas opciones son voluntarias y el asistente debe autorizarlas. Los datos se
+                tratan conforme a la Ley 1581 de 2012 (habeas data).
+              </p>
 
-            <div className="consent-item">
-              <div>
-                <strong>Escanear cedula para autocompletar</strong>
-                <p className="helper-text">
-                  Se lee el codigo de barras del reverso y se rellenan nombre y documento. La
-                  imagen no se almacena.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="ghost-action cedula-trigger"
-                onClick={() => setShowScanner(true)}
-              >
-                Escanear cedula
-              </button>
-            </div>
+              {SHOW_CEDULA_SCANNER ? (
+                <div className="consent-item">
+                  <div>
+                    <strong>Escanear cedula para autocompletar</strong>
+                    <p className="helper-text">
+                      Se lee el codigo de barras del reverso y se rellenan nombre y documento. La
+                      imagen no se almacena.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ghost-action cedula-trigger"
+                    onClick={() => setShowScanner(true)}
+                  >
+                    Escanear cedula
+                  </button>
+                </div>
+              ) : null}
 
-            <label className="checkbox-field consent-checkbox">
-              <input
-                type="checkbox"
-                name="hasFaceConsent"
-                checked={form.hasFaceConsent}
-                onChange={handleChange}
-              />
-              <span>Marcar si el asistente autorizo reconocimiento facial opcional.</span>
-            </label>
-          </fieldset>
+              {SHOW_FACE_CONSENT ? (
+                <label className="checkbox-field consent-checkbox">
+                  <input
+                    type="checkbox"
+                    name="hasFaceConsent"
+                    checked={form.hasFaceConsent}
+                    onChange={handleChange}
+                  />
+                  <span>Marcar si el asistente autorizo reconocimiento facial opcional.</span>
+                </label>
+              ) : null}
+            </fieldset>
+          ) : null}
 
           {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
 
@@ -199,7 +212,11 @@ function AdminRegistrationPanel({
             </div>
           ) : (
             <button type="submit" className="submit-button" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando desde admin...' : 'Crear registro y QR'}
+              {isSubmitting
+                ? 'Guardando desde admin...'
+                : efectiveOnsite
+                  ? 'Crear registro (sin QR)'
+                  : 'Crear registro y QR'}
             </button>
           )}
 
@@ -215,30 +232,32 @@ function AdminRegistrationPanel({
                 {submission.attendee.fullName} fue creado desde admin con estado{' '}
                 <strong>{submission.attendee.status}</strong>.
               </p>
-              <img
-                className="qr-preview"
-                src={submission.qrDataUrl}
-                alt={`QR de ${submission.attendee.fullName}`}
-              />
+              {efectiveOnsite ? (
+                <div className="qr-placeholder" aria-hidden="true">
+                  <span>&#10003;</span>
+                </div>
+              ) : (
+                <img
+                  className="qr-preview"
+                  src={submission.qrDataUrl}
+                  alt={`QR de ${submission.attendee.fullName}`}
+                />
+              )}
               <div className="preview-meta">
                 <span>ID: {submission.recordId}</span>
-                <span>
-                  Modo:{' '}
-                  {submission.mode === 'backend'
-                    ? 'Backend API'
-                    : submission.mode === 'firestore'
-                      ? 'Firestore activo'
-                      : 'Preview local'}
-                </span>
                 <span>Categoria: {submission.attendee.attendeeType}</span>
+                {efectiveOnsite ? (
+                  <span>Modo: registro en sitio (sin QR)</span>
+                ) : null}
               </div>
             </>
           ) : (
             <>
-              <h3>QR y trazabilidad</h3>
+              <h3>{efectiveOnsite ? 'Confirmación' : 'QR y trazabilidad'}</h3>
               <p className="preview-copy">
-                Cuando el admin cree un asistente, aqui aparecera su QR junto con el estado del
-                registro.
+                {efectiveOnsite
+                  ? 'Cuando crees un asistente, aquí aparecerá la confirmación. No se genera QR porque la persona ya está en el evento.'
+                  : 'Cuando el admin cree un asistente, aquí aparecerá su QR junto con el estado del registro.'}
               </p>
               <div className="qr-placeholder" aria-hidden="true">
                 <span>ADMIN</span>
@@ -248,7 +267,7 @@ function AdminRegistrationPanel({
         </aside>
       </div>
 
-      {showScanner ? (
+      {SHOW_CEDULA_SCANNER && showScanner ? (
         <CedulaScanner onExtract={handleExtract} onClose={() => setShowScanner(false)} />
       ) : null}
     </section>
