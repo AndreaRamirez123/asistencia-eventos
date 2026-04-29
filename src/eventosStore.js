@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
 const COLLECTION_NAME = 'eventoEventos'
@@ -25,6 +25,75 @@ export async function updateEvento(eventoId, updates) {
   const ref = doc(db, COLLECTION_NAME, eventoId)
   await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() })
   return { id: eventoId, ...updates }
+}
+
+export async function createEvento(payload = {}) {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase no esta configurado.')
+  }
+  const ref = collection(db, COLLECTION_NAME)
+  const data = {
+    nombre: String(payload.nombre || 'Evento sin titulo').trim(),
+    empresasInvitadas: Array.isArray(payload.empresasInvitadas)
+      ? payload.empresasInvitadas
+      : [],
+    categorias: Array.isArray(payload.categorias) ? payload.categorias : [],
+    modoRegistro: payload.modoRegistro || 'pre',
+    registroEnSitio: false,
+    calificacionHabilitada: false,
+    calificacionTitulo: payload.calificacionTitulo || '',
+    archivado: false,
+    active: true,
+    createdAt: serverTimestamp(),
+  }
+  const docRef = await addDoc(ref, data)
+  return {
+    id: docRef.id,
+    ...data,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+export async function closeEventAndCreateNew(currentEvento, options = {}) {
+  if (!currentEvento) {
+    throw new Error('No hay evento actual para cerrar.')
+  }
+
+  // 1. Marcar el actual como archivado
+  await updateEvento(currentEvento.id, {
+    archivado: true,
+    active: false,
+    fechaCierre: new Date().toISOString(),
+  })
+
+  // 2. Crear el nuevo, opcionalmente heredando configuracion
+  const inheritEmpresas = options.heredarEmpresas !== false
+  const inheritCategorias = options.heredarCategorias !== false
+  const inheritEncuestas = options.heredarEncuestas !== false
+
+  let empresasInvitadas = []
+  if (inheritEmpresas && Array.isArray(currentEvento.empresasInvitadas)) {
+    empresasInvitadas = currentEvento.empresasInvitadas.map((e) => {
+      if (inheritEncuestas) return { ...e }
+      // heredar empresa pero sin encuestas
+      const { encuestaPreguntas, encuestaHabilitada, encuestaObligatoria, ...rest } = e
+      return rest
+    })
+  }
+
+  const categorias =
+    inheritCategorias && Array.isArray(currentEvento.categorias)
+      ? currentEvento.categorias
+      : []
+
+  const nuevoEvento = await createEvento({
+    nombre: options.nombreNuevo || `Nuevo evento ${new Date().toLocaleDateString('es-CO')}`,
+    empresasInvitadas,
+    categorias,
+    modoRegistro: 'pre',
+  })
+
+  return nuevoEvento
 }
 
 function slugify(text) {

@@ -23,6 +23,7 @@ import AdminSection from './components/AdminSection'
 import CalificacionPage from './components/CalificacionPage'
 import CalificacionPanel from './components/CalificacionPanel'
 import CategoriasPanel from './components/CategoriasPanel'
+import CerrarEventoPanel from './components/CerrarEventoPanel'
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import KioskoQrPanel from './components/KioskoQrPanel'
 import LoginPage from './components/LoginPage'
@@ -254,6 +255,13 @@ function App() {
   const [eventos, setEventos] = useState([])
   const [eventosLoaded, setEventosLoaded] = useState(false)
   const [ratings, setRatings] = useState([])
+  const [activeEventoIdState, setActiveEventoIdState] = useState(() => {
+    try {
+      return localStorage.getItem('asistencia-evento:activeEventoId') || ''
+    } catch {
+      return ''
+    }
+  })
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
   const [filters, setFilters] = useState(initialFilters)
@@ -664,43 +672,6 @@ function App() {
 
   const modeLabel = isFirebaseConfigured ? 'Firestore activo' : 'Firebase no configurado'
 
-  const liveMetrics = useMemo(() => {
-    const total = attendees.length
-    const approved = attendees.filter((item) => item.status === 'approved').length
-    const checkedIn = attendees.filter((item) => item.status === 'checked-in').length
-    const pending = attendees.filter(
-      (item) => item.status === 'pre-registered' || item.status === 'pending',
-    ).length
-
-    const totalCompanions = attendees.reduce(
-      (sum, item) => sum + (Number(item.companionsCount) || 0),
-      0,
-    )
-    const peopleAtEvent = total + totalCompanions
-
-    const empresasRepresentadas = new Set()
-    for (const a of attendees) {
-      const key = (a.organization || '').trim().toLowerCase()
-      if (key) empresasRepresentadas.add(key)
-    }
-
-    const ratingsTotal = ratings.length
-    const ratingAvg =
-      ratingsTotal > 0
-        ? (ratings.reduce((acc, r) => acc + (r.stars || 0), 0) / ratingsTotal).toFixed(1)
-        : '0.0'
-
-    return [
-      { value: String(total), label: 'registros totales' },
-      { value: String(peopleAtEvent), label: 'personas en el evento' },
-      { value: String(approved), label: 'aprobados' },
-      { value: String(checkedIn), label: 'check-ins confirmados' },
-      { value: String(pending), label: 'pendientes' },
-      { value: String(empresasRepresentadas.size), label: 'empresas representadas' },
-      { value: `${ratingAvg} ★`, label: `calificación (${ratingsTotal})` },
-    ]
-  }, [attendees, ratings])
-
   const empresasMap = useMemo(() => {
     const map = {}
     for (const empresa of empresas) {
@@ -715,10 +686,80 @@ function App() {
   }, [empresas])
 
   const activeEvento = useMemo(() => {
-    return eventos.find((e) => e.active !== false) || eventos[0] || null
-  }, [eventos])
+    if (activeEventoIdState) {
+      const match = eventos.find((e) => e.id === activeEventoIdState)
+      if (match) return match
+    }
+    // fallback: primer evento NO archivado
+    return (
+      eventos.find((e) => !e.archivado) ||
+      eventos.find((e) => e.active !== false) ||
+      eventos[0] ||
+      null
+    )
+  }, [eventos, activeEventoIdState])
 
   const activeEventoId = activeEvento?.id || ''
+
+  const eventAttendees = useMemo(() => {
+    if (!activeEventoId) return attendees
+    return attendees.filter(
+      (a) => !a.eventoId || a.eventoId === activeEventoId,
+    )
+  }, [attendees, activeEventoId])
+
+  const eventRatings = useMemo(() => {
+    if (!activeEventoId) return ratings
+    return ratings.filter(
+      (r) => !r.eventoId || r.eventoId === activeEventoId,
+    )
+  }, [ratings, activeEventoId])
+
+  const liveMetrics = useMemo(() => {
+    const total = eventAttendees.length
+    const approved = eventAttendees.filter((item) => item.status === 'approved').length
+    const checkedIn = eventAttendees.filter((item) => item.status === 'checked-in').length
+    const pending = eventAttendees.filter(
+      (item) => item.status === 'pre-registered' || item.status === 'pending',
+    ).length
+
+    const totalCompanions = eventAttendees.reduce(
+      (sum, item) => sum + (Number(item.companionsCount) || 0),
+      0,
+    )
+    const peopleAtEvent = total + totalCompanions
+
+    const empresasRepresentadas = new Set()
+    for (const a of eventAttendees) {
+      const key = (a.organization || '').trim().toLowerCase()
+      if (key) empresasRepresentadas.add(key)
+    }
+
+    const ratingsTotal = eventRatings.length
+    const ratingAvg =
+      ratingsTotal > 0
+        ? (eventRatings.reduce((acc, r) => acc + (r.stars || 0), 0) / ratingsTotal).toFixed(1)
+        : '0.0'
+
+    return [
+      { value: String(total), label: 'registros totales' },
+      { value: String(peopleAtEvent), label: 'personas en el evento' },
+      { value: String(approved), label: 'aprobados' },
+      { value: String(checkedIn), label: 'check-ins confirmados' },
+      { value: String(pending), label: 'pendientes' },
+      { value: String(empresasRepresentadas.size), label: 'empresas representadas' },
+      { value: `${ratingAvg} ★`, label: `calificación (${ratingsTotal})` },
+    ]
+  }, [eventAttendees, eventRatings])
+
+  const handleSelectEvento = (eventoId) => {
+    setActiveEventoIdState(eventoId)
+    try {
+      localStorage.setItem('asistencia-evento:activeEventoId', eventoId)
+    } catch {
+      // ignore
+    }
+  }
 
   const empresasInvitadas = useMemo(() => {
     return Array.isArray(activeEvento?.empresasInvitadas) ? activeEvento.empresasInvitadas : []
@@ -806,7 +847,7 @@ function App() {
   }
 
   const normalizedQuery = filters.query.trim().toLowerCase()
-  const filteredAttendees = attendees.filter((item) => {
+  const filteredAttendees = eventAttendees.filter((item) => {
     const matchesQuery =
       !normalizedQuery ||
       item.fullName?.toLowerCase().includes(normalizedQuery) ||
@@ -915,6 +956,28 @@ function App() {
       />
 
       <main className="content-grid">
+        {eventos.length > 0 ? (
+          <div className="evento-selector">
+            <label>
+              <span className="evento-selector-label">Evento activo:</span>
+              <select
+                value={activeEventoId}
+                onChange={(event) => handleSelectEvento(event.target.value)}
+              >
+                {eventos.map((ev) => (
+                  <option key={ev.id} value={ev.id}>
+                    {ev.nombre || `Evento ${ev.id.slice(0, 6)}`}
+                    {ev.archivado ? ' (archivado)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {activeEvento?.archivado ? (
+              <span className="evento-selector-badge">Solo lectura</span>
+            ) : null}
+          </div>
+        ) : null}
+
         {orphanAttendeesCount > 0 && currentUser?.role === 'superadmin' ? (
           <div className="migration-banner">
             <div>
@@ -1012,13 +1075,36 @@ function App() {
         >
           <CalificacionPanel
             evento={activeEvento}
-            ratings={ratings}
+            ratings={eventRatings}
             empresasInvitadas={empresasInvitadas}
             onEventoChange={(nextEvento) =>
               setEventos((current) =>
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
               )
             }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="cerrar-evento"
+          title="Cierre del evento"
+          subtitle="Archivar evento actual y empezar uno nuevo"
+          defaultOpen={false}
+        >
+          <CerrarEventoPanel
+            evento={activeEvento}
+            onCerrado={(nuevoEvento) => {
+              setEventos((current) => {
+                // marcar el actual como archivado en estado local
+                const updated = current.map((e) =>
+                  e.id === activeEventoId
+                    ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
+                    : e,
+                )
+                return [nuevoEvento, ...updated]
+              })
+              handleSelectEvento(nuevoEvento.id)
+            }}
           />
         </AdminSection>
 
