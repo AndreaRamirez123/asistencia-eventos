@@ -3373,3 +3373,56 @@
   white-space: nowrap;
   font-size: 0.9rem;
 }
+
+/* ============================================
+   GOOGLE LOGIN BUTTON
+   ============================================ */
+
+.google-login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  background: #fff;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 12px;
+  font-family: var(--sans);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--heading);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+  box-shadow: 0 1px 4px rgba(19,33,45,0.06);
+  margin-bottom: 4px;
+}
+
+.google-login-btn:hover:not(:disabled) {
+  background: #f8f9ff;
+  box-shadow: 0 2px 10px rgba(19,33,45,0.1);
+  transform: translateY(-1px);
+}
+
+.google-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-strong);
+}

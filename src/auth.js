@@ -1,6 +1,9 @@
 import {
+  GoogleAuthProvider,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
@@ -30,6 +33,38 @@ export async function loginWithEmail(email, password) {
     role: profile.role,
     displayName: profile.displayName || deriveNameFromEmail(firebaseUser.email),
   }
+}
+
+export async function loginWithGoogle() {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('Firebase Auth no esta configurado. Revisa .env.local.')
+  }
+
+  const provider = new GoogleAuthProvider()
+  const credential = await signInWithPopup(auth, provider)
+  const firebaseUser = credential.user
+  const profile = await fetchUserProfile(firebaseUser.uid)
+
+  if (!profile) {
+    await signOut(auth)
+    throw new Error(
+      'Tu cuenta de Google existe pero no tiene un rol asignado. Contacta al administrador.',
+    )
+  }
+
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    role: profile.role,
+    displayName: profile.displayName || deriveNameFromEmail(firebaseUser.email),
+  }
+}
+
+export async function resetPassword(email) {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('Firebase Auth no esta configurado.')
+  }
+  await sendPasswordResetEmail(auth, email.trim())
 }
 
 export async function logout() {
