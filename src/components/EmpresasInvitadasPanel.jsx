@@ -132,6 +132,56 @@ function EncuestaEditor({ evento, empresa, onChange }) {
 
   return (
     <div className="encuesta-editor">
+
+      {/* Personalización visual */}
+      <div className="marca-config">
+        <h4 style={{ margin: '0 0 10px', color: 'var(--heading)', fontSize: '0.95rem' }}>
+          Personalización visual del formulario
+        </h4>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <label className="field">
+            <span>Color primario</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="color"
+                value={empresa.colorPrimario || '#ffd166'}
+                onChange={(e) => persist({ colorPrimario: e.target.value })}
+                style={{ width: '42px', height: '36px', padding: '2px', borderRadius: '6px', border: '1.5px solid var(--border-strong)', cursor: 'pointer' }}
+              />
+              <input
+                type="text"
+                value={empresa.colorPrimario || '#ffd166'}
+                onChange={(e) => persist({ colorPrimario: e.target.value })}
+                style={{ flex: 1 }}
+                placeholder="#ffd166"
+              />
+            </div>
+          </label>
+          <label className="field">
+            <span>URL del logo</span>
+            <input
+              type="url"
+              defaultValue={empresa.logoUrl || ''}
+              onBlur={(e) => persist({ logoUrl: e.target.value.trim() })}
+              placeholder="https://empresa.com/logo.png"
+            />
+          </label>
+        </div>
+        {empresa.colorPrimario && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px 12px',
+            background: empresa.colorPrimario + '22',
+            borderLeft: `4px solid ${empresa.colorPrimario}`,
+            borderRadius: '6px',
+            fontSize: '0.82rem',
+            color: 'var(--muted)',
+          }}>
+            El formulario de registro mostrará este color cuando el asistente acceda con el link de esta empresa.
+          </div>
+        )}
+      </div>
+
       <div className="encuesta-toggles">
         <label className="checkbox-field">
           <input

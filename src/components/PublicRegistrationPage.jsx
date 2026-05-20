@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import CedulaScanner from './CedulaScanner'
+import { generarPase } from '../utils/generarPase'
 
 // Flag para mostrar/ocultar la lectura de cedula. Cambiar a true para reactivar.
 const SHOW_CEDULA_SCANNER = false
@@ -23,8 +24,33 @@ function PublicRegistrationPage({
   eventoModoRegistro = 'pre',
   eventoLoaded = true,
   onResetSubmission,
+  eventoNombre = '',
+  empresaConfig = null,
 }) {
   const [showScanner, setShowScanner] = useState(false)
+  const [isGeneratingPase, setIsGeneratingPase] = useState(false)
+
+  const handleDescargarPase = async () => {
+    if (!submission) return
+    setIsGeneratingPase(true)
+    try {
+      const paseUrl = await generarPase({
+        attendee: submission.attendee,
+        qrDataUrl: submission.qrDataUrl,
+        eventoNombre,
+        colorPrimario: empresaConfig?.colorPrimario || '',
+        logoUrl: empresaConfig?.logoUrl || '',
+      })
+      const link = document.createElement('a')
+      link.href = paseUrl
+      link.download = `pase-${submission.attendee.documentId || 'asistente'}.png`
+      link.click()
+    } catch {
+      // silencioso
+    } finally {
+      setIsGeneratingPase(false)
+    }
+  }
 
   const handleExtract = (data) => {
     onCedulaFill?.(data)
@@ -85,10 +111,22 @@ function PublicRegistrationPage({
     )
   }
 
+  const brandColor = empresaConfig?.colorPrimario || ''
+  const brandStyle = brandColor
+    ? { '--accent': brandColor, '--accent-strong': brandColor }
+    : {}
+
   return (
-    <div className="public-shell">
+    <div className="public-shell" style={brandStyle}>
       <header className="public-hero">
         <div>
+          {empresaConfig?.logoUrl && (
+            <img
+              src={empresaConfig.logoUrl}
+              alt="Logo"
+              style={{ height: '48px', objectFit: 'contain', marginBottom: '12px', display: 'block' }}
+            />
+          )}
           <p className="eyebrow">Registro publico del evento</p>
           <h1>
             {isOnSite
@@ -433,6 +471,15 @@ function PublicRegistrationPage({
                     >
                       Descargar QR
                     </a>
+                    <button
+                      type="button"
+                      className="submit-button"
+                      style={{ marginTop: '8px', width: '100%', minHeight: '44px' }}
+                      onClick={handleDescargarPase}
+                      disabled={isGeneratingPase}
+                    >
+                      {isGeneratingPase ? 'Generando pase...' : '⬇ Descargar pase completo'}
+                    </button>
                   </div>
                 </>
               ) : (

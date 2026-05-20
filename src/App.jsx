@@ -15,12 +15,18 @@ import {
 import { listEmpresas } from './empresasStore'
 import { listEventos } from './eventosStore'
 import { subscribeToRatings } from './ratingsStore'
+import { subscribeToEstaciones } from './stacionesStore'
 import AdminHero from './components/AdminHero'
 import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import AdminSection from './components/AdminSection'
 import CalificacionPage from './components/CalificacionPage'
+import MapaPublicoPage from './components/MapaPublicoPage'
+import TriviaQuizPage from './components/TriviaQuizPage'
+import MapEditorPanel from './components/MapEditorPanel'
+import TriviaEditorPanel from './components/TriviaEditorPanel'
+import EstacionesDashboard from './components/EstacionesDashboard'
 import CalificacionPanel from './components/CalificacionPanel'
 import CategoriasPanel from './components/CategoriasPanel'
 import CerrarEventoPanel from './components/CerrarEventoPanel'
@@ -79,6 +85,14 @@ function getCurrentView() {
 
   if (path === '/calificar') {
     return 'rating'
+  }
+
+  if (path === '/mapa') {
+    return 'mapa'
+  }
+
+  if (path === '/trivia') {
+    return 'trivia'
   }
 
   if (path === '/admin/login' || path === '/login') {
@@ -257,6 +271,7 @@ function App() {
   const [eventos, setEventos] = useState([])
   const [eventosLoaded, setEventosLoaded] = useState(false)
   const [ratings, setRatings] = useState([])
+  const [estaciones, setEstaciones] = useState([])
   const [activeEventoIdState, setActiveEventoIdState] = useState(() => {
     try {
       return localStorage.getItem('asistencia-evento:activeEventoId') || ''
@@ -748,6 +763,12 @@ function App() {
     }
   }, [activeEvento?.id, activeEvento?.modoRegistro, activeEvento?.registroEnSitio])
 
+  useEffect(() => {
+    if (!isFirebaseConfigured || !activeEvento?.id) return
+    const unsub = subscribeToEstaciones(activeEvento.id, setEstaciones)
+    return unsub
+  }, [activeEvento?.id])
+
   const eventAttendees = useMemo(() => {
     if (!activeEventoId) return attendees
     return attendees.filter(
@@ -941,6 +962,8 @@ function App() {
           (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
         }
         eventoLoaded={eventosLoaded}
+        eventoNombre={activeEvento?.nombre || ''}
+        empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || null}
         onResetSubmission={() => {
           setPublicSubmission(null)
           setPublicForm(initialPublicForm)
@@ -948,6 +971,14 @@ function App() {
         }}
       />
     )
+  }
+
+  if (currentView === 'mapa') {
+    return <MapaPublicoPage />
+  }
+
+  if (currentView === 'trivia') {
+    return <TriviaQuizPage />
   }
 
   if (currentView === 'rating') {
@@ -1162,12 +1193,53 @@ function App() {
           <CalificacionPanel
             evento={activeEvento}
             ratings={eventRatings}
-            empresasInvitadas={empresasInvitadas}
+            empresasInvitadas={empresasInvitadas} 
             onEventoChange={(nextEvento) =>
               setEventos((current) =>
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
               )
             }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="mapa"
+          title="Mapa del evento"
+          subtitle="Editor de plano y estaciones con IA"
+          defaultOpen={false}
+        >
+          <MapEditorPanel
+            evento={activeEvento}
+            estaciones={estaciones}
+            onEventoChange={(nextEvento) =>
+              setEventos((current) =>
+                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+              )
+            }
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="trivia"
+          title="Trivia por estación"
+          subtitle="Configura preguntas para cada punto del evento"
+          defaultOpen={false}
+        >
+          <TriviaEditorPanel
+            evento={activeEvento}
+            estaciones={estaciones}
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="dashboard"
+          title="Dashboard de estaciones"
+          subtitle="Estadísticas de visitas y trivia por estación"
+          defaultOpen={false}
+        >
+          <EstacionesDashboard
+            evento={activeEvento}
+            estaciones={estaciones}
           />
         </AdminSection>
 

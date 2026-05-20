@@ -10,13 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@yudiel/react-qr-scanner": "^2.5.1",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "firebase": "^12.12.0",
+    "konva": "^10.3.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-konva": "^19.2.4",
     "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
