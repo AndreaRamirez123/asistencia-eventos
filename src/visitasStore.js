@@ -1,6 +1,8 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   query,
   serverTimestamp,
@@ -56,4 +58,10 @@ export async function getVisitasPorEstacion(eventoId, estacionId) {
 export async function yaVisito(eventoId, estacionId, visitanteId) {
   const visitas = await getVisitasPorVisitante(eventoId, visitanteId)
   return visitas.some((v) => v.estacionId === estacionId)
+}
+
+export async function resetVisitasDeVisitante(eventoId, visitanteId) {
+  if (!isFirebaseConfigured || !db) return
+  const visitas = await getVisitasPorVisitante(eventoId, visitanteId)
+  await Promise.all(visitas.map((v) => deleteDoc(doc(db, COLLECTION, v.id))))
 }

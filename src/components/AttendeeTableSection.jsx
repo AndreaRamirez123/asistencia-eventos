@@ -20,6 +20,9 @@ function AttendeeTableSection({
   loadAttendees,
 }) {
   const categoriasMap = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]))
+
+  const statusLabel = { approved: 'Aprobado', 'checked-in': 'Check-in', 'pre-registered': 'Pre-registro', pending: 'Pendiente' }
+  const statusClass = { approved: 'approved', 'checked-in': 'checked-in', 'pre-registered': 'pre-registered', pending: 'pending' }
   const pendingIds = attendees
     .filter((a) => a.status === 'pre-registered' || a.status === 'pending')
     .map((a) => a.id)
@@ -155,19 +158,19 @@ function AttendeeTableSection({
           </p>
         </div>
       ) : (
-        <div className="attendee-table" role="table" aria-label="Listado de asistentes">
+        <div className="attendee-table-wrap">
+          <div className="attendee-table" role="table" aria-label="Listado de asistentes">
           <div className="attendee-row attendee-head" role="row">
             <span>Nombre</span>
             <span>Documento</span>
             <span>Empresa</span>
             <span>Categoria</span>
-            <span>Acompañantes</span>
+            <span>Acomp.</span>
             <span>Origen</span>
             <span>Estado</span>
             <span>Creado</span>
             <span>Acciones</span>
           </div>
-
           {attendees.map((item) => {
             const isKiosk = item.source === 'kiosk-registration'
             const companions = Number(item.companionsCount) || 0
@@ -196,7 +199,11 @@ function AttendeeTableSection({
                     <span className="origin-badge admin">Admin</span>
                   )}
                 </span>
-                <span>{item.status || 'pendiente'}</span>
+                <span>
+                  <span className={`status-pill ${statusClass[item.status] || 'pending'}`}>
+                    {statusLabel[item.status] || item.status || 'Pendiente'}
+                  </span>
+                </span>
                 <span>{formatDate(item.createdAt)}</span>
                 <span className="table-actions">
                   {item.status === 'pre-registered' ? (
@@ -235,6 +242,7 @@ function AttendeeTableSection({
               </div>
             )
           })}
+          </div>
         </div>
       )}
     </section>

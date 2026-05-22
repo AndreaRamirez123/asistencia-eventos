@@ -103,9 +103,17 @@ function PublicRegistrationPage({
               <strong>{submission.attendee.documentId}</strong>
             </div>
           </div>
-          <p className="helper-text kiosk-tip">
-            Si el staff te lo solicita, muestra esta pantalla con tu nombre y documento.
-          </p>
+          <div className="kiosk-success-actions">
+            <a
+              href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
+              className="submit-button"
+            >
+              Ver mis estaciones →
+            </a>
+            <p className="helper-text kiosk-tip">
+              Si el staff te lo solicita, muestra esta pantalla con tu nombre y documento.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -480,6 +488,13 @@ function PublicRegistrationPage({
                     >
                       {isGeneratingPase ? 'Generando pase...' : '⬇ Descargar pase completo'}
                     </button>
+                    <a
+                      href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
+                      className="submit-button"
+                      style={{ marginTop: '8px', width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
+                    >
+                      Ver mis estaciones →
+                    </a>
                   </div>
                 </>
               ) : (

@@ -46,13 +46,11 @@ function KioskoQrPanel({ evento, onEventoChange }) {
       await updateEvento(evento.id, {
         modoRegistro: next,
         registroEnSitio: isOnsite,
-        registroEnSitioEmpresaId: isOnsite ? selectedEmpresaId : '',
       })
       onEventoChange?.({
         ...evento,
         modoRegistro: next,
         registroEnSitio: isOnsite,
-        registroEnSitioEmpresaId: isOnsite ? selectedEmpresaId : '',
       })
     } catch (err) {
       setModeError(err.message || 'No fue posible guardar el modo.')
@@ -79,7 +77,7 @@ function KioskoQrPanel({ evento, onEventoChange }) {
     win.document.write(`
       <html>
         <head>
-          <title>QR registro - ${selectedLabel}</title>
+          <title>QR registro - Evento</title>
           <style>
             body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; }
             h1 { margin: 0 0 8px; font-size: 28px; }
@@ -90,7 +88,7 @@ function KioskoQrPanel({ evento, onEventoChange }) {
         </head>
         <body>
           <h1>Registro al evento</h1>
-          <p>${selectedLabel}</p>
+          <p>Registro en sitio</p>
           <p>Escanea con la camara de tu celular para registrarte.</p>
           <img src="${qrDataUrl}" alt="QR registro" />
           <div class="url">${url}</div>

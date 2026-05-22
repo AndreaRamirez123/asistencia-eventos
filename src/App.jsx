@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { isFirebaseConfigured } from './firebase'
 import {
   bulkApproveAttendees,
@@ -13,12 +14,12 @@ import {
   updateAttendeeStatus,
 } from './attendeesStore'
 import { listEmpresas } from './empresasStore'
-import { listEventos } from './eventosStore'
+import { createEvento, listEventos } from './eventosStore'
 import { subscribeToRatings } from './ratingsStore'
 import { subscribeToEstaciones } from './stacionesStore'
 import AdminHero from './components/AdminHero'
-import AdminRegistrationPanel from './components/AdminRegistrationPanel'
 import AttendeeTableSection from './components/AttendeeTableSection'
+import EditAttendeeModal from './components/EditAttendeeModal'
 import DeleteConfirmModal from './components/DeleteConfirmModal'
 import AdminSection from './components/AdminSection'
 import CalificacionPage from './components/CalificacionPage'
@@ -27,6 +28,9 @@ import TriviaQuizPage from './components/TriviaQuizPage'
 import MapEditorPanel from './components/MapEditorPanel'
 import TriviaEditorPanel from './components/TriviaEditorPanel'
 import EstacionesDashboard from './components/EstacionesDashboard'
+import EstacionQRPanel from './components/EstacionQRPanel'
+import EstacionPublicaPage from './components/EstacionPublicaPage'
+import MiEventoPage from './components/MiEventoPage'
 import CalificacionPanel from './components/CalificacionPanel'
 import CategoriasPanel from './components/CategoriasPanel'
 import CerrarEventoPanel from './components/CerrarEventoPanel'
@@ -39,6 +43,7 @@ import PublicRegistrationPage from './components/PublicRegistrationPage'
 import QrViewerModal from './components/QrViewerModal'
 import ScannerPage from './components/ScannerPage'
 import { logout as firebaseLogout, subscribeToAuthState } from './auth'
+import { useTheme } from './useTheme'
 import './App.css'
 
 const initialForm = {
@@ -51,6 +56,7 @@ const initialForm = {
   attendeeType: 'general',
   notes: '',
   hasFaceConsent: false,
+  status: 'approved',
 }
 
 const initialPublicForm = {
@@ -93,6 +99,14 @@ function getCurrentView() {
 
   if (path === '/trivia') {
     return 'trivia'
+  }
+
+  if (path === '/estacion') {
+    return 'estacion'
+  }
+
+  if (path === '/mi-evento') {
+    return 'mi-evento'
   }
 
   if (path === '/admin/login' || path === '/login') {
@@ -250,6 +264,7 @@ function getPublicUrlOptions() {
 }
 
 function App() {
+  const [dark, toggleTheme] = useTheme()
   const [currentView, setCurrentView] = useState(getCurrentView)
   const [form, setForm] = useState(initialForm)
   const [publicForm, setPublicForm] = useState(initialPublicForm)
@@ -281,6 +296,9 @@ function App() {
   })
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
+  const [nuevoEventoNombre, setNuevoEventoNombre] = useState('')
+  const [isCreandoEvento, setIsCreandoEvento] = useState(false)
+  const [crearEventoError, setCrearEventoError] = useState('')
   const [filters, setFilters] = useState(initialFilters)
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
@@ -540,11 +558,12 @@ function App() {
       email: attendee.email || '',
       phone: attendee.phone || '',
       organization: attendee.organization || '',
+      empresaInvitadaId: attendee.empresaInvitadaId || '',
       attendeeType: attendee.attendeeType || 'general',
       notes: attendee.notes || '',
       hasFaceConsent: Boolean(attendee.hasFaceConsent),
+      status: attendee.status || 'approved',
     })
-    window.location.hash = 'registro-admin'
   }
 
   const handleCancelEdit = () => {
@@ -621,7 +640,7 @@ function App() {
     try {
       const attendee = buildAttendeePayload(form, {
         source: 'admin-panel',
-        status: 'approved',
+        status: editingAttendeeId ? (form.status || 'approved') : 'approved',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
         empresasInvitadas,
@@ -799,7 +818,7 @@ function App() {
 
     const empresasRepresentadas = new Set()
     for (const a of eventAttendees) {
-      const key = (a.organization || '').trim().toLowerCase()
+      const key = (a.empresaInvitadaId || a.organization || '').trim().toLowerCase()
       if (key) empresasRepresentadas.add(key)
     }
 
@@ -914,6 +933,24 @@ function App() {
     }
   }
 
+  const handleCrearEvento = async (e) => {
+    e.preventDefault()
+    const nombre = nuevoEventoNombre.trim() || `Evento ${new Date().toLocaleDateString('es-CO')}`
+    setIsCreandoEvento(true)
+    setCrearEventoError('')
+    try {
+      const nuevo = await createEvento({ nombre })
+      setActiveEventoIdState(nuevo.id)
+      localStorage.setItem('asistencia-evento:activeEventoId', nuevo.id)
+      setNuevoEventoNombre('')
+      setEventos((prev) => [nuevo, ...prev])
+    } catch (err) {
+      setCrearEventoError(err.message || 'No fue posible crear el evento.')
+    } finally {
+      setIsCreandoEvento(false)
+    }
+  }
+
   const normalizedQuery = filters.query.trim().toLowerCase()
   const filteredAttendees = eventAttendees.filter((item) => {
     const matchesQuery =
@@ -941,58 +978,85 @@ function App() {
     return matchesQuery && matchesType && matchesStatus && matchesEmpresa && matchesOrigen
   })
 
+  const themeTogglePortal = createPortal(
+    <button
+      type="button"
+      className="theme-toggle"
+      onClick={toggleTheme}
+      title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+      aria-label={dark ? 'Activar modo claro' : 'Activar modo oscuro'}
+    >
+      {dark ? '☀️' : '🌙'}
+    </button>,
+    document.body,
+  )
+
   if (currentView === 'public') {
     return (
-      <PublicRegistrationPage
-        errorMessage={publicErrorMessage}
-        form={publicForm}
-        handleChange={handlePublicChange}
-        handleSurveyChange={handlePublicSurveyChange}
-        handleSubmit={handlePublicSubmit}
-        handleDocumentLookup={handlePublicDocumentLookup}
-        lookupStatus={publicLookupStatus}
-        isSubmitting={isPublicSubmitting}
-        submission={publicSubmission}
-        onCedulaFill={handlePublicCedulaFill}
-        empresasInvitadas={empresasInvitadas}
-        categorias={categoriasEvento}
-        kioskMode={publicUrlOptions.kiosk}
-        eventoModoRegistro={
-          activeEvento?.modoRegistro ||
-          (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-        }
-        eventoLoaded={eventosLoaded}
-        eventoNombre={activeEvento?.nombre || ''}
-        empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || null}
-        onResetSubmission={() => {
-          setPublicSubmission(null)
-          setPublicForm(initialPublicForm)
-          setPublicLookupStatus('idle')
-        }}
-      />
+      <>
+        {themeTogglePortal}
+        <PublicRegistrationPage
+          errorMessage={publicErrorMessage}
+          form={publicForm}
+          handleChange={handlePublicChange}
+          handleSurveyChange={handlePublicSurveyChange}
+          handleSubmit={handlePublicSubmit}
+          handleDocumentLookup={handlePublicDocumentLookup}
+          lookupStatus={publicLookupStatus}
+          isSubmitting={isPublicSubmitting}
+          submission={publicSubmission}
+          onCedulaFill={handlePublicCedulaFill}
+          empresasInvitadas={empresasInvitadas}
+          categorias={categoriasEvento}
+          kioskMode={publicUrlOptions.kiosk}
+          eventoModoRegistro={
+            activeEvento?.modoRegistro ||
+            (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+          }
+          eventoLoaded={eventosLoaded}
+          eventoNombre={activeEvento?.nombre || ''}
+          empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || null}
+          onResetSubmission={() => {
+            setPublicSubmission(null)
+            setPublicForm(initialPublicForm)
+            setPublicLookupStatus('idle')
+          }}
+        />
+      </>
     )
   }
 
   if (currentView === 'mapa') {
-    return <MapaPublicoPage />
+    return <>{themeTogglePortal}<MapaPublicoPage /></>
   }
 
   if (currentView === 'trivia') {
-    return <TriviaQuizPage />
+    return <>{themeTogglePortal}<TriviaQuizPage /></>
+  }
+
+  if (currentView === 'estacion') {
+    return <>{themeTogglePortal}<EstacionPublicaPage /></>
+  }
+
+  if (currentView === 'mi-evento') {
+    return <>{themeTogglePortal}<MiEventoPage /></>
   }
 
   if (currentView === 'rating') {
     return (
-      <CalificacionPage
-        evento={activeEvento}
-        empresasInvitadas={empresasInvitadas}
-        eventoLoaded={eventosLoaded}
-      />
+      <>
+        {themeTogglePortal}
+        <CalificacionPage
+          evento={activeEvento}
+          empresasInvitadas={empresasInvitadas}
+          eventoLoaded={eventosLoaded}
+        />
+      </>
     )
   }
 
   if (currentView === 'login') {
-    return <LoginPage />
+    return <>{themeTogglePortal}<LoginPage /></>
   }
 
   if (isAuthChecking) {
@@ -1013,14 +1077,17 @@ function App() {
 
   if (currentView === 'scanner') {
     if (!SCANNER_ROLES.includes(currentUser.role)) {
-      return <LoginPage />
+      return <>{themeTogglePortal}<LoginPage /></>
     }
     return (
-      <ScannerPage
-        currentUser={currentUser}
-        onLogout={handleLogout}
-        evento={activeEvento}
-      />
+      <>
+        {themeTogglePortal}
+        <ScannerPage
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          evento={activeEvento}
+        />
+      </>
     )
   }
 
@@ -1096,29 +1163,37 @@ function App() {
         ) : null}
 
         <AdminSection
-          id="registro-manual"
-          title="Registro manual"
-          subtitle="Crear asistente desde el panel"
-          defaultOpen={false}
+          id="crear-evento"
+          title="Crear nuevo evento"
+          subtitle="Crea un evento independiente del activo"
+          defaultOpen={eventos.filter((e) => !e.archivado).length === 0}
         >
-          <AdminRegistrationPanel
-            editingAttendeeId={editingAttendeeId}
-            errorMessage={errorMessage}
-            form={form}
-            handleChange={handleChange}
-            handleSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            modeLabel={modeLabel}
-            onCancelEdit={handleCancelEdit}
-            submission={submission}
-            onCedulaFill={handleAdminCedulaFill}
-            empresasInvitadas={empresasInvitadas}
-            categorias={categoriasEvento}
-            eventoModoRegistro={
-              activeEvento?.modoRegistro ||
-              (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-            }
-          />
+          <section className="panel">
+            <div className="panel-heading">
+              <p className="eyebrow">Nuevo evento</p>
+              <h2>Crear evento desde cero</h2>
+              <p className="section-copy">
+                Crea un evento nuevo. El evento activo no se cierra; puedes cambiar entre eventos
+                desde el selector de arriba.
+              </p>
+            </div>
+            <form className="crear-evento-form" onSubmit={handleCrearEvento}>
+              <label className="field">
+                <span>Nombre del evento</span>
+                <input
+                  type="text"
+                  value={nuevoEventoNombre}
+                  onChange={(e) => setNuevoEventoNombre(e.target.value)}
+                  placeholder={`Evento ${new Date().toLocaleDateString('es-CO')}`}
+                  disabled={isCreandoEvento}
+                />
+              </label>
+              {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
+              <button type="submit" className="submit-button" disabled={isCreandoEvento}>
+                {isCreandoEvento ? 'Creando...' : 'Crear evento'}
+              </button>
+            </form>
+          </section>
         </AdminSection>
 
         <AdminSection
@@ -1232,6 +1307,18 @@ function App() {
         </AdminSection>
 
         <AdminSection
+          id="estacion-qr"
+          title="QR por estación"
+          subtitle="Imprime el QR de cada punto para colocarlo en el evento"
+          defaultOpen={false}
+        >
+          <EstacionQRPanel
+            evento={activeEvento}
+            estaciones={estaciones}
+          />
+        </AdminSection>
+
+        <AdminSection
           id="dashboard"
           title="Dashboard de estaciones"
           subtitle="Estadísticas de visitas y trivia por estación"
@@ -1270,42 +1357,6 @@ function App() {
         </AdminSection>
 
         <AdminSection
-          id="cerrar-evento"
-          title="Cierre del evento"
-          subtitle="Archivar evento actual y empezar uno nuevo"
-          defaultOpen={false}
-        >
-          <CerrarEventoPanel
-            evento={activeEvento}
-            onCerrado={(nuevoEvento) => {
-              setEventos((current) => {
-                // marcar el actual como archivado en estado local
-                const updated = current.map((e) =>
-                  e.id === activeEventoId
-                    ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
-                    : e,
-                )
-                return [nuevoEvento, ...updated]
-              })
-              handleSelectEvento(nuevoEvento.id)
-            }}
-            onEliminado={(eventoIdEliminado) => {
-              // Quitar del estado local y limpiar asistentes asociados
-              setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
-              setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
-              // Cambiar a otro evento (el primer no archivado, o el primero disponible)
-              setEventos((current) => {
-                const remaining = current
-                const next =
-                  remaining.find((e) => !e.archivado) || remaining[0]
-                handleSelectEvento(next?.id || '')
-                return current
-              })
-            }}
-          />
-        </AdminSection>
-
-        <AdminSection
           id="listado"
           title="Listado de asistentes"
           subtitle="Control y aprobación de asistentes"
@@ -1334,6 +1385,39 @@ function App() {
             loadAttendees={loadAttendees}
           />
         </AdminSection>
+
+        <AdminSection
+          id="cerrar-evento"
+          title="Cierre del evento"
+          subtitle="Archivar el evento actual"
+          defaultOpen={false}
+        >
+          <CerrarEventoPanel
+            evento={activeEvento}
+            onCerrado={() => {
+              setEventos((current) =>
+                current.map((e) =>
+                  e.id === activeEventoId
+                    ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
+                    : e,
+                ),
+              )
+              const next = eventos.find((e) => e.id !== activeEventoId && !e.archivado)
+              handleSelectEvento(next?.id || '')
+            }}
+            onEliminado={(eventoIdEliminado) => {
+              setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
+              setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
+              setEventos((current) => {
+                const remaining = current
+                const next =
+                  remaining.find((e) => !e.archivado) || remaining[0]
+                handleSelectEvento(next?.id || '')
+                return current
+              })
+            }}
+          />
+        </AdminSection>
       </main>
 
       <DeleteConfirmModal
@@ -1342,6 +1426,22 @@ function App() {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
+
+      {themeTogglePortal}
+
+      {editingAttendeeId ? (
+        <EditAttendeeModal
+          attendee={eventAttendees.find((a) => a.id === editingAttendeeId) || null}
+          form={form}
+          handleChange={handleChange}
+          handleSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          errorMessage={errorMessage}
+          onCancel={handleCancelEdit}
+          empresasInvitadas={empresasInvitadas}
+          categorias={categoriasEvento}
+        />
+      ) : null}
 
       {viewingQrAttendee ? (
         <QrViewerModal

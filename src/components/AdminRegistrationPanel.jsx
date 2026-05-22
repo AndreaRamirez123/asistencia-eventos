@@ -143,6 +143,18 @@ function AdminRegistrationPanel({
             </select>
           </label>
 
+          {editingAttendeeId ? (
+            <label className="field">
+              <span>Estado</span>
+              <select name="status" value={form.status || 'approved'} onChange={handleChange}>
+                <option value="approved">Aprobado</option>
+                <option value="pre-registered">Pre-registro</option>
+                <option value="checked-in">Check-in</option>
+                <option value="pending">Pendiente</option>
+              </select>
+            </label>
+          ) : null}
+
           <label className="field field-wide">
             <span>Notas internas</span>
             <input

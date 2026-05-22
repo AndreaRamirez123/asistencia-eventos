@@ -100,10 +100,10 @@ function MapEditorPanel({ evento, onEventoChange, estaciones: estacionesIniciale
       nombre: `Estación ${estaciones.length + 1}`,
       tipo: 'stand',
       descripcion: '',
-      x: stageSize.width * 0.1,
-      y: stageSize.height * 0.1,
-      width: stageSize.width * 0.15,
-      height: stageSize.height * 0.12,
+      x: 10,
+      y: 10,
+      width: 15,
+      height: 12,
       color: COLORES[estaciones.length % COLORES.length],
       forma: 'rect',
     }
@@ -127,7 +127,13 @@ function MapEditorPanel({ evento, onEventoChange, estaciones: estacionesIniciale
   const handleDragEnd = (localId, e) => {
     setEstaciones((prev) =>
       prev.map((est) =>
-        est.localId === localId ? { ...est, x: e.target.x(), y: e.target.y() } : est,
+        est.localId === localId
+          ? {
+              ...est,
+              x: parseFloat(((e.target.x() / stageSize.width) * 100).toFixed(2)),
+              y: parseFloat(((e.target.y() / stageSize.height) * 100).toFixed(2)),
+            }
+          : est,
       ),
     )
   }
@@ -143,10 +149,10 @@ function MapEditorPanel({ evento, onEventoChange, estaciones: estacionesIniciale
         est.localId === localId
           ? {
               ...est,
-              x: node.x(),
-              y: node.y(),
-              width: Math.max(40, node.width() * scaleX),
-              height: Math.max(30, node.height() * scaleY),
+              x: parseFloat(((node.x() / stageSize.width) * 100).toFixed(2)),
+              y: parseFloat(((node.y() / stageSize.height) * 100).toFixed(2)),
+              width: parseFloat((((node.width() * scaleX) / stageSize.width) * 100).toFixed(2)),
+              height: parseFloat((((node.height() * scaleY) / stageSize.height) * 100).toFixed(2)),
             }
           : est,
       ),
@@ -203,8 +209,22 @@ Responde SOLO con el array JSON, sin texto adicional.`,
         ],
       }
 
+      // Detectar modelo disponible dinámicamente
+      const modelsRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_KEY}`,
+      )
+      if (!modelsRes.ok) throw new Error(`No se pudo listar modelos: ${modelsRes.status}`)
+      const modelsData = await modelsRes.json()
+      const modelo = (modelsData.models || []).find(
+        (m) =>
+          (m.supportedGenerationMethods || []).includes('generateContent') &&
+          (m.name.includes('flash') || m.name.includes('pro')),
+      )
+      if (!modelo) throw new Error('No hay modelos Gemini disponibles para esta key.')
+      const modelId = modelo.name.replace('models/', '')
+
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -212,7 +232,11 @@ Responde SOLO con el array JSON, sin texto adicional.`,
         },
       )
 
-      if (!res.ok) throw new Error(`Error Gemini: ${res.status}`)
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}))
+        const msg = errBody?.error?.message || res.statusText || res.status
+        throw new Error(`Error Gemini ${res.status}: ${msg}`)
+      }
       const data = await res.json()
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 
@@ -227,15 +251,15 @@ Responde SOLO con el array JSON, sin texto adicional.`,
         nombre: z.nombre || 'Zona',
         tipo: z.tipo || 'stand',
         descripcion: z.descripcion || '',
-        x: (z.x_pct / 100) * stageSize.width,
-        y: (z.y_pct / 100) * stageSize.height,
-        width: (z.w_pct / 100) * stageSize.width,
-        height: (z.h_pct / 100) * stageSize.height,
+        x: z.x_pct,
+        y: z.y_pct,
+        width: z.w_pct,
+        height: z.h_pct,
         color: COLORES[Math.floor(Math.random() * COLORES.length)],
         forma: 'rect',
       }))
 
-      setEstaciones((prev) => [...prev, ...nuevas])
+      setEstaciones(nuevas)
     } catch (err) {
       setIaError(err.message || 'Error al procesar con IA.')
     } finally {
@@ -255,14 +279,8 @@ Responde SOLO con el array JSON, sin texto adicional.`,
         onEventoChange?.({ ...evento, planoBase64 })
       }
 
-      // Convertir coordenadas a porcentajes para que sean responsivas
-      const estacionesParaGuardar = estaciones.map(({ localId, ...e }) => ({
-        ...e,
-        x: parseFloat(((e.x / stageSize.width) * 100).toFixed(2)),
-        y: parseFloat(((e.y / stageSize.height) * 100).toFixed(2)),
-        width: parseFloat(((e.width / stageSize.width) * 100).toFixed(2)),
-        height: parseFloat(((e.height / stageSize.height) * 100).toFixed(2)),
-      }))
+      // Estado ya almacena porcentajes — solo quitar localId antes de guardar
+      const estacionesParaGuardar = estaciones.map(({ localId, ...e }) => ({ ...e }))
 
       await saveEstacionesBulk(evento.id, estacionesParaGuardar)
       setSaveMsg('Mapa guardado correctamente.')
@@ -274,20 +292,14 @@ Responde SOLO con el array JSON, sin texto adicional.`,
     }
   }
 
-  // Convertir estaciones guardadas (% → px) para render
-  const estacionesEnPx = estaciones.map((e) => {
-    if (e.x <= 100 && e.y <= 100 && !e._converted) {
-      return {
-        ...e,
-        x: (e.x / 100) * stageSize.width,
-        y: (e.y / 100) * stageSize.height,
-        width: (e.width / 100) * stageSize.width,
-        height: (e.height / 100) * stageSize.height,
-        _converted: true,
-      }
-    }
-    return e
-  })
+  // Convertir estaciones (% → px) para render en Konva
+  const estacionesEnPx = estaciones.map((e) => ({
+    ...e,
+    x: (e.x / 100) * stageSize.width,
+    y: (e.y / 100) * stageSize.height,
+    width: (e.width / 100) * stageSize.width,
+    height: (e.height / 100) * stageSize.height,
+  }))
 
   return (
     <section className="panel">

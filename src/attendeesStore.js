@@ -453,3 +453,20 @@ export async function performCheckin({
     },
   }
 }
+
+export async function getAttendeeByDocument(documentId, eventoId) {
+  if (!isFirebaseConfigured || !db) return null
+  try {
+    const normalized = normalizeDocumentId(documentId)
+    const constraints = [where('documentId', '==', normalized)]
+    if (eventoId) constraints.push(where('eventoId', '==', eventoId))
+    const q = query(collection(db, COLLECTION_NAME), ...constraints)
+    const snap = await getDocs(q)
+    if (snap.empty) return null
+    const d = snap.docs[0]
+    return { id: d.id, ...d.data() }
+  } catch (error) {
+    console.error('No fue posible cargar asistente por documento.', error)
+    return null
+  }
+}

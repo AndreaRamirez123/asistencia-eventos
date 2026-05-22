@@ -106,3 +106,33 @@ p {
     min-height: calc(100vh - 12px);
   }
 }
+
+/* ══════════════════════════════════════════
+   MODO OSCURO
+   Se activa añadiendo class="dark" a <html>
+══════════════════════════════════════════ */
+html.dark {
+  --page: #0f1923;
+  --page-strong: #0b1420;
+  --surface: rgba(19, 32, 52, 0.92);
+  --panel-soft: rgba(16, 26, 42, 0.97);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --heading: #dce6f5;
+  --muted: #7e93ae;
+  --muted-strong: #a0b4cc;
+  --accent: #ffd166;
+  --accent-strong: #ff9f43;
+  --shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at top left, rgba(255, 209, 102, 0.07), transparent 28%),
+    radial-gradient(circle at top right, rgba(38, 132, 255, 0.05), transparent 24%),
+    linear-gradient(180deg, #0f1923, #0d1720 45%, #0a1319 100%);
+}
+
+html.dark body::before {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+}

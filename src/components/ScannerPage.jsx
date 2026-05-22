@@ -259,6 +259,9 @@ function ScannerPage({ currentUser, onLogout, evento }) {
     }
   }, [kioskoEnabled, kioskoUrl])
 
+  const modoRegistro = evento?.modoRegistro || (evento?.registroEnSitio ? 'onsite' : 'pre')
+  const isOnsite = modoRegistro === 'onsite' || modoRegistro === 'both'
+
   if (kioskoEnabled && !showStaffMode) {
     return (
       <div className="scanner-kiosko">
@@ -267,8 +270,9 @@ function ScannerPage({ currentUser, onLogout, evento }) {
             <p className="eyebrow">Registro en sitio</p>
             <h1>Escanea este QR para registrarte</h1>
             <p className="hero-text">
-              Apunta la camara de tu celular al codigo. Llena tus datos y recibe tu QR de
-              ingreso.
+              {isOnsite
+                ? 'Apunta la camara de tu celular al codigo, llena tus datos y queda registrado.'
+                : 'Apunta la camara de tu celular al codigo. Llena tus datos y recibe tu QR de ingreso.'}
             </p>
           </div>
           <div className="scanner-kiosko-actions">
