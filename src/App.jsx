@@ -39,6 +39,7 @@ import HorarioEventoPanel, { getEstadoEvento } from './components/HorarioEventoP
 import EmpresasInvitadasPanel from './components/EmpresasInvitadasPanel'
 import KioskoQrPanel from './components/KioskoQrPanel'
 import LoginPage from './components/LoginPage'
+import SuperAdminPage from './components/SuperAdminPage'
 import PublicRegistrationPage from './components/PublicRegistrationPage'
 import QrViewerModal from './components/QrViewerModal'
 import ScannerPage from './components/ScannerPage'
@@ -115,6 +116,10 @@ function getCurrentView() {
 
   if (path === '/scanner') {
     return 'scanner'
+  }
+
+  if (path === '/superadmin') {
+    return 'superadmin'
   }
 
   return 'admin'
@@ -296,6 +301,7 @@ function App() {
   })
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
+  const [superadminClienteActivo, setSuperadminClienteActivo] = useState(null)
   const [nuevoEventoNombre, setNuevoEventoNombre] = useState('')
   const [isCreandoEvento, setIsCreandoEvento] = useState(false)
   const [crearEventoError, setCrearEventoError] = useState('')
@@ -1072,7 +1078,20 @@ function App() {
     return null
   }
 
-  const ADMIN_ROLES = ['admin', 'superadmin', 'admin_empresa']
+  if (currentUser.role === 'superadmin' && !superadminClienteActivo) {
+    return (
+      <>
+        {themeTogglePortal}
+        <SuperAdminPage
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
+        />
+      </>
+    )
+  }
+
+  const ADMIN_ROLES = ['admin', 'admin_empresa', 'superadmin']
   const SCANNER_ROLES = [...ADMIN_ROLES, 'staff']
 
   if (currentView === 'scanner') {
@@ -1098,6 +1117,20 @@ function App() {
 
   return (
     <div className="app-shell">
+      {superadminClienteActivo ? (
+        <div className="superadmin-impersonate-bar">
+          <span>
+            Viendo panel de: <strong>{superadminClienteActivo.nombre}</strong>
+          </span>
+          <button
+            type="button"
+            className="ghost-action"
+            onClick={() => setSuperadminClienteActivo(null)}
+          >
+            ← Volver al panel superadmin
+          </button>
+        </div>
+      ) : null}
       <AdminHero
         attendeesCount={attendees.length}
         isFirebaseConfigured={isFirebaseConfigured}
