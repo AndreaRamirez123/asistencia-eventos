@@ -30,7 +30,7 @@ let storage = null
 if (isFirebaseConfigured) {
   app = initializeApp(firebaseConfig)
   auth = getAuth(app)
-  db = getFirestore(app)
+  db = getFirestore(app, 'eventos-divergentes')
   storage = getStorage(app)
 } else {
   console.warn(

@@ -15,6 +15,8 @@ import {
 } from './attendeesStore'
 import { listEmpresas } from './empresasStore'
 import { createEvento, listEventos } from './eventosStore'
+import { getClienteById, getClienteBySlug } from './clientesStore'
+import { getEventoById } from './eventosStore'
 import { subscribeToRatings } from './ratingsStore'
 import { subscribeToEstaciones } from './stacionesStore'
 import AdminHero from './components/AdminHero'
@@ -28,6 +30,7 @@ import TriviaQuizPage from './components/TriviaQuizPage'
 import MapEditorPanel from './components/MapEditorPanel'
 import TriviaEditorPanel from './components/TriviaEditorPanel'
 import EstacionesDashboard from './components/EstacionesDashboard'
+import CalificacionEstacionesPanel from './components/CalificacionEstacionesPanel'
 import EstacionQRPanel from './components/EstacionQRPanel'
 import EstacionPublicaPage from './components/EstacionPublicaPage'
 import MiEventoPage from './components/MiEventoPage'
@@ -83,44 +86,40 @@ const initialFilters = {
   origen: 'all',
 }
 
+const EMPRESA_VIEW_MAP = {
+  admin: 'admin',
+  registro: 'public',
+  scanner: 'scanner',
+  calificar: 'rating',
+  'mi-evento': 'mi-evento',
+  mapa: 'mapa',
+  trivia: 'trivia',
+  estacion: 'estacion',
+}
+
+function getRouteSlug() {
+  const match = window.location.pathname.match(/^\/e\/([^/]+)\//i)
+  return match ? match[1].toLowerCase() : null
+}
+
 function getCurrentView() {
   const path = window.location.pathname.toLowerCase()
 
-  if (path === '/registro') {
-    return 'public'
+  // Rutas por empresa: /e/:slug/:view
+  const empresaMatch = path.match(/^\/e\/[^/]+\/(.+)$/)
+  if (empresaMatch) {
+    return EMPRESA_VIEW_MAP[empresaMatch[1]] || 'admin'
   }
 
-  if (path === '/calificar') {
-    return 'rating'
-  }
-
-  if (path === '/mapa') {
-    return 'mapa'
-  }
-
-  if (path === '/trivia') {
-    return 'trivia'
-  }
-
-  if (path === '/estacion') {
-    return 'estacion'
-  }
-
-  if (path === '/mi-evento') {
-    return 'mi-evento'
-  }
-
-  if (path === '/admin/login' || path === '/login') {
-    return 'login'
-  }
-
-  if (path === '/scanner') {
-    return 'scanner'
-  }
-
-  if (path === '/superadmin') {
-    return 'superadmin'
-  }
+  if (path === '/registro') return 'public'
+  if (path === '/calificar') return 'rating'
+  if (path === '/mapa') return 'mapa'
+  if (path === '/trivia') return 'trivia'
+  if (path === '/estacion') return 'estacion'
+  if (path === '/mi-evento') return 'mi-evento'
+  if (path === '/admin/login' || path === '/login') return 'login'
+  if (path === '/scanner') return 'scanner'
+  if (path === '/superadmin') return 'superadmin'
 
   return 'admin'
 }
@@ -159,6 +158,7 @@ function buildAttendeePayload(form, overrides = {}) {
     source: overrides.source || 'admin-panel',
     empresaId: overrides.empresaId || '',
     eventoId: overrides.eventoId || '',
+    clienteId: overrides.clienteId || '',
     documentType: form.documentType || 'CC',
     companionsCount: form.hasCompanions ? Number(form.companionsCount) || 0 : 0,
     surveyAnswers: form.surveyAnswers || {},
@@ -302,6 +302,8 @@ function App() {
   const [isMigrating, setIsMigrating] = useState(false)
   const [isBulkApproving, setIsBulkApproving] = useState(false)
   const [superadminClienteActivo, setSuperadminClienteActivo] = useState(null)
+  const [activeCliente, setActiveCliente] = useState(null)
+  const [routeSlug] = useState(getRouteSlug)
   const [nuevoEventoNombre, setNuevoEventoNombre] = useState('')
   const [isCreandoEvento, setIsCreandoEvento] = useState(false)
   const [crearEventoError, setCrearEventoError] = useState('')
@@ -309,6 +311,15 @@ function App() {
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+
+  const activeClienteId = superadminClienteActivo?.id || activeCliente?.id || currentUser?.clienteId || ''
+  const brandingCliente = superadminClienteActivo || activeCliente
+  const empresaConfigFromCliente = brandingCliente
+    ? {
+        ...brandingCliente,
+        colorPrimario: brandingCliente.colorPrimario || brandingCliente.colorAcento || '',
+      }
+    : null
 
   const handleLogout = async () => {
     try {
@@ -345,13 +356,81 @@ function App() {
 
   useEffect(() => {
     const syncView = () => setCurrentView(getCurrentView())
-
     window.addEventListener('popstate', syncView)
-
-    return () => {
-      window.removeEventListener('popstate', syncView)
-    }
+    return () => window.removeEventListener('popstate', syncView)
   }, [])
+
+  // Cargar empresa desde el slug en la URL (rutas /e/:slug/*)
+  useEffect(() => {
+    if (!routeSlug) return
+    getClienteBySlug(routeSlug).then((cliente) => {
+      if (cliente) setActiveCliente(cliente)
+    })
+  }, [routeSlug])
+
+  // Cargar empresa desde ?cliente= o ?evento= en la URL (páginas públicas sin slug)
+  useEffect(() => {
+    if (routeSlug) return // ya tiene slug, no hace falta
+    const params = new URLSearchParams(window.location.search)
+    const clienteId = params.get('cliente')
+    const eventoId = params.get('evento')
+    if (clienteId) {
+      getClienteById(clienteId).then((cliente) => {
+        if (cliente) setActiveCliente(cliente)
+      })
+      return
+    }
+    if (!eventoId) return
+    getEventoById(eventoId).then((ev) => {
+      if (!ev?.clienteId) return
+      getClienteById(ev.clienteId).then((cliente) => {
+        if (cliente) setActiveCliente(cliente)
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Cargar empresa del usuario logueado (para branding aunque no use slug en URL)
+  useEffect(() => {
+    if (!currentUser?.clienteId) return
+    if (activeCliente?.id === currentUser.clienteId) return
+    getClienteById(currentUser.clienteId).then((cliente) => {
+      if (cliente) setActiveCliente(cliente)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.clienteId])
+
+  // Aplicar branding de la empresa activa como CSS variables
+  useEffect(() => {
+    const cliente = superadminClienteActivo || activeCliente
+    const primario = cliente?.colorPrimario || cliente?.colorAcento
+    const secundario = cliente?.colorSecundario
+    if (primario) {
+      document.documentElement.style.setProperty('--accent', primario)
+      // accent-strong = color secundario si existe, si no el mismo primario (botón sólido)
+      document.documentElement.style.setProperty('--accent-strong', secundario || primario)
+    } else {
+      document.documentElement.style.removeProperty('--accent')
+      document.documentElement.style.removeProperty('--accent-strong')
+    }
+    if (secundario) {
+      document.documentElement.style.setProperty('--accent2', secundario)
+    } else {
+      document.documentElement.style.removeProperty('--accent2')
+    }
+  }, [superadminClienteActivo, activeCliente])
+
+  // Redirigir admin_empresa a su URL /e/:slug/admin tras login
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'superadmin') return
+    if (!activeCliente?.slug) return
+    const path = window.location.pathname.toLowerCase()
+    const expectedPrefix = `/e/${activeCliente.slug}/`
+    if (!path.startsWith(expectedPrefix)) {
+      history.replaceState(null, '', `/e/${activeCliente.slug}/admin`)
+      setCurrentView('admin')
+    }
+  }, [currentUser, activeCliente])
 
   useEffect(() => {
     const unsubscribe = subscribeToAuthState((user) => {
@@ -362,12 +441,12 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isFirebaseConfigured) return
+    if (!isFirebaseConfigured || !currentUser) return
 
     listEmpresas()
       .then(setEmpresas)
       .catch((error) => console.error(error))
-    listEventos()
+    listEventos(activeClienteId)
       .then((items) => {
         setEventos(items)
         setEventosLoaded(true)
@@ -376,7 +455,8 @@ function App() {
         console.error(error)
         setEventosLoaded(true)
       })
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, superadminClienteActivo])
 
   useEffect(() => {
     const target = publicUrlOptions.empresaParam
@@ -416,10 +496,12 @@ function App() {
         setErrorMessage(error.message || 'No fue posible consultar asistentes.')
         setIsLoadingAttendees(false)
       },
+      activeClienteId,
     )
 
     return unsubscribe
-  }, [currentView, currentUser])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, currentUser, superadminClienteActivo])
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -649,6 +731,7 @@ function App() {
         status: editingAttendeeId ? (form.status || 'approved') : 'approved',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
+        clienteId: activeClienteId,
         empresasInvitadas,
       })
 
@@ -722,6 +805,7 @@ function App() {
         status: isOnSite ? 'approved' : 'pre-registered',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
+        clienteId: activeClienteId,
         empresasInvitadas,
       })
 
@@ -774,19 +858,6 @@ function App() {
 
   const activeEventoId = activeEvento?.id || ''
 
-  // Pre-selecciona el filtro de origen del listado segun el modo del evento activo
-  useEffect(() => {
-    const modo =
-      activeEvento?.modoRegistro ||
-      (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-    if (modo === 'pre' || modo === 'onsite') {
-      setFilters((current) =>
-        current.origen === 'all' || current.origen === modo
-          ? { ...current, origen: modo }
-          : current,
-      )
-    }
-  }, [activeEvento?.id, activeEvento?.modoRegistro, activeEvento?.registroEnSitio])
 
   useEffect(() => {
     if (!isFirebaseConfigured || !activeEvento?.id) return
@@ -945,7 +1016,7 @@ function App() {
     setIsCreandoEvento(true)
     setCrearEventoError('')
     try {
-      const nuevo = await createEvento({ nombre })
+      const nuevo = await createEvento({ nombre }, activeClienteId)
       setActiveEventoIdState(nuevo.id)
       localStorage.setItem('asistencia-evento:activeEventoId', nuevo.id)
       setNuevoEventoNombre('')
@@ -1021,7 +1092,7 @@ function App() {
           }
           eventoLoaded={eventosLoaded}
           eventoNombre={activeEvento?.nombre || ''}
-          empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || null}
+          empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
           onResetSubmission={() => {
             setPublicSubmission(null)
             setPublicForm(initialPublicForm)
@@ -1078,22 +1149,10 @@ function App() {
     return null
   }
 
-  if (currentUser.role === 'superadmin' && !superadminClienteActivo) {
-    return (
-      <>
-        {themeTogglePortal}
-        <SuperAdminPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
-        />
-      </>
-    )
-  }
-
   const ADMIN_ROLES = ['admin', 'admin_empresa', 'superadmin']
   const SCANNER_ROLES = [...ADMIN_ROLES, 'staff']
 
+  // Scanner es accesible para todos los roles autenticados, incluyendo superadmin
   if (currentView === 'scanner') {
     if (!SCANNER_ROLES.includes(currentUser.role)) {
       return <>{themeTogglePortal}<LoginPage /></>
@@ -1105,6 +1164,32 @@ function App() {
           currentUser={currentUser}
           onLogout={handleLogout}
           evento={activeEvento}
+          empresaConfig={empresaConfigFromCliente}
+          onBack={currentUser.role !== 'staff' ? () => {
+            // Si el superadmin llegó al scanner directamente (URL con slug, sin superadminClienteActivo),
+            // restaurar el contexto para que el panel admin muestre la empresa correcta.
+            if (currentUser.role === 'superadmin' && !superadminClienteActivo && activeCliente) {
+              setSuperadminClienteActivo(activeCliente)
+            }
+            const adminPath = brandingCliente?.slug
+              ? `/e/${brandingCliente.slug}/admin`
+              : '/admin'
+            history.pushState(null, '', adminPath)
+            setCurrentView('admin')
+          } : null}
+        />
+      </>
+    )
+  }
+
+  if (currentUser.role === 'superadmin' && !superadminClienteActivo) {
+    return (
+      <>
+        {themeTogglePortal}
+        <SuperAdminPage
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
         />
       </>
     )
@@ -1137,6 +1222,14 @@ function App() {
         metrics={liveMetrics}
         currentUser={currentUser}
         onLogout={handleLogout}
+        empresaConfig={empresaConfigFromCliente}
+        onOpenScanner={() => {
+          const scannerPath = brandingCliente?.slug
+            ? `/e/${brandingCliente.slug}/scanner`
+            : '/scanner'
+          history.pushState(null, '', scannerPath)
+          setCurrentView('scanner')
+        }}
       />
 
       <main className="content-grid">
@@ -1268,6 +1361,7 @@ function App() {
           <KioskoQrPanel
             empresasInvitadas={empresasInvitadas}
             evento={activeEvento}
+            empresaSlug={brandingCliente?.slug || ''}
             onEventoChange={(nextEvento) =>
               setEventos((current) =>
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
@@ -1301,7 +1395,8 @@ function App() {
           <CalificacionPanel
             evento={activeEvento}
             ratings={eventRatings}
-            empresasInvitadas={empresasInvitadas} 
+            empresaSlug={brandingCliente?.slug || ''}
+            empresasInvitadas={empresasInvitadas}
             onEventoChange={(nextEvento) =>
               setEventos((current) =>
                 current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
@@ -1358,6 +1453,18 @@ function App() {
           defaultOpen={false}
         >
           <EstacionesDashboard
+            evento={activeEvento}
+            estaciones={estaciones}
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="calificaciones-estaciones"
+          title="Calificaciones de estaciones"
+          subtitle="Opiniones y estrellas por punto del evento"
+          defaultOpen={false}
+        >
+          <CalificacionEstacionesPanel
             evento={activeEvento}
             estaciones={estaciones}
           />

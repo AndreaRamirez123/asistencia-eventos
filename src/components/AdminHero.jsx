@@ -4,15 +4,33 @@ function AdminHero({
   metrics,
   currentUser,
   onLogout,
+  empresaConfig = null,
+  onOpenScanner,
 }) {
+  const handleScanner = (e) => {
+    e.preventDefault()
+    if (onOpenScanner) {
+      onOpenScanner()
+    } else {
+      window.location.href = '/scanner'
+    }
+  }
+
   return (
     <header className="hero-panel">
       <div className="hero-copy">
+        {empresaConfig?.logoUrl ? (
+          <img
+            src={empresaConfig.logoUrl}
+            alt={empresaConfig.nombre || 'Logo'}
+            className="empresa-logo-hero"
+          />
+        ) : null}
         <p className="eyebrow">Panel administrativo del evento</p>
         <h1>Centro de control</h1>
 
         <div className="hero-actions">
-          <a href="/scanner" className="primary-action">
+          <a href="/scanner" className="primary-action" onClick={handleScanner}>
             Abrir scanner QR
           </a>
           {onLogout ? (

@@ -66,6 +66,7 @@ function normalizeAttendee(payload) {
     source: String(payload.source || 'admin-panel').trim(),
     empresaId: String(payload.empresaId || '').trim(),
     eventoId: String(payload.eventoId || '').trim(),
+    clienteId: String(payload.clienteId || '').trim(),
     documentType: String(payload.documentType || 'CC').trim().toUpperCase(),
     companionsCount: Math.max(0, Math.min(20, parseInt(payload.companionsCount, 10) || 0)),
     surveyAnswers,
@@ -105,10 +106,12 @@ function ensureFirestore() {
   }
 }
 
-export async function listAttendees() {
+export async function listAttendees(clienteId = '') {
   ensureFirestore()
   const attendeesRef = collection(db, COLLECTION_NAME)
-  const q = query(attendeesRef, orderBy('createdAt', 'desc'))
+  const q = clienteId
+    ? query(attendeesRef, where('clienteId', '==', clienteId), orderBy('createdAt', 'desc'))
+    : query(attendeesRef, orderBy('createdAt', 'desc'))
   const snap = await getDocs(q)
   return snap.docs.map(mapDoc)
 }
@@ -173,10 +176,12 @@ export async function findAttendeeByDocument(
   }
 }
 
-export function subscribeToAttendees(onChange, onError) {
+export function subscribeToAttendees(onChange, onError, clienteId = '') {
   ensureFirestore()
   const attendeesRef = collection(db, COLLECTION_NAME)
-  const q = query(attendeesRef, orderBy('createdAt', 'desc'))
+  const q = clienteId
+    ? query(attendeesRef, where('clienteId', '==', clienteId), orderBy('createdAt', 'desc'))
+    : query(attendeesRef, orderBy('createdAt', 'desc'))
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map(mapDoc)),

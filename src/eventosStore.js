@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -13,18 +14,32 @@ import { db, isFirebaseConfigured } from './firebase'
 
 const COLLECTION_NAME = 'eventoEventos'
 
-export async function listEventos() {
+export async function listEventos(clienteId = '') {
   if (!isFirebaseConfigured || !db) {
     return []
   }
 
   try {
     const ref = collection(db, COLLECTION_NAME)
-    const snap = await getDocs(ref)
+    const q = clienteId
+      ? query(ref, where('clienteId', '==', clienteId))
+      : query(ref)
+    const snap = await getDocs(q)
     return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
   } catch (error) {
     console.error('No fue posible cargar eventos.', error)
     return []
+  }
+}
+
+export async function getEventoById(eventoId) {
+  if (!isFirebaseConfigured || !db || !eventoId) return null
+  try {
+    const snap = await getDoc(doc(db, COLLECTION_NAME, eventoId))
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null
+  } catch (e) {
+    console.error('No fue posible cargar evento.', e)
+    return null
   }
 }
 
@@ -37,7 +52,7 @@ export async function updateEvento(eventoId, updates) {
   return { id: eventoId, ...updates }
 }
 
-export async function createEvento(payload = {}) {
+export async function createEvento(payload = {}, clienteId = '') {
   if (!isFirebaseConfigured || !db) {
     throw new Error('Firebase no esta configurado.')
   }
@@ -54,6 +69,7 @@ export async function createEvento(payload = {}) {
     calificacionTitulo: payload.calificacionTitulo || '',
     archivado: false,
     active: true,
+    clienteId: clienteId || '',
     createdAt: serverTimestamp(),
   }
   const docRef = await addDoc(ref, data)

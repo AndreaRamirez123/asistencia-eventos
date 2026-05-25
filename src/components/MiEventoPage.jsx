@@ -25,6 +25,7 @@ function MiEventoPage() {
   const [answers, setAnswers] = useState({})
   const [registrando, setRegistrando] = useState('')
   const [triviaSubmitted, setTriviaSubmitted] = useState(new Set())
+  const [ratings, setRatings] = useState({})
   const [scanningId, setScanningId] = useState(null)
   const [scannedSet, setScannedSet] = useState(new Set())
   const [scanError, setScanError] = useState({})
@@ -130,17 +131,33 @@ function MiEventoPage() {
     }
   }
 
-  const handleAnswer = (estId, pregIdx, optIdx) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [estId]: { ...(prev[estId] || {}), [pregIdx]: optIdx },
-    }))
-    // al cambiar respuesta, ocultar feedback previo
+  const handleAnswer = (estId, pregIdx, value, tipo) => {
+    setAnswers((prev) => {
+      const estAnswers = prev[estId] || {}
+      let newValue
+      if (tipo === 'multiple') {
+        const current = estAnswers[pregIdx] || []
+        newValue = current.includes(value)
+          ? current.filter((i) => i !== value)
+          : [...current, value]
+      } else {
+        newValue = value
+      }
+      return { ...prev, [estId]: { ...estAnswers, [pregIdx]: newValue } }
+    })
     setTriviaSubmitted((prev) => {
       const next = new Set(prev)
       next.delete(estId)
       return next
     })
+  }
+
+  const handleSetRating = (estId, stars) => {
+    setRatings((prev) => ({ ...prev, [estId]: { ...(prev[estId] || {}), stars } }))
+  }
+
+  const handleSetComentario = (estId, comentario) => {
+    setRatings((prev) => ({ ...prev, [estId]: { ...(prev[estId] || {}), comentario } }))
   }
 
   const handleCompletar = async (est) => {
@@ -153,18 +170,31 @@ function MiEventoPage() {
       if (falta) return
     }
 
-    // validar que todas las respuestas sean correctas
     if (preguntas.length > 0) {
-      const hayError = preguntas.some((p, idx) => answers[estId]?.[idx] !== p.correcta)
+      const hayError = preguntas.some((p, idx) => {
+        if (p.tipo === 'abierta') return false
+        if (p.tipo === 'multiple') {
+          const selected = [...(answers[estId]?.[idx] || [])].sort((a, b) => a - b)
+          const correctas = [...(p.correctas || [])].sort((a, b) => a - b)
+          return selected.join(',') !== correctas.join(',')
+        }
+        return answers[estId]?.[idx] !== p.correcta
+      })
       if (hayError) {
         setTriviaSubmitted((prev) => new Set([...prev, estId]))
         return
       }
     }
 
+    const stars = ratings[estId]?.stars || 0
+    if (stars === 0) return
+
     setRegistrando(estId)
     try {
-      await registrarVisita(eventoId, estId, attendee.documentId)
+      await registrarVisita(eventoId, estId, attendee.documentId, {
+        calificacion: stars,
+        comentario: ratings[estId]?.comentario || '',
+      })
 
       if (preguntas.length > 0) {
         await guardarResultado(eventoId, estId, attendee.fullName, preguntas.length, 0)
@@ -296,8 +326,14 @@ function MiEventoPage() {
               const answersEst = answers[est.id] || {}
               const allAnswered =
                 preguntas.length === 0 ||
-                preguntas.every((_, idx) => answersEst[idx] !== undefined)
+                preguntas.every((p, idx) => {
+                  if (p.tipo === 'abierta') return true
+                  if (p.tipo === 'multiple') return (answersEst[idx] || []).length > 0
+                  return answersEst[idx] !== undefined
+                })
               const wasSubmitted = triviaSubmitted.has(est.id)
+              const estRating = ratings[est.id] || {}
+              const hasRating = (estRating.stars || 0) > 0
 
               return (
                 <div
@@ -412,26 +448,41 @@ function MiEventoPage() {
                                   <p className="mi-evento-pregunta-texto">
                                     {pIdx + 1}. {preg.texto}
                                   </p>
-                                  <div className="mi-evento-opciones">
-                                    {(preg.opciones || []).map((op, oIdx) => {
-                                      const isSelected = answersEst[pIdx] === oIdx
-                                      const isCorrectOption = oIdx === preg.correcta
-                                      let opClass = 'mi-evento-opcion'
-                                      if (isSelected) opClass += ' selected'
-                                      if (wasSubmitted && isSelected && !isCorrectOption) opClass += ' opcion-incorrecta'
-                                      return (
-                                        <label key={oIdx} className={opClass}>
-                                          <input
-                                            type="radio"
-                                            name={`est-${est.id}-preg-${pIdx}`}
-                                            checked={isSelected}
-                                            onChange={() => handleAnswer(est.id, pIdx, oIdx)}
-                                          />
-                                          {op}
-                                        </label>
-                                      )
-                                    })}
-                                  </div>
+                                  {preg.tipo === 'abierta' ? (
+                                    <textarea
+                                      className="mi-evento-comentario"
+                                      placeholder="Escribe tu respuesta..."
+                                      value={answersEst[pIdx] || ''}
+                                      onChange={(e) => handleAnswer(est.id, pIdx, e.target.value, 'abierta')}
+                                      rows={3}
+                                    />
+                                  ) : (
+                                    <div className="mi-evento-opciones">
+                                      {(preg.opciones || []).map((op, oIdx) => {
+                                        const isMult = preg.tipo === 'multiple'
+                                        const isSelected = isMult
+                                          ? (answersEst[pIdx] || []).includes(oIdx)
+                                          : answersEst[pIdx] === oIdx
+                                        const isCorrectOption = isMult
+                                          ? (preg.correctas || []).includes(oIdx)
+                                          : oIdx === preg.correcta
+                                        let opClass = 'mi-evento-opcion'
+                                        if (isSelected) opClass += ' selected'
+                                        if (wasSubmitted && isSelected && !isCorrectOption) opClass += ' opcion-incorrecta'
+                                        return (
+                                          <label key={oIdx} className={opClass}>
+                                            <input
+                                              type={isMult ? 'checkbox' : 'radio'}
+                                              name={`est-${est.id}-preg-${pIdx}`}
+                                              checked={isSelected}
+                                              onChange={() => handleAnswer(est.id, pIdx, oIdx, preg.tipo || 'opcion_unica')}
+                                            />
+                                            {op}
+                                          </label>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                               {wasSubmitted ? (
@@ -446,10 +497,42 @@ function MiEventoPage() {
                             </div>
                           ) : null}
 
+                          {/* Calificación de la estación */}
+                          <div className="mi-evento-rating-section">
+                            <p className="eyebrow" style={{ marginBottom: 10 }}>
+                              {preguntas.length > 0 ? 'Paso 3 — ' : 'Paso 2 — '}
+                              Califica esta estación
+                            </p>
+                            <div className="mi-evento-stars">
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  className={`mi-evento-star${(estRating.stars || 0) >= n ? ' filled' : ''}`}
+                                  onClick={() => handleSetRating(est.id, n)}
+                                  aria-label={`${n} estrella${n > 1 ? 's' : ''}`}
+                                >
+                                  ★
+                                </button>
+                              ))}
+                            </div>
+                            <textarea
+                              className="mi-evento-comentario"
+                              placeholder="Comentario opcional (¿qué te pareció?)"
+                              value={estRating.comentario || ''}
+                              onChange={(e) => handleSetComentario(est.id, e.target.value)}
+                              rows={2}
+                              maxLength={300}
+                            />
+                            <p className="helper-text" style={{ marginTop: 4, fontSize: '0.8rem', opacity: 0.7 }}>
+                              Opcional — puedes completar sin calificar.
+                            </p>
+                          </div>
+
                           <button
                             type="button"
                             className="submit-button"
-                            style={{ marginTop: 20 }}
+                            style={{ marginTop: 16 }}
                             onClick={() => handleCompletar(est)}
                             disabled={registrando === est.id || !allAnswered}
                           >

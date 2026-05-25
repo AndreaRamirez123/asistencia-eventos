@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { updateEvento } from '../eventosStore'
 
-function buildKioskUrl() {
+function buildKioskUrl(slug) {
   if (typeof window === 'undefined') return ''
-  return `${window.location.origin}/registro?kiosk=1`
+  const base = slug
+    ? `${window.location.origin}/e/${slug}`
+    : window.location.origin
+  return `${base}/registro?kiosk=1`
 }
 
-function KioskoQrPanel({ evento, onEventoChange }) {
+function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
 
-  const url = buildKioskUrl()
+  const url = buildKioskUrl(empresaSlug)
 
   useEffect(() => {
     let cancelled = false

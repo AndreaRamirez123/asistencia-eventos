@@ -2,18 +2,21 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { updateEvento } from '../eventosStore'
 
-function buildRatingUrl() {
+function buildRatingUrl(slug) {
   if (typeof window === 'undefined') return ''
-  return `${window.location.origin}/calificar`
+  const base = slug
+    ? `${window.location.origin}/e/${slug}`
+    : window.location.origin
+  return `${base}/calificar`
 }
 
-function CalificacionPanel({ evento, onEventoChange, ratings = [] }) {
+function CalificacionPanel({ evento, onEventoChange, ratings = [], empresaSlug = '' }) {
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
 
-  const url = buildRatingUrl()
+  const url = buildRatingUrl(empresaSlug)
   const habilitada = Boolean(evento?.calificacionHabilitada)
 
   useEffect(() => {

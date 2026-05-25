@@ -45,7 +45,7 @@ function loadExpressMode() {
   }
 }
 
-function ScannerPage({ currentUser, onLogout, evento }) {
+function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBack }) {
   const [accessPoint, setAccessPoint] = useState(loadStoredAccessPoint)
   const [isScanning, setIsScanning] = useState(true)
   const [cameraSupported, setCameraSupported] = useState(true)
@@ -234,10 +234,15 @@ function ScannerPage({ currentUser, onLogout, evento }) {
 
   const kioskoUrl = useMemo(() => {
     if (typeof window === 'undefined') return ''
+    const base = empresaConfig?.slug
+      ? `${window.location.origin}/e/${empresaConfig.slug}`
+      : window.location.origin
     const params = new URLSearchParams({ kiosk: '1' })
     if (kioskoEmpresaId) params.set('empresa', kioskoEmpresaId)
-    return `${window.location.origin}/registro?${params.toString()}`
-  }, [kioskoEmpresaId])
+    // Incluir clienteId como fallback cuando no hay slug, para que el registro cargue el branding
+    if (!empresaConfig?.slug && empresaConfig?.id) params.set('cliente', empresaConfig.id)
+    return `${base}/registro?${params.toString()}`
+  }, [kioskoEmpresaId, empresaConfig?.slug, empresaConfig?.id])
 
   const [kioskoQrDataUrl, setKioskoQrDataUrl] = useState('')
   useEffect(() => {
@@ -262,11 +267,26 @@ function ScannerPage({ currentUser, onLogout, evento }) {
   const modoRegistro = evento?.modoRegistro || (evento?.registroEnSitio ? 'onsite' : 'pre')
   const isOnsite = modoRegistro === 'onsite' || modoRegistro === 'both'
 
+  const brandColor = empresaConfig?.colorPrimario || empresaConfig?.colorAcento || ''
+  const brandSecondary = empresaConfig?.colorSecundario || brandColor
+  // Solo aplicar inline cuando hay color de empresa; si no, el var global de App.jsx toma el control
+  const brandStyle = brandColor
+    ? { '--accent': brandColor, '--accent-strong': brandSecondary || brandColor }
+    : {}
+
   if (kioskoEnabled && !showStaffMode) {
     return (
-      <div className="scanner-kiosko">
+      <div className="scanner-kiosko" style={brandStyle}>
         <header className="scanner-kiosko-head">
           <div>
+            {empresaConfig?.logoUrl ? (
+              <img
+                src={empresaConfig.logoUrl}
+                alt={empresaConfig.nombre || 'Logo'}
+                className="empresa-logo-hero"
+                style={{ marginBottom: 12 }}
+              />
+            ) : null}
             <p className="eyebrow">Registro en sitio</p>
             <h1>Escanea este QR para registrarte</h1>
             <p className="hero-text">
@@ -314,9 +334,16 @@ function ScannerPage({ currentUser, onLogout, evento }) {
   }
 
   return (
-    <div className="public-shell">
+    <div className="public-shell" style={brandStyle}>
       <header className="public-hero">
         <div>
+          {empresaConfig?.logoUrl ? (
+            <img
+              src={empresaConfig.logoUrl}
+              alt={empresaConfig.nombre || 'Logo'}
+              className="empresa-logo-hero"
+            />
+          ) : null}
           <p className="eyebrow">Control de ingreso</p>
           <h1>Scanner QR para validacion de asistentes</h1>
           <p className="hero-text">
@@ -356,6 +383,11 @@ function ScannerPage({ currentUser, onLogout, evento }) {
               onClick={() => setShowStaffMode(false)}
             >
               Volver a modo kiosko
+            </button>
+          ) : null}
+          {onBack ? (
+            <button type="button" className="ghost-action" onClick={onBack}>
+              ← Panel admin
             </button>
           ) : null}
           {onLogout ? (

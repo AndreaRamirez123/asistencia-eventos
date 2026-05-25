@@ -119,9 +119,11 @@ function PublicRegistrationPage({
     )
   }
 
-  const brandColor = empresaConfig?.colorPrimario || ''
+  const brandColor = empresaConfig?.colorPrimario || empresaConfig?.colorAcento || ''
+  const brandSecondary = empresaConfig?.colorSecundario || brandColor
+  // Solo aplicar inline cuando hay color de empresa; si no, el var global de App.jsx toma el control
   const brandStyle = brandColor
-    ? { '--accent': brandColor, '--accent-strong': brandColor }
+    ? { '--accent': brandColor, '--accent-strong': brandSecondary || brandColor }
     : {}
 
   return (

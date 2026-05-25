@@ -20,11 +20,22 @@ function EstacionesDashboard({ evento, estaciones = [] }) {
           est.tieneTivia ? getRankingDeEstacion(est.id) : Promise.resolve([]),
         ])
         const visitantesUnicos = new Set(visitas.map((v) => v.visitanteId)).size
+        const calificadas = visitas.filter((v) => (v.calificacion || 0) > 0)
+        const promedioCalificacion =
+          calificadas.length > 0
+            ? calificadas.reduce((a, v) => a + (v.calificacion || 0), 0) / calificadas.length
+            : null
+        const comentarios = visitas
+          .filter((v) => v.comentario?.trim())
+          .slice(-5)
+          .reverse()
         return {
           ...est,
           totalVisitas: visitas.length,
           visitantesUnicos,
           ranking,
+          promedioCalificacion,
+          comentarios,
           promedioPuntos:
             ranking.length > 0
               ? Math.round(ranking.reduce((a, r) => a + r.puntos, 0) / ranking.length)
@@ -114,26 +125,61 @@ function EstacionesDashboard({ evento, estaciones = [] }) {
             {stats.map((s) => (
               <div key={s.id} className="dash-bar-row">
                 <div className="dash-bar-label">
-                  <span
-                    className="dash-bar-dot"
-                    style={{ background: s.color }}
-                  />
+                  <span className="dash-bar-dot" style={{ background: s.color }} />
                   <span>{s.nombre}</span>
                   {s.tieneTivia && <span className="mapa-badge-trivia">Trivia</span>}
+                  {s.promedioCalificacion !== null ? (
+                    <span className="dash-rating-badge">
+                      {'★'.repeat(Math.round(s.promedioCalificacion))}
+                      {'☆'.repeat(5 - Math.round(s.promedioCalificacion))}
+                      {' '}{s.promedioCalificacion.toFixed(1)}
+                    </span>
+                  ) : (
+                    <span className="dash-rating-badge dash-rating-empty">☆☆☆☆☆</span>
+                  )}
                 </div>
                 <div className="dash-bar-track">
                   <div
                     className="dash-bar-fill"
-                    style={{
-                      width: `${(s.totalVisitas / maxVisitas) * 100}%`,
-                      background: s.color,
-                    }}
+                    style={{ width: `${(s.totalVisitas / maxVisitas) * 100}%`, background: s.color }}
                   />
                 </div>
                 <span className="dash-bar-count">{s.totalVisitas}</span>
               </div>
             ))}
           </div>
+
+          {/* Comentarios recientes por estación */}
+          {stats.some((s) => s.comentarios?.length > 0) && (
+            <div className="dash-trivia-section">
+              <h3>Comentarios recientes</h3>
+              <div className="dash-trivia-grid">
+                {stats.filter((s) => s.comentarios?.length > 0).map((s) => (
+                  <div key={s.id} className="dash-trivia-card">
+                    <div className="dash-trivia-card-header" style={{ borderColor: s.color }}>
+                      <span className="dash-bar-dot" style={{ background: s.color }} />
+                      <strong>{s.nombre}</strong>
+                      {s.promedioCalificacion !== null && (
+                        <span className="dash-trivia-avg">
+                          {s.promedioCalificacion.toFixed(1)} ★
+                        </span>
+                      )}
+                    </div>
+                    <ul className="dash-comentarios-list">
+                      {s.comentarios.map((v, i) => (
+                        <li key={i} className="dash-comentario-item">
+                          <span className="dash-comentario-stars">
+                            {'★'.repeat(v.calificacion || 0)}{'☆'.repeat(5 - (v.calificacion || 0))}
+                          </span>
+                          <span className="dash-comentario-texto">{v.comentario}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Ranking de trivia por estación */}
           {stats.filter((s) => s.tieneTivia && s.ranking.length > 0).length > 0 && (

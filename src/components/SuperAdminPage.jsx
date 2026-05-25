@@ -3,7 +3,10 @@ import { invitarAdmin } from '../auth'
 import {
   createCliente,
   deleteCliente,
+  getClienteStats,
+  getGlobalStats,
   listClientes,
+  migrarDatosHuerfanos,
   updateCliente,
 } from '../clientesStore'
 
@@ -11,7 +14,8 @@ const emptyForm = {
   nombre: '',
   slug: '',
   logoUrl: '',
-  colorAcento: '#ffd166',
+  colorPrimario: '#ffd166',
+  colorSecundario: '',
 }
 
 function slugify(text) {
@@ -27,7 +31,13 @@ function ClienteModal({ cliente, onSave, onClose }) {
   const isEdit = Boolean(cliente?.id)
   const [form, setForm] = useState(
     isEdit
-      ? { nombre: cliente.nombre, slug: cliente.slug, logoUrl: cliente.logoUrl || '', colorAcento: cliente.colorAcento || '#ffd166' }
+      ? {
+          nombre: cliente.nombre,
+          slug: cliente.slug,
+          logoUrl: cliente.logoUrl || '',
+          colorPrimario: cliente.colorPrimario || cliente.colorAcento || '#ffd166',
+          colorSecundario: cliente.colorSecundario || '',
+        }
       : emptyForm,
   )
   const [saving, setSaving] = useState(false)
@@ -96,25 +106,49 @@ function ClienteModal({ cliente, onSave, onClose }) {
           </label>
 
           <label className="field">
-            <span>Color de acento</span>
+            <span>Color primario</span>
             <div className="color-field-wrap">
               <input
-                name="colorAcento"
+                name="colorPrimario"
                 type="color"
-                value={form.colorAcento}
+                value={form.colorPrimario}
                 onChange={handleChange}
                 disabled={saving}
               />
               <input
-                name="colorAcento"
+                name="colorPrimario"
                 type="text"
-                value={form.colorAcento}
+                value={form.colorPrimario}
                 onChange={handleChange}
                 placeholder="#ffd166"
                 disabled={saving}
                 className="color-text-input"
               />
             </div>
+            <span className="field-hint">Botones, highlights y encabezados.</span>
+          </label>
+
+          <label className="field">
+            <span>Color secundario <span className="field-hint" style={{ fontWeight: 400 }}>(opcional)</span></span>
+            <div className="color-field-wrap">
+              <input
+                name="colorSecundario"
+                type="color"
+                value={form.colorSecundario || '#cccccc'}
+                onChange={handleChange}
+                disabled={saving}
+              />
+              <input
+                name="colorSecundario"
+                type="text"
+                value={form.colorSecundario}
+                onChange={handleChange}
+                placeholder="#cccccc"
+                disabled={saving}
+                className="color-text-input"
+              />
+            </div>
+            <span className="field-hint">Segundo color de la marca. Déjalo vacío si solo usas uno.</span>
           </label>
 
           <label className="field">
@@ -238,9 +272,16 @@ function InvitarAdminModal({ cliente, onClose }) {
   )
 }
 
-function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvitar }) {
+function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvitar, onMigrar }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [working, setWorking] = useState(false)
+  const [migrando, setMigrando] = useState(false)
+  const [migrResult, setMigrResult] = useState(null)
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    getClienteStats(cliente.id).then(setStats)
+  }, [cliente.id])
 
   const handleToggle = async () => {
     setWorking(true)
@@ -252,15 +293,28 @@ function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvi
     try { await onDelete(cliente.id) } finally { setWorking(false) }
   }
 
+  const handleMigrar = async () => {
+    setMigrando(true)
+    setMigrResult(null)
+    try {
+      const total = await onMigrar(cliente.id)
+      setMigrResult({ ok: true, total })
+    } catch (err) {
+      setMigrResult({ ok: false, msg: err.message })
+    } finally {
+      setMigrando(false)
+    }
+  }
+
   return (
     <div className={`cliente-card ${cliente.activa ? '' : 'cliente-card--inactiva'}`}>
-      <div className="cliente-card-color" style={{ background: cliente.colorAcento || '#ffd166' }} />
+      <div className="cliente-card-color" style={{ background: cliente.colorPrimario || cliente.colorAcento || '#ffd166' }} />
 
       <div className="cliente-card-body">
         {cliente.logoUrl ? (
           <img src={cliente.logoUrl} alt={cliente.nombre} className="cliente-card-logo" />
         ) : (
-          <div className="cliente-card-initials" style={{ background: cliente.colorAcento || '#ffd166' }}>
+          <div className="cliente-card-initials" style={{ background: cliente.colorPrimario || cliente.colorAcento || '#ffd166' }}>
             {cliente.nombre.slice(0, 2).toUpperCase()}
           </div>
         )}
@@ -271,6 +325,13 @@ function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvi
           <span className={`status-pill ${cliente.activa ? 'approved' : 'pending'}`}>
             {cliente.activa ? 'Activa' : 'Inactiva'}
           </span>
+          {stats ? (
+            <span className="cliente-card-stats">
+              {stats.eventos} evento{stats.eventos !== 1 ? 's' : ''} · {stats.asistentes} asistente{stats.asistentes !== 1 ? 's' : ''}
+            </span>
+          ) : (
+            <span className="cliente-card-stats cliente-card-stats--loading">cargando...</span>
+          )}
         </div>
       </div>
 
@@ -284,6 +345,14 @@ function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvi
         <button type="button" className="mini-action" onClick={() => onInvitar(cliente)} disabled={working}>
           + Admin
         </button>
+        <button type="button" className="mini-action" onClick={handleMigrar} disabled={working || migrando} title="Asigna a esta empresa todos los datos históricos que no tienen empresa asignada">
+          {migrando ? 'Migrando...' : 'Migrar datos'}
+        </button>
+        {migrResult ? (
+          <span className={`mini-action-result ${migrResult.ok ? 'ok' : 'err'}`}>
+            {migrResult.ok ? `✓ ${migrResult.total} docs migrados` : `✗ ${migrResult.msg}`}
+          </span>
+        ) : null}
         <button
           type="button"
           className={`mini-action ${cliente.activa ? '' : 'success'}`}
@@ -316,12 +385,14 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // null | 'create' | cliente obj para editar
   const [invitandoCliente, setInvitandoCliente] = useState(null)
+  const [globalStats, setGlobalStats] = useState(null)
 
   useEffect(() => {
     listClientes().then((list) => {
       setClientes(list)
       setLoading(false)
     })
+    getGlobalStats().then(setGlobalStats)
   }, [])
 
   const handleSave = async (form) => {
@@ -342,6 +413,10 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
   const handleDelete = async (clienteId) => {
     await deleteCliente(clienteId)
     setClientes((prev) => prev.filter((c) => c.id !== clienteId))
+  }
+
+  const handleMigrar = async (clienteId) => {
+    return migrarDatosHuerfanos(clienteId)
   }
 
   const activas = clientes.filter((c) => c.activa).length
@@ -375,6 +450,18 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
             <span className="superadmin-stat-value">{clientes.length - activas}</span>
             <span className="superadmin-stat-label">Inactivas</span>
           </div>
+          <div className="superadmin-stat">
+            <span className="superadmin-stat-value">
+              {globalStats ? globalStats.eventos : '—'}
+            </span>
+            <span className="superadmin-stat-label">Eventos (total)</span>
+          </div>
+          <div className="superadmin-stat">
+            <span className="superadmin-stat-value">
+              {globalStats ? globalStats.asistentes : '—'}
+            </span>
+            <span className="superadmin-stat-label">Asistentes (total)</span>
+          </div>
         </div>
 
         <div className="superadmin-toolbar">
@@ -402,6 +489,7 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
                 onDelete={handleDelete}
                 onEnterPanel={onEnterPanel}
                 onInvitar={(cl) => setInvitandoCliente(cl)}
+                onMigrar={handleMigrar}
               />
             ))}
           </div>
