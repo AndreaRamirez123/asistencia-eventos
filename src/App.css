@@ -293,10 +293,15 @@
   font-family: monospace;
 }
 
+.public-page-outer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .public-shell {
   width: min(1200px, calc(100% - 24px));
   margin: 12px auto;
-  min-height: calc(100vh - 24px);
 }
 
 .public-hero {
@@ -463,6 +468,8 @@
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: default;
+  user-select: none;
 }
 
 .metric-card strong {
@@ -5733,6 +5740,25 @@
   border-radius: 10px;
   display: block;
   margin: 0 auto;
+}
+
+/* ── Footer público ── */
+.public-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 20px;
+  padding: 20px 16px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--muted, #6b7a8a);
+  text-align: center;
+  border-top: 1px solid var(--border, rgba(255,255,255,0.07));
+}
+
+.public-footer strong {
+  color: var(--accent, #ffa826);
 }
 
 .dark .encuesta-section {

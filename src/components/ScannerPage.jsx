@@ -57,6 +57,7 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
   const [miEventoQr, setMiEventoQr] = useState('')
   const lastTokenRef = useRef({ token: '', at: 0 })
   const autoResumeRef = useRef(null)
+  const cameraErrorHandledRef = useRef(false)
 
   const sendCheckin = async (payload) => {
     setIsSubmitting(true)
@@ -192,6 +193,8 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
   const resumeScan = () => {
     setLastResult(null)
     lastTokenRef.current = { token: '', at: 0 }
+    cameraErrorHandledRef.current = false
+    setCameraSupported(true)
     setIsScanning(true)
   }
 
@@ -230,14 +233,24 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
   }
 
   const handleError = (error) => {
-    console.error('Scanner error:', error)
+    // Evitar múltiples setState por errores repetidos de la librería de cámara
+    if (cameraErrorHandledRef.current) return
     const message = String(error?.message || error || '').toLowerCase()
-    if (
+    const noCamara =
       message.includes('permission') ||
       message.includes('notallowed') ||
+      message.includes('not allowed') ||
       message.includes('notfound') ||
-      message.includes('devicenotfound')
-    ) {
+      message.includes('not found') ||
+      message.includes('devicenotfound') ||
+      message.includes('device not found') ||
+      message.includes('could not start') ||
+      message.includes('no camera') ||
+      error?.name === 'NotFoundError' ||
+      error?.name === 'NotAllowedError' ||
+      error?.name === 'NotReadableError'
+    if (noCamara) {
+      cameraErrorHandledRef.current = true
       setCameraSupported(false)
       setIsScanning(false)
     }
@@ -388,24 +401,23 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
             />
             <span>Modo Express (alta velocidad)</span>
           </label>
-          {['admin', 'superadmin', 'admin_empresa'].includes(currentUser?.role) ? (
-            <a href="/admin" className="secondary-action">
-              Ir al panel admin
-            </a>
-          ) : null}
           {kioskoEnabled ? (
             <button
               type="button"
               className="ghost-action"
               onClick={() => setShowStaffMode(false)}
             >
-              Volver a modo kiosko
+              ← Modo kiosko
             </button>
           ) : null}
           {onBack ? (
             <button type="button" className="ghost-action" onClick={onBack}>
               ← Panel admin
             </button>
+          ) : ['admin', 'superadmin', 'admin_empresa'].includes(currentUser?.role) ? (
+            <a href="/admin" className="secondary-action">
+              ← Panel admin
+            </a>
           ) : null}
           {onLogout ? (
             <button type="button" className="ghost-action" onClick={onLogout}>

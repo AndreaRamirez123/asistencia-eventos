@@ -426,6 +426,9 @@ function App() {
   // Aplicar branding de la empresa activa como CSS variables
   useEffect(() => {
     const cliente = superadminClienteActivo || activeCliente
+    // Si aún no hay cliente cargado, no tocar las variables — el script inline
+    // de index.html ya aplicó el cache; si lo removemos aquí causamos el flash.
+    if (!cliente) return
     const primario = cliente?.colorPrimario || cliente?.colorAcento
     const secundario = cliente?.colorSecundario
     if (primario) {
@@ -454,8 +457,10 @@ function App() {
   }, [superadminClienteActivo, activeCliente])
 
   // Redirigir admin_empresa a su URL /e/:slug/admin tras login
+  // El staff NO debe ser redirigido — su destino es /scanner, no /admin
   useEffect(() => {
     if (!currentUser || currentUser.role === 'superadmin') return
+    if (currentUser.role === 'staff') return
     if (!activeCliente?.slug) return
     const path = window.location.pathname.toLowerCase()
     const expectedPrefix = `/e/${activeCliente.slug}/`
@@ -1105,55 +1110,97 @@ function App() {
     document.body,
   )
 
+  const publicFooter = (
+    <footer className="public-footer">
+      <span>Powered by <strong>Divergency AI</strong></span>
+      <span>© 2026 Todos los derechos reservados.</span>
+    </footer>
+  )
+
   if (currentView === 'public') {
     return (
       <>
         {themeTogglePortal}
-        <PublicRegistrationPage
-          errorMessage={publicErrorMessage}
-          form={publicForm}
-          handleChange={handlePublicChange}
-          handleSurveyChange={handlePublicSurveyChange}
-          handleSubmit={handlePublicSubmit}
-          handleDocumentLookup={handlePublicDocumentLookup}
-          lookupStatus={publicLookupStatus}
-          isSubmitting={isPublicSubmitting}
-          submission={publicSubmission}
-          onCedulaFill={handlePublicCedulaFill}
-          empresasInvitadas={empresasInvitadas}
-          categorias={categoriasEvento}
-          kioskMode={publicUrlOptions.kiosk}
-          eventoModoRegistro={
-            activeEvento?.modoRegistro ||
-            (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-          }
-          eventoLoaded={true}
-          eventoNombre={activeEvento?.nombre || ''}
-          empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
-          onResetSubmission={() => {
-            setPublicSubmission(null)
-            setPublicForm(initialPublicForm)
-            setPublicLookupStatus('idle')
-          }}
-        />
+        <div className="public-page-outer">
+          <PublicRegistrationPage
+            errorMessage={publicErrorMessage}
+            form={publicForm}
+            handleChange={handlePublicChange}
+            handleSurveyChange={handlePublicSurveyChange}
+            handleSubmit={handlePublicSubmit}
+            handleDocumentLookup={handlePublicDocumentLookup}
+            lookupStatus={publicLookupStatus}
+            isSubmitting={isPublicSubmitting}
+            submission={publicSubmission}
+            onCedulaFill={handlePublicCedulaFill}
+            empresasInvitadas={empresasInvitadas}
+            categorias={categoriasEvento}
+            kioskMode={publicUrlOptions.kiosk}
+            eventoModoRegistro={
+              activeEvento?.modoRegistro ||
+              (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+            }
+            eventoLoaded={true}
+            eventoNombre={activeEvento?.nombre || ''}
+            empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
+            onResetSubmission={() => {
+              setPublicSubmission(null)
+              setPublicForm(initialPublicForm)
+              setPublicLookupStatus('idle')
+            }}
+          />
+          {publicFooter}
+        </div>
       </>
     )
   }
 
   if (currentView === 'mapa') {
-    return <>{themeTogglePortal}<MapaPublicoPage /></>
+    return (
+      <>
+        {themeTogglePortal}
+        <div className="public-page-outer">
+          <MapaPublicoPage />
+          {publicFooter}
+        </div>
+      </>
+    )
   }
 
   if (currentView === 'trivia') {
-    return <>{themeTogglePortal}<TriviaQuizPage /></>
+    return (
+      <>
+        {themeTogglePortal}
+        <div className="public-page-outer">
+          <TriviaQuizPage />
+          {publicFooter}
+        </div>
+      </>
+    )
   }
 
   if (currentView === 'estacion') {
-    return <>{themeTogglePortal}<EstacionPublicaPage /></>
+    return (
+      <>
+        {themeTogglePortal}
+        <div className="public-page-outer">
+          <EstacionPublicaPage />
+          {publicFooter}
+        </div>
+      </>
+    )
   }
 
   if (currentView === 'mi-evento') {
-    return <>{themeTogglePortal}<MiEventoPage /></>
+    return (
+      <>
+        {themeTogglePortal}
+        <div className="public-page-outer">
+          <MiEventoPage />
+          {publicFooter}
+        </div>
+      </>
+    )
   }
 
   if (currentView === 'rating') {
@@ -1170,7 +1217,15 @@ function App() {
   }
 
   if (currentView === 'login') {
-    return <>{themeTogglePortal}<LoginPage /></>
+    return (
+      <>
+        {themeTogglePortal}
+        <div className="public-page-outer">
+          <LoginPage />
+          {publicFooter}
+        </div>
+      </>
+    )
   }
 
   if (isAuthChecking) {
@@ -1197,24 +1252,25 @@ function App() {
     return (
       <>
         {themeTogglePortal}
-        <ScannerPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          evento={activeEvento}
-          empresaConfig={empresaConfigFromCliente}
-          onBack={currentUser.role !== 'staff' ? () => {
-            // Si el superadmin llegó al scanner directamente (URL con slug, sin superadminClienteActivo),
-            // restaurar el contexto para que el panel admin muestre la empresa correcta.
-            if (currentUser.role === 'superadmin' && !superadminClienteActivo && activeCliente) {
-              setSuperadminClienteActivo(activeCliente)
-            }
-            const adminPath = brandingCliente?.slug
-              ? `/e/${brandingCliente.slug}/admin`
-              : '/admin'
-            history.pushState(null, '', adminPath)
-            setCurrentView('admin')
-          } : null}
-        />
+        <div className="public-page-outer">
+          <ScannerPage
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            evento={activeEvento}
+            empresaConfig={empresaConfigFromCliente}
+            onBack={currentUser.role !== 'staff' ? () => {
+              if (currentUser.role === 'superadmin' && !superadminClienteActivo && activeCliente) {
+                setSuperadminClienteActivo(activeCliente)
+              }
+              const adminPath = brandingCliente?.slug
+                ? `/e/${brandingCliente.slug}/admin`
+                : '/admin'
+              history.pushState(null, '', adminPath)
+              setCurrentView('admin')
+            } : null}
+          />
+          {publicFooter}
+        </div>
       </>
     )
   }
@@ -1223,11 +1279,14 @@ function App() {
     return (
       <>
         {themeTogglePortal}
-        <SuperAdminPage
-          currentUser={currentUser}
-          onLogout={handleLogout}
-          onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
-        />
+        <div className="public-page-outer">
+          <SuperAdminPage
+            currentUser={currentUser}
+            onLogout={handleLogout}
+            onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
+          />
+          {publicFooter}
+        </div>
       </>
     )
   }
