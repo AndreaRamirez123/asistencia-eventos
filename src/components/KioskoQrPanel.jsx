@@ -2,37 +2,46 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { updateEvento } from '../eventosStore'
 
-function buildKioskUrl(slug) {
+function buildUrl(slug, kiosk = false) {
   if (typeof window === 'undefined') return ''
   const base = slug
     ? `${window.location.origin}/e/${slug}`
     : window.location.origin
-  return `${base}/registro?kiosk=1`
+  return kiosk ? `${base}/registro?kiosk=1` : `${base}/registro`
+}
+
+async function generateQr(url) {
+  return QRCode.toDataURL(url, {
+    width: 560,
+    margin: 2,
+    color: { dark: '#13212d', light: '#fffaf1' },
+  })
 }
 
 function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
   const [qrDataUrl, setQrDataUrl] = useState('')
+  const [preQrDataUrl, setPreQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
+  const [preCopyState, setPreCopyState] = useState('')
 
-  const url = buildKioskUrl(empresaSlug)
+  const kioskUrl = buildUrl(empresaSlug, true)
+  const preUrl = buildUrl(empresaSlug, false)
 
   useEffect(() => {
     let cancelled = false
-    QRCode.toDataURL(url, {
-      width: 560,
-      margin: 2,
-      color: { dark: '#13212d', light: '#fffaf1' },
-    })
-      .then((dataUrl) => {
-        if (!cancelled) setQrDataUrl(dataUrl)
-      })
-      .catch(() => {
-        if (!cancelled) setQrDataUrl('')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [url])
+    generateQr(kioskUrl)
+      .then((dataUrl) => { if (!cancelled) setQrDataUrl(dataUrl) })
+      .catch(() => { if (!cancelled) setQrDataUrl('') })
+    return () => { cancelled = true }
+  }, [kioskUrl])
+
+  useEffect(() => {
+    let cancelled = false
+    generateQr(preUrl)
+      .then((dataUrl) => { if (!cancelled) setPreQrDataUrl(dataUrl) })
+      .catch(() => { if (!cancelled) setPreQrDataUrl('') })
+    return () => { cancelled = true }
+  }, [preUrl])
 
   const modoRegistro =
     evento?.modoRegistro || (evento?.registroEnSitio ? 'onsite' : 'pre')
@@ -62,19 +71,19 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     }
   }
 
-  const handleCopy = async () => {
+  const handleCopy = async (targetUrl, setter) => {
     try {
-      await navigator.clipboard.writeText(url)
-      setCopyState('copiado')
-      setTimeout(() => setCopyState(''), 2000)
+      await navigator.clipboard.writeText(targetUrl)
+      setter('copiado')
+      setTimeout(() => setter(''), 2000)
     } catch {
-      setCopyState('error')
-      setTimeout(() => setCopyState(''), 2000)
+      setter('error')
+      setTimeout(() => setter(''), 2000)
     }
   }
 
-  const handlePrint = () => {
-    if (!qrDataUrl) return
+  const handlePrint = (targetUrl, targetQr, label) => {
+    if (!targetQr) return
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(`
@@ -91,10 +100,10 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
         </head>
         <body>
           <h1>Registro al evento</h1>
-          <p>Registro en sitio</p>
+          <p>${label}</p>
           <p>Escanea con la camara de tu celular para registrarte.</p>
-          <img src="${qrDataUrl}" alt="QR registro" />
-          <div class="url">${url}</div>
+          <img src="${targetQr}" alt="QR registro" />
+          <div class="url">${targetUrl}</div>
           <script>window.onload = () => window.print();</script>
         </body>
       </html>
@@ -146,10 +155,41 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
         {modeError ? <p className="feedback error">{modeError}</p> : null}
       </div>
 
+      {/* Pre-registro: mostrar URL y QR para compartir con asistentes */}
       {modoRegistro === 'pre' && (
-        <p className="helper-text" style={{ marginTop: '4px' }}>
-          En modo pre-registro el QR no es necesario — los asistentes se registran desde casa y llegan con su código.
-        </p>
+        <div className="kiosko-layout">
+          <div className="kiosko-controls">
+            <p className="helper-text">
+              Comparte este enlace o QR con los asistentes para que se pre-registren desde casa. Llegarán al evento con su código QR.
+            </p>
+            <label className="field">
+              <span>URL de pre-registro (para compartir)</span>
+              <input type="text" value={preUrl} readOnly onFocus={(e) => e.target.select()} />
+            </label>
+            <div className="kiosko-actions">
+              <button type="button" className="ghost-action" onClick={() => handleCopy(preUrl, setPreCopyState)}>
+                {preCopyState === 'copiado' ? '✓ Copiado' : preCopyState === 'error' ? 'No se pudo copiar' : 'Copiar URL'}
+              </button>
+              {preQrDataUrl ? (
+                <a className="ghost-action" href={preQrDataUrl} download="qr-preregistro-evento.png">
+                  Descargar PNG
+                </a>
+              ) : null}
+              <button type="button" className="submit-button" onClick={() => handlePrint(preUrl, preQrDataUrl, 'Pre-registro desde casa')} disabled={!preQrDataUrl}>
+                Imprimir
+              </button>
+            </div>
+          </div>
+
+          <div className="kiosko-preview">
+            {preQrDataUrl ? (
+              <img src={preQrDataUrl} alt="QR de pre-registro" className="kiosko-qr-image" />
+            ) : (
+              <div className="qr-placeholder"><span>QR</span></div>
+            )}
+            <p className="helper-text kiosko-label">Pre-registro desde casa</p>
+          </div>
+        </div>
       )}
 
       {modoRegistro !== 'pre' && (
@@ -160,19 +200,19 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
               se registran directamente.
             </p>
             <label className="field">
-              <span>URL del formulario</span>
-              <input type="text" value={url} readOnly onFocus={(e) => e.target.select()} />
+              <span>URL del formulario (kiosko en sitio)</span>
+              <input type="text" value={kioskUrl} readOnly onFocus={(e) => e.target.select()} />
             </label>
             <div className="kiosko-actions">
-              <button type="button" className="ghost-action" onClick={handleCopy}>
-                {copyState === 'copiado' ? 'Copiado' : copyState === 'error' ? 'No se pudo copiar' : 'Copiar URL'}
+              <button type="button" className="ghost-action" onClick={() => handleCopy(kioskUrl, setCopyState)}>
+                {copyState === 'copiado' ? '✓ Copiado' : copyState === 'error' ? 'No se pudo copiar' : 'Copiar URL'}
               </button>
               {qrDataUrl ? (
                 <a className="ghost-action" href={qrDataUrl} download="qr-registro-evento.png">
                   Descargar PNG
                 </a>
               ) : null}
-              <button type="button" className="submit-button" onClick={handlePrint} disabled={!qrDataUrl}>
+              <button type="button" className="submit-button" onClick={() => handlePrint(kioskUrl, qrDataUrl, 'Registro en sitio')} disabled={!qrDataUrl}>
                 Imprimir
               </button>
             </div>

@@ -1384,6 +1384,15 @@
   font-weight: 600;
 }
 
+.lookup-estaciones-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-weight: 700;
+  color: #15803d;
+  text-decoration: underline;
+  font-size: 0.85rem;
+}
+
 .kiosko-mode {
   padding: 16px 18px;
   margin-bottom: 16px;
@@ -2165,6 +2174,20 @@
 
 .preview-actions {
   margin-top: 20px;
+}
+
+.reg-cta-estaciones {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 14px;
+  min-height: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-sizing: border-box;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
 }
 
 .download-action {
@@ -4005,10 +4028,11 @@
 
 .mapa-stage-container {
   border: 1.5px solid var(--border-strong);
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  background: #f0ece2;
+  background: #e8e2d6;
   margin: 12px 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
 }
 
 .map-props-panel {
@@ -4915,6 +4939,26 @@
   white-space: nowrap;
 }
 
+.mi-evento-trivia-acceso {
+  display: block;
+  padding: 7px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-strong, #b45309);
+  text-decoration: none;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  transition: background 0.15s;
+}
+.mi-evento-trivia-acceso:hover {
+  background: rgba(0,0,0,0.03);
+}
+.dark .mi-evento-trivia-acceso {
+  border-top-color: rgba(255,255,255,0.08);
+}
+.dark .mi-evento-trivia-acceso:hover {
+  background: rgba(255,255,255,0.04);
+}
+
 .mi-evento-chevron {
   font-size: 0.7rem;
   color: rgba(19, 33, 45, 0.4);
@@ -5673,6 +5717,22 @@
 
 .dark .qr-preview {
   border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Scanner: QR de mi-evento tras check-in exitoso ── */
+.scanner-mi-evento-wrap {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+}
+
+.scanner-mi-evento-qr {
+  width: 160px;
+  height: 160px;
+  border-radius: 10px;
+  display: block;
+  margin: 0 auto;
 }
 
 .dark .encuesta-section {

@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>asistencia-evento</title>
+    <script>
+      (function () {
+        try {
+          var m = window.location.pathname.match(/^\/e\/([^\/]+)\//i)
+          if (!m) return
+          var cached = localStorage.getItem('ae:branding:' + m[1].toLowerCase())
+          if (!cached) return
+          var b = JSON.parse(cached)
+          var r = document.documentElement.style
+          if (b.accent) r.setProperty('--accent', b.accent)
+          if (b.accentStrong) r.setProperty('--accent-strong', b.accentStrong)
+          if (b.accent2) r.setProperty('--accent2', b.accent2)
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

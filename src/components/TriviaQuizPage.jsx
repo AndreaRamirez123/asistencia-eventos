@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { getTriviaDeEstacion } from '../triviaStore'
-import { guardarResultado, subscribeToRankingDeEstacion } from '../triviaStore'
+import { Circle, Image as KonvaImage, Layer, Rect, Stage, Text } from 'react-konva'
+import { getTriviaDeEstacion, guardarResultado, subscribeToRankingDeEstacion } from '../triviaStore'
+import { getEventoById } from '../eventosStore'
+import { subscribeToEstaciones } from '../stacionesStore'
 
 function TriviaQuizPage() {
   const params = new URLSearchParams(window.location.search)
@@ -19,6 +21,13 @@ function TriviaQuizPage() {
   const [ranking, setRanking] = useState([])
   const intervalRef = useRef(null)
 
+  // Mapa
+  const [evento, setEvento] = useState(null)
+  const [estaciones, setEstaciones] = useState([])
+  const [planoImg, setPlanoImg] = useState(null)
+  const [stageSize, setStageSize] = useState({ width: 340, height: 200 })
+  const mapaRef = useRef(null)
+
   useEffect(() => {
     if (!estacionId) { setLoading(false); return }
     getTriviaDeEstacion(estacionId).then((t) => {
@@ -32,6 +41,37 @@ function TriviaQuizPage() {
     const unsub = subscribeToRankingDeEstacion(estacionId, setRanking)
     return unsub
   }, [estacionId])
+
+  // Cargar evento y estaciones para el mapa
+  useEffect(() => {
+    if (!eventoId) return
+    getEventoById(eventoId).then((ev) => { if (ev) setEvento(ev) })
+  }, [eventoId])
+
+  useEffect(() => {
+    if (!eventoId) return
+    const unsub = subscribeToEstaciones(eventoId, setEstaciones)
+    return unsub
+  }, [eventoId])
+
+  useEffect(() => {
+    if (!evento?.planoBase64) { setPlanoImg(null); return }
+    const img = new window.Image()
+    img.src = evento.planoBase64
+    img.onload = () => setPlanoImg(img)
+  }, [evento?.planoBase64])
+
+  useEffect(() => {
+    if (!mapaRef.current) return
+    const observer = new ResizeObserver(() => {
+      if (mapaRef.current) {
+        const w = mapaRef.current.offsetWidth
+        setStageSize({ width: w, height: Math.round(w * 0.6) })
+      }
+    })
+    observer.observe(mapaRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const preguntaActual = trivia?.preguntas?.[preguntaIdx]
 
@@ -77,7 +117,6 @@ function TriviaQuizPage() {
         setPreguntaIdx(siguiente)
         setSeleccion(null)
       } else {
-        // Calcular puntos
         const aciertos = nuevasRespuestas.filter((r) => r.acerto).length
         const puntos = Math.round((aciertos / trivia.preguntas.length) * 100)
         const tiempoFinal = nuevasRespuestas.reduce((a, r) => a + r.tiempoUsado, 0)
@@ -93,6 +132,82 @@ function TriviaQuizPage() {
     if (seleccion !== null) return
     avanzar(idx)
   }
+
+  // Mapa: convertir % → px
+  const estPx = estaciones.map((e) => ({
+    ...e,
+    px: (e.x / 100) * stageSize.width,
+    py: (e.y / 100) * stageSize.height,
+    pw: (e.width / 100) * stageSize.width,
+    ph: (e.height / 100) * stageSize.height,
+  }))
+
+  const mapaSection = estaciones.length > 0 && (
+    <section className="panel public-panel" style={{ marginTop: '16px' }}>
+      <div className="panel-heading">
+        <p className="eyebrow">Mapa del evento</p>
+        <h2>Estaciones</h2>
+        <p className="section-copy">Ubícate en el recinto y encuentra tu próxima parada.</p>
+      </div>
+
+      <div ref={mapaRef} className="mapa-stage-container">
+        <Stage width={stageSize.width} height={stageSize.height}>
+          <Layer>
+            {planoImg && (
+              <KonvaImage
+                image={planoImg}
+                x={0} y={0}
+                width={stageSize.width}
+                height={stageSize.height}
+                opacity={0.85}
+              />
+            )}
+            {estPx.map((est) => {
+              const esCurrent = est.id === estacionId
+              const fill = esCurrent ? '#2dc20fcc' : est.color + '99'
+              const stroke = esCurrent ? '#1a8a09' : est.color
+              const commonProps = {
+                key: est.id,
+                x: est.px, y: est.py,
+                fill, stroke,
+                strokeWidth: esCurrent ? 3 : 1.5,
+              }
+              return est.forma === 'circle' ? (
+                <Circle {...commonProps} radius={Math.min(est.pw, est.ph) / 2} />
+              ) : (
+                <Rect {...commonProps} width={est.pw} height={est.ph} cornerRadius={4} />
+              )
+            })}
+            {estPx.map((est) => (
+              <Text
+                key={`lbl-${est.id}`}
+                x={est.px + 4} y={est.py + 4}
+                text={`${est.id === estacionId ? '★ ' : ''}${est.nombre}`}
+                fontSize={10}
+                fill="#13212d"
+                fontStyle={est.id === estacionId ? 'bold' : 'normal'}
+                listening={false}
+                width={est.pw - 8}
+                wrap="word"
+                ellipsis
+              />
+            ))}
+          </Layer>
+        </Stage>
+      </div>
+
+      <ul className="mapa-leyenda-list" style={{ marginTop: '12px' }}>
+        {estaciones.map((e) => (
+          <li key={e.id} className={`mapa-leyenda-item${e.id === estacionId ? ' mapa-leyenda-item--selected' : ''}`}>
+            <span className="mapa-leyenda-dot" style={{ background: e.color }} />
+            <span>{e.nombre}</span>
+            {e.id === estacionId && <span className="mapa-badge-trivia">Estás aquí</span>}
+            {e.tieneTivia && e.id !== estacionId && <span className="mapa-badge-trivia">Trivia</span>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 
   if (loading) {
     return (
@@ -111,6 +226,7 @@ function TriviaQuizPage() {
             <h1>Esta estación no tiene trivia disponible.</h1>
           </div>
         </header>
+        {mapaSection}
       </div>
     )
   }
@@ -159,7 +275,6 @@ function TriviaQuizPage() {
         {/* JUGANDO */}
         {fase === 'jugando' && preguntaActual && (
           <div className="trivia-quiz">
-            {/* Barra de progreso */}
             <div className="trivia-progreso-bar">
               <div
                 className="trivia-progreso-fill"
@@ -167,7 +282,6 @@ function TriviaQuizPage() {
               />
             </div>
 
-            {/* Temporizador */}
             <div className="trivia-timer">
               <div
                 className="trivia-timer-ring"
@@ -251,6 +365,9 @@ function TriviaQuizPage() {
           </div>
         )}
       </section>
+
+      {/* Mapa siempre visible debajo (oculto mientras se juega para no distraer) */}
+      {fase !== 'jugando' && mapaSection}
     </div>
   )
 }

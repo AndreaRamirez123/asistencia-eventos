@@ -94,9 +94,6 @@ function LoginPage() {
             Esta vista es solo para el equipo administrativo y staff de ingreso. Los asistentes no
             necesitan iniciar sesion aqui.
           </p>
-          <a href="/registro" className="text-link">
-            Si eres asistente, registrate aqui &rarr;
-          </a>
         </div>
       </header>
 

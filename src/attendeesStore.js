@@ -208,41 +208,20 @@ export async function registerAttendee(payload) {
 
   const attendeesRef = collection(db, COLLECTION_NAME)
 
-  // Bloqueamos duplicado solo si ya existe un registro con
-  // (mismo documento) + (mismo evento) + (misma empresa, comparada por id o nombre).
-  // Eso permite que la misma persona se registre en distintos eventos
-  // o representando empresas diferentes en el mismo evento.
+  // Bloqueamos duplicado si ya existe un registro con mismo documento + mismo evento.
+  // Una persona solo puede estar registrada una vez por evento.
   const duplicateQuery = query(attendeesRef, where('documentId', '==', attendee.documentId))
   const duplicateSnap = await getDocs(duplicateQuery)
   if (!duplicateSnap.empty) {
-    const orgActualNorm = String(attendee.organization || '')
-      .trim()
-      .toLowerCase()
     const isDuplicate = duplicateSnap.docs.some((d) => {
       const data = d.data()
-      const sameEvento = (data.eventoId || '') === (attendee.eventoId || '')
-      if (!sameEvento) return false
-      // Compara empresa por id, o si alguno está vacío, por nombre
-      const sameEmpresaId =
-        attendee.empresaInvitadaId &&
-        data.empresaInvitadaId &&
-        data.empresaInvitadaId === attendee.empresaInvitadaId
-      const sameEmpresaName =
-        orgActualNorm &&
-        data.organization &&
-        String(data.organization).trim().toLowerCase() === orgActualNorm
-      const bothEmpty =
-        !attendee.empresaInvitadaId &&
-        !data.empresaInvitadaId &&
-        !attendee.organization &&
-        !data.organization
-      return sameEmpresaId || sameEmpresaName || bothEmpty
+      return (data.eventoId || '') === (attendee.eventoId || '')
     })
     if (isDuplicate) {
       const error = new Error(
-        'Ya estás registrado para este evento con esta empresa. Si quieres cambiar tus datos, pídele al admin que edite tu registro.',
+        'Ya estás registrado para este evento. Si quieres cambiar tus datos, pídele al admin que edite tu registro.',
       )
-      error.validations = ['Documento duplicado en este evento + empresa.']
+      error.validations = ['Documento duplicado en este evento.']
       throw error
     }
   }

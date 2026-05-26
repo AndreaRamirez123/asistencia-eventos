@@ -101,17 +101,17 @@ function PublicRegistrationPage({
             <div>
               <span className="kiosk-meta-label">Documento</span>
               <strong>{submission.attendee.documentId}</strong>
-            </div>
+            </div> 
           </div>
           <div className="kiosk-success-actions">
             <a
               href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
-              className="submit-button"
+              className="submit-button reg-cta-estaciones"
             >
-              Ver mis estaciones →
+              Ver mis estaciones y trivias →
             </a>
             <p className="helper-text kiosk-tip">
-              Si el staff te lo solicita, muestra esta pantalla con tu nombre y documento.
+              Guarda ese enlace para acceder al recorrido y las trivias. Si el staff te lo solicita, muestra esta pantalla.
             </p>
           </div>
         </div>
@@ -225,8 +225,13 @@ function PublicRegistrationPage({
                 <small className="lookup-feedback">Buscando registros previos...</small>
               ) : lookupStatus === 'found' ? (
                 <small className="lookup-feedback found">
-                  &#10003; Te encontramos en eventos anteriores con esta misma empresa. Revisa
-                  que tus datos esten al dia.
+                  &#10003; Te encontramos registrado en esta empresa.{' '}
+                  <a
+                    href={`/mi-evento?doc=${form.documentId}`}
+                    className="lookup-estaciones-link"
+                  >
+                    Ver mis estaciones →
+                  </a>
                 </small>
               ) : lookupStatus === 'found-other-empresa' ? (
                 <small className="lookup-feedback partial">
@@ -445,7 +450,20 @@ function PublicRegistrationPage({
               </label>
             ) : null}
 
-            {errorMessage ? <p className="feedback error">{errorMessage}</p> : null}
+            {errorMessage ? (
+              <div>
+                <p className="feedback error">{errorMessage}</p>
+                {form.documentId ? (
+                  <a
+                    href={`/mi-evento?doc=${form.documentId}`}
+                    className="submit-button"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', marginTop: '10px', minHeight: '44px', boxSizing: 'border-box' }}
+                  >
+                    Ver mis estaciones y trivias →
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
 
             <button type="submit" className="submit-button" disabled={isSubmitting}>
               {isSubmitting ? 'Enviando registro...' : 'Registrarme'}
@@ -463,6 +481,18 @@ function PublicRegistrationPage({
                     muestra este QR al staff para ingresar, o simplemente di tu numero de
                     documento.
                   </p>
+
+                  {/* CTA principal: ver estaciones */}
+                  <a
+                    href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
+                    className="submit-button reg-cta-estaciones"
+                  >
+                    Ver mis estaciones y trivias →
+                  </a>
+                  <p className="preview-copy" style={{ fontSize: '0.78rem', marginTop: '6px', opacity: 0.7 }}>
+                    Guarda ese enlace para acceder al recorrido y las trivias del evento.
+                  </p>
+
                   <img
                     className="qr-preview"
                     src={submission.qrDataUrl}
@@ -490,13 +520,6 @@ function PublicRegistrationPage({
                     >
                       {isGeneratingPase ? 'Generando pase...' : '⬇ Descargar pase completo'}
                     </button>
-                    <a
-                      href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
-                      className="submit-button"
-                      style={{ marginTop: '8px', width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', boxSizing: 'border-box' }}
-                    >
-                      Ver mis estaciones →
-                    </a>
                   </div>
                 </>
               ) : (

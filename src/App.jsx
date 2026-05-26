@@ -364,7 +364,17 @@ function App() {
   useEffect(() => {
     if (!routeSlug) return
     getClienteBySlug(routeSlug).then((cliente) => {
-      if (cliente) setActiveCliente(cliente)
+      if (!cliente) return
+      setActiveCliente(cliente)
+      // Cargamos eventos en el mismo callback para no esperar otro ciclo de render
+      if (isFirebaseConfigured) {
+        listEventos(cliente.id)
+          .then((items) => {
+            setEventos(items)
+            setEventosLoaded(true)
+          })
+          .catch(() => setEventosLoaded(true))
+      }
     })
   }, [routeSlug])
 
@@ -400,6 +410,19 @@ function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.clienteId])
 
+  // Cargar eventos para rutas públicas (visitantes sin login que usan /e/:slug/)
+  useEffect(() => {
+    if (!isFirebaseConfigured) return
+    if (currentUser) return // el efecto de admin lo maneja
+    if (!activeCliente?.id) return
+    listEventos(activeCliente.id)
+      .then((items) => {
+        setEventos(items)
+        setEventosLoaded(true)
+      })
+      .catch(() => setEventosLoaded(true))
+  }, [activeCliente, currentUser])
+
   // Aplicar branding de la empresa activa como CSS variables
   useEffect(() => {
     const cliente = superadminClienteActivo || activeCliente
@@ -407,7 +430,6 @@ function App() {
     const secundario = cliente?.colorSecundario
     if (primario) {
       document.documentElement.style.setProperty('--accent', primario)
-      // accent-strong = color secundario si existe, si no el mismo primario (botón sólido)
       document.documentElement.style.setProperty('--accent-strong', secundario || primario)
     } else {
       document.documentElement.style.removeProperty('--accent')
@@ -417,6 +439,17 @@ function App() {
       document.documentElement.style.setProperty('--accent2', secundario)
     } else {
       document.documentElement.style.removeProperty('--accent2')
+    }
+    // Guardar en localStorage para aplicar sin flash en la siguiente carga
+    const slug = cliente?.slug
+    if (slug && primario) {
+      try {
+        localStorage.setItem(`ae:branding:${slug}`, JSON.stringify({
+          accent: primario,
+          accentStrong: secundario || primario,
+          accent2: secundario || '',
+        }))
+      } catch { /* ignore */ }
     }
   }, [superadminClienteActivo, activeCliente])
 
@@ -769,6 +802,10 @@ function App() {
 
   const handlePublicSubmit = async (event) => {
     event.preventDefault()
+    if (!activeEventoId) {
+      setPublicErrorMessage('El evento aún está cargando. Espera un momento e intenta de nuevo.')
+      return
+    }
     setIsPublicSubmitting(true)
     setPublicErrorMessage('')
 
@@ -1090,7 +1127,7 @@ function App() {
             activeEvento?.modoRegistro ||
             (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
           }
-          eventoLoaded={eventosLoaded}
+          eventoLoaded={true}
           eventoNombre={activeEvento?.nombre || ''}
           empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
           onResetSubmission={() => {
@@ -1227,8 +1264,7 @@ function App() {
           const scannerPath = brandingCliente?.slug
             ? `/e/${brandingCliente.slug}/scanner`
             : '/scanner'
-          history.pushState(null, '', scannerPath)
-          setCurrentView('scanner')
+          window.open(scannerPath, '_blank')
         }}
       />
 

@@ -54,6 +54,7 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
   const [history, setHistory] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [expressMode, setExpressMode] = useState(loadExpressMode)
+  const [miEventoQr, setMiEventoQr] = useState('')
   const lastTokenRef = useRef({ token: '', at: 0 })
   const autoResumeRef = useRef(null)
 
@@ -97,8 +98,9 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
       setIsSubmitting(false)
     }
 
-    const okStatuses = ['ok', 'duplicate']
-    const shouldAutoResume = okStatuses.includes(result?.status)
+    // Solo auto-resume en duplicados y errores leves; 'ok' muestra el QR de estaciones
+    // y espera a que el staff presione "Escanear siguiente"
+    const shouldAutoResume = result?.status === 'duplicate'
     if (shouldAutoResume) {
       const delay = expressMode ? 800 : 1500
       autoResumeRef.current = setTimeout(() => {
@@ -171,6 +173,21 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (lastResult?.status !== 'ok' || !lastResult?.attendee?.documentId) {
+      setMiEventoQr('')
+      return
+    }
+    const docId = lastResult.attendee.documentId
+    const slug = empresaConfig?.slug
+    const url = slug
+      ? `${window.location.origin}/e/${slug}/mi-evento?doc=${docId}`
+      : `${window.location.origin}/mi-evento?doc=${docId}`
+    QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: '#13212d', light: '#fffaf1' } })
+      .then(setMiEventoQr)
+      .catch(() => setMiEventoQr(''))
+  }, [lastResult?.status, lastResult?.attendee?.documentId, empresaConfig?.slug])
 
   const resumeScan = () => {
     setLastResult(null)
@@ -506,6 +523,15 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
                     </div>
                     {lastResult.status !== 'ok' ? (
                       <p className="preview-copy">{lastResult.message}</p>
+                    ) : null}
+                    {lastResult.status === 'ok' && miEventoQr ? (
+                      <div className="scanner-mi-evento-wrap">
+                        <p className="eyebrow" style={{ marginTop: 12, marginBottom: 4 }}>Recorrido de estaciones</p>
+                        <p className="helper-text" style={{ fontSize: '0.78rem', marginBottom: 8 }}>
+                          El visitante puede escanear este QR para iniciar su recorrido
+                        </p>
+                        <img src={miEventoQr} alt="QR mis estaciones" className="scanner-mi-evento-qr" />
+                      </div>
                     ) : null}
                   </>
                 ) : (
