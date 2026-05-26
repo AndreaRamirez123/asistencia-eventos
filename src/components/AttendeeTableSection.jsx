@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 function AttendeeTableSection({
   attendees,
   empresasMap = {},
@@ -12,13 +14,17 @@ function AttendeeTableSection({
   handleExportCsv,
   handleViewQr,
   handleBulkApprove,
+  handleBulkDelete,
   isBulkApproving = false,
+  isBulkDeleting = false,
   formatDate,
   isDeletingId,
   isUpdatingStatusId,
   isLoadingAttendees,
   loadAttendees,
 }) {
+  const [selectedIds, setSelectedIds] = useState([])
+
   const categoriasMap = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]))
 
   const statusLabel = { approved: 'Aprobado', 'checked-in': 'Check-in', 'pre-registered': 'Pre-registro', pending: 'Pendiente' }
@@ -26,6 +32,29 @@ function AttendeeTableSection({
   const pendingIds = attendees
     .filter((a) => a.status === 'pre-registered' || a.status === 'pending')
     .map((a) => a.id)
+
+  const allSelected = attendees.length > 0 && selectedIds.length === attendees.length
+  const someSelected = selectedIds.length > 0 && !allSelected
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(attendees.map((a) => a.id))
+    }
+  }
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleBulkDeleteClick = () => {
+    if (selectedIds.length === 0 || !handleBulkDelete) return
+    handleBulkDelete(selectedIds, () => setSelectedIds([]))
+  }
+
   return (
     <section id="asistentes" className="panel">
       <div className="panel-heading table-heading">
@@ -137,6 +166,20 @@ function AttendeeTableSection({
           </button>
         ) : null}
 
+        {handleBulkDelete && selectedIds.length > 0 ? (
+          <button
+            type="button"
+            className="ghost-action"
+            style={{ color: 'var(--danger, #e05)' }}
+            onClick={handleBulkDeleteClick}
+            disabled={isBulkDeleting}
+          >
+            {isBulkDeleting
+              ? 'Eliminando...'
+              : `Eliminar seleccionados (${selectedIds.length})`}
+          </button>
+        ) : null}
+
         {handleExportCsv ? (
           <button
             type="button"
@@ -161,7 +204,17 @@ function AttendeeTableSection({
         <div className="attendee-table-wrap">
           <div className="attendee-table" role="table" aria-label="Listado de asistentes">
           <div className="attendee-row attendee-head" role="row">
-            <span>Nombre</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => { if (el) el.indeterminate = someSelected }}
+                onChange={toggleSelectAll}
+                title="Seleccionar todos"
+                style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+              />
+              Nombre
+            </span>
             <span>Documento</span>
             <span>Empresa</span>
             <span>Categoria</span>
@@ -174,9 +227,23 @@ function AttendeeTableSection({
           {attendees.map((item) => {
             const isKiosk = item.source === 'kiosk-registration'
             const companions = Number(item.companionsCount) || 0
+            const isSelected = selectedIds.includes(item.id)
             return (
-              <div key={item.id} className="attendee-row" role="row">
-                <span>{item.fullName || 'Sin nombre'}</span>
+              <div
+                key={item.id}
+                className="attendee-row"
+                role="row"
+                style={isSelected ? { background: 'rgba(239,68,68,0.07)' } : undefined}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(item.id)}
+                    style={{ cursor: 'pointer', width: '15px', height: '15px', flexShrink: 0 }}
+                  />
+                  {item.fullName || 'Sin nombre'}
+                </span>
                 <span>
                   {item.documentType ? `${item.documentType} ` : ''}
                   {item.documentId || 'Sin documento'}

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { loginWithEmail, loginWithGoogle, resetPassword } from '../auth'
 
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
 function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,18 +46,18 @@ function LoginPage() {
     setErrorMessage('')
     try {
       const user = await loginWithGoogle()
+      if (!user) return // iOS: redirect en progreso, el navegador navega a Google
       const target = user.role === 'staff' ? '/scanner' : '/admin'
       window.location.href = target
     } catch (error) {
       const code = error.code || ''
+      let message = error.message || 'No fue posible iniciar sesion con Google.'
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        // usuario cerró el popup, no mostrar error
+        message = 'Se cerro la ventana de Google antes de completar el inicio de sesion.'
       } else if (code === 'auth/popup-blocked') {
-        setErrorMessage('El navegador bloqueó la ventana emergente. Permite popups para este sitio.')
-      } else {
-        setErrorMessage(error.message || 'No fue posible iniciar sesion con Google.')
+        message = 'El navegador bloqueo el popup de Google. En el celular ve a Configuracion del navegador y permite ventanas emergentes para este sitio. O inicia sesion con correo y contrasena.'
       }
-    } finally {
+      setErrorMessage(message)
       setIsGoogleLoading(false)
     }
   }
@@ -152,7 +154,7 @@ function LoginPage() {
           disabled={isGoogleLoading}
         >
           {isGoogleLoading ? (
-            'Abriendo Google...'
+            isIOS ? 'Redirigiendo a Google...' : 'Abriendo Google...'
           ) : (
             <>
               <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">

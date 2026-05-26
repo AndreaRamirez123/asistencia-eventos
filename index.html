@@ -13,10 +13,11 @@
           var cached = localStorage.getItem('ae:branding:' + m[1].toLowerCase())
           if (!cached) return
           var b = JSON.parse(cached)
+          var hex = /^#[0-9a-fA-F]{3,8}$/
           var r = document.documentElement.style
-          if (b.accent) r.setProperty('--accent', b.accent)
-          if (b.accentStrong) r.setProperty('--accent-strong', b.accentStrong)
-          if (b.accent2) r.setProperty('--accent2', b.accent2)
+          if (b.accent && hex.test(b.accent)) r.setProperty('--accent', b.accent)
+          if (b.accentStrong && hex.test(b.accentStrong)) r.setProperty('--accent-strong', b.accentStrong)
+          if (b.accent2 && hex.test(b.accent2)) r.setProperty('--accent2', b.accent2)
         } catch (e) {}
       })()
     </script>

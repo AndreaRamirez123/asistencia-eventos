@@ -278,6 +278,7 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPublicSubmitting, setIsPublicSubmitting] = useState(false)
   const [isDeletingId, setIsDeletingId] = useState('')
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
   const [isUpdatingStatusId, setIsUpdatingStatusId] = useState('')
   const [pendingDeleteAttendee, setPendingDeleteAttendee] = useState(null)
   const [viewingQrAttendee, setViewingQrAttendee] = useState(null)
@@ -758,6 +759,26 @@ function App() {
     }
   }
 
+  const handleBulkDelete = async (ids, onSuccess) => {
+    if (!ids || ids.length === 0) return
+    const confirmed = window.confirm(
+      `Vas a eliminar ${ids.length} asistente(s) de forma permanente. Esta acción no se puede deshacer. ¿Continuar?`
+    )
+    if (!confirmed) return
+    setIsBulkDeleting(true)
+    setErrorMessage('')
+    try {
+      await Promise.all(ids.map((id) => deleteAttendee(id)))
+      setAttendees((current) => current.filter((a) => !ids.includes(a.id)))
+      onSuccess?.()
+    } catch (error) {
+      setErrorMessage(error.message || 'No fue posible eliminar los asistentes seleccionados.')
+      console.error(error)
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setIsSubmitting(true)
@@ -1207,16 +1228,25 @@ function App() {
     return (
       <>
         {themeTogglePortal}
-        <CalificacionPage
-          evento={activeEvento}
-          empresasInvitadas={empresasInvitadas}
-          eventoLoaded={eventosLoaded}
-        />
+        <div className="public-page-outer">
+          <CalificacionPage
+            evento={activeEvento}
+            empresasInvitadas={empresasInvitadas}
+            eventoLoaded={eventosLoaded}
+          />
+          {publicFooter}
+        </div>
       </>
     )
   }
 
   if (currentView === 'login') {
+    // Usuario vuelve del redirect de Google en móvil ya autenticado
+    if (!isAuthChecking && currentUser) {
+      const target = currentUser.role === 'staff' ? '/scanner' : '/admin'
+      window.location.href = target
+      return null
+    }
     return (
       <>
         {themeTogglePortal}
@@ -1607,6 +1637,8 @@ function App() {
             handleViewQr={setViewingQrAttendee}
             handleBulkApprove={handleBulkApprove}
             isBulkApproving={isBulkApproving}
+            handleBulkDelete={handleBulkDelete}
+            isBulkDeleting={isBulkDeleting}
             filterState={filters}
             filteredCount={filteredAttendees.length}
             handleDelete={handleRequestDelete}

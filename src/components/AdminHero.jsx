@@ -57,10 +57,12 @@ function AdminHero({
         </div>
 
         <div className="status-strip">
-          <span className={`status-pill ${isFirebaseConfigured ? 'online' : 'alert'}`}>
-            {isFirebaseConfigured ? 'Firestore conectado' : 'Firebase no configurado'}
-          </span>
-          <span className="status-pill standby">{attendeesCount} registros cargados</span>
+          {!isFirebaseConfigured ? (
+            <span className="status-pill alert">Firebase no configurado</span>
+          ) : null}
+          {currentUser?.role === 'superadmin' ? (
+            <span className="status-pill standby">{attendeesCount} registros cargados</span>
+          ) : null}
           {currentUser ? (
             <span className="status-pill standby" title={currentUser.email}>
               {currentUser.role === 'superadmin'

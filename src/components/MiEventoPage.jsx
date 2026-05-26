@@ -7,7 +7,7 @@ import { getEventoById, listEventos } from '../eventosStore'
 import { getVisitasPorVisitante, registrarVisita, resetVisitasDeVisitante } from '../visitasStore'
 import { getTriviaDeEstacion, guardarResultado } from '../triviaStore'
 
-// ── Trivia inline con timer ────────────────────────────────────────────────
+// ── Trivia inline ──────────────────────────────────────────────────────────
 function TriviaInline({ trivia, onComplete }) {
   const [fase, setFase] = useState('inicio')
   const [preguntaIdx, setPreguntaIdx] = useState(0)
@@ -15,7 +15,6 @@ function TriviaInline({ trivia, onComplete }) {
   const [respuestas, setRespuestas] = useState([])
   const [tiempoRestante, setTiempoRestante] = useState(0)
   const intervalRef = useRef(null)
-
   const preguntaActual = trivia?.preguntas?.[preguntaIdx]
 
   useEffect(() => {
@@ -32,12 +31,7 @@ function TriviaInline({ trivia, onComplete }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preguntaIdx, fase])
 
-  const iniciar = () => {
-    setRespuestas([])
-    setPreguntaIdx(0)
-    setSeleccion(null)
-    setFase('jugando')
-  }
+  const iniciar = () => { setRespuestas([]); setPreguntaIdx(0); setSeleccion(null); setFase('jugando') }
 
   const avanzar = (opcionIdx) => {
     clearInterval(intervalRef.current)
@@ -49,10 +43,8 @@ function TriviaInline({ trivia, onComplete }) {
     setSeleccion(opcionIdx)
     setTimeout(() => {
       const siguiente = preguntaIdx + 1
-      if (siguiente < trivia.preguntas.length) {
-        setPreguntaIdx(siguiente)
-        setSeleccion(null)
-      } else {
+      if (siguiente < trivia.preguntas.length) { setPreguntaIdx(siguiente); setSeleccion(null) }
+      else {
         const aciertos = nuevasRespuestas.filter((r) => r.acerto).length
         const puntos = Math.round((aciertos / trivia.preguntas.length) * 100)
         const tiempoFinal = nuevasRespuestas.reduce((a, r) => a + r.tiempoUsado, 0)
@@ -63,39 +55,29 @@ function TriviaInline({ trivia, onComplete }) {
   }
 
   if (!trivia?.preguntas?.length) return null
-
   const aciertos = respuestas.filter((r) => r.acerto).length
   const puntos = fase === 'resultado' ? Math.round((aciertos / trivia.preguntas.length) * 100) : 0
 
   return (
     <div className="trivia-inline-wrap">
       <p className="eyebrow" style={{ marginBottom: 10 }}>Trivia de la estación</p>
-
       {fase === 'inicio' && (
         <div>
-          <p className="helper-text">{trivia.preguntas.length} pregunta(s) con tiempo límite por cada una</p>
-          <button className="submit-button" onClick={iniciar} style={{ marginTop: 12 }}>
-            Comenzar trivia
-          </button>
+          <p className="helper-text">{trivia.preguntas.length} pregunta(s) con tiempo límite</p>
+          <button className="mie-btn-primary" onClick={iniciar} style={{ marginTop: 12 }}>Comenzar trivia</button>
         </div>
       )}
-
       {fase === 'jugando' && preguntaActual && (
         <div className="trivia-quiz">
           <div className="trivia-progreso-bar">
             <div className="trivia-progreso-fill" style={{ width: `${(preguntaIdx / trivia.preguntas.length) * 100}%` }} />
           </div>
           <div className="trivia-timer">
-            <div
-              className="trivia-timer-ring"
-              style={{ background: `conic-gradient(${tiempoRestante > 10 ? 'var(--accent-strong)' : '#ff6b6b'} ${(tiempoRestante / preguntaActual.tiempo) * 360}deg, #eee 0deg)` }}
-            >
+            <div className="trivia-timer-ring" style={{ background: `conic-gradient(${tiempoRestante > 10 ? '#3b82f6' : '#ef4444'} ${(tiempoRestante / preguntaActual.tiempo) * 360}deg, rgba(255,255,255,0.1) 0deg)` }}>
               <span>{tiempoRestante}</span>
             </div>
           </div>
-          <p className="helper-text" style={{ marginBottom: 6, textAlign: 'center' }}>
-            Pregunta {preguntaIdx + 1} de {trivia.preguntas.length}
-          </p>
+          <p className="helper-text" style={{ marginBottom: 6, textAlign: 'center' }}>Pregunta {preguntaIdx + 1} de {trivia.preguntas.length}</p>
           <h3 className="trivia-pregunta-texto">{preguntaActual.texto}</h3>
           <div className="trivia-opciones-quiz">
             {preguntaActual.opciones.map((op, idx) => {
@@ -114,23 +96,52 @@ function TriviaInline({ trivia, onComplete }) {
           </div>
         </div>
       )}
-
       {fase === 'resultado' && (
         <div style={{ textAlign: 'center', padding: '12px 0' }}>
           <div className="trivia-resultado-score" style={{ marginBottom: 8 }}>
-            <strong>{puntos}</strong>
-            <span>puntos</span>
+            <strong>{puntos}</strong><span>puntos</span>
           </div>
           <p className="helper-text">{aciertos} de {trivia.preguntas.length} respuestas correctas</p>
           <p className="feedback success" style={{ marginTop: 10 }}>✓ Trivia completada — ahora califica la estación</p>
-          <button type="button" className="ghost-action" onClick={iniciar} style={{ marginTop: 8, fontSize: '0.8rem' }}>
-            Reintentar
-          </button>
+          <button type="button" className="mie-btn-ghost" onClick={iniciar} style={{ marginTop: 8, fontSize: '0.8rem' }}>Reintentar</button>
         </div>
       )}
     </div>
   )
 }
+
+// ── Iconos SVG ─────────────────────────────────────────────────────────────
+const IconMap = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+    <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+  </svg>
+)
+const IconPerson = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+)
+const IconQr = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/>
+    <path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3"/>
+  </svg>
+)
+const IconPin = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+    <circle cx="12" cy="10" r="3"/>
+  </svg>
+)
+const IconCamera = () => (
+  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+)
 
 // ── Página principal ────────────────────────────────────────────────────────
 function MiEventoPage() {
@@ -148,18 +159,22 @@ function MiEventoPage() {
   const [openId, setOpenId] = useState(null)
   const [trivias, setTrivias] = useState({})
   const [loadingTrivia, setLoadingTrivia] = useState({})
-  const [triviaScores, setTriviaScores] = useState({}) // { [estId]: { puntos, tiempoTotal } }
+  const [triviaScores, setTriviaScores] = useState({})
   const [registrando, setRegistrando] = useState('')
   const [ratings, setRatings] = useState({})
-  const [scanningId, setScanningId] = useState(null)
   const [scannedSet, setScannedSet] = useState(new Set())
-  const [scanError, setScanError] = useState({})
-  const [cameraError, setCameraError] = useState({})
+  const [scanError, setScanError] = useState('')
+  const [cameraError, setCameraError] = useState(false)
 
-  // Mapa
+  // App shell
+  const [activeTab, setActiveTab] = useState('piso')
+  const [cameraEnabled, setCameraEnabled] = useState(false)
+  const [selectedEstId, setSelectedEstId] = useState(null)
+
+  // Map
   const [evento, setEvento] = useState(null)
   const [planoImg, setPlanoImg] = useState(null)
-  const [stageSize, setStageSize] = useState({ width: 340, height: 200 })
+  const [stageSize, setStageSize] = useState({ width: 340, height: 240 })
   const mapaRef = useRef(null)
   const stationRefs = useRef({})
 
@@ -169,7 +184,7 @@ function MiEventoPage() {
     try {
       const found = await getAttendeeByDocument(documentId, evId)
       if (!found) {
-        setError('No encontramos un registro con ese documento. Verifica que te hayas registrado en el evento.')
+        setError('No encontramos un registro con ese documento. Verifica que te hayas registrado.')
         setLoading(false)
         return
       }
@@ -184,18 +199,13 @@ function MiEventoPage() {
         } catch { /* silencioso */ }
       }
       setEventoId(realEventoId)
-
       const [ests, visitas] = await Promise.all([
         listEstaciones(realEventoId),
         getVisitasPorVisitante(realEventoId, documentId),
       ])
       setEstaciones(ests)
       setVisitadasSet(new Set(visitas.map((v) => v.estacionId)))
-
-      // Cargar evento para el mapa
-      if (realEventoId) {
-        getEventoById(realEventoId).then((ev) => { if (ev) setEvento(ev) })
-      }
+      if (realEventoId) getEventoById(realEventoId).then((ev) => { if (ev) setEvento(ev) })
     } catch {
       setError('No fue posible cargar tus datos. Intenta de nuevo.')
     } finally {
@@ -203,11 +213,8 @@ function MiEventoPage() {
     }
   }
 
-  useEffect(() => {
-    if (docParam) loadData(docParam, eventoParam)
-  }, [])
+  useEffect(() => { if (docParam) loadData(docParam, eventoParam) }, [])
 
-  // Plano del evento
   useEffect(() => {
     if (!evento?.planoBase64) { setPlanoImg(null); return }
     const img = new window.Image()
@@ -215,18 +222,17 @@ function MiEventoPage() {
     img.onload = () => setPlanoImg(img)
   }, [evento?.planoBase64])
 
-  // Tamaño responsive del mapa — se re-ejecuta cuando las estaciones cargan y el div aparece
   useEffect(() => {
     if (!mapaRef.current) return
     const calc = () => {
       const w = mapaRef.current?.offsetWidth
-      if (w > 0) setStageSize({ width: w, height: Math.round(w * 0.55) })
+      if (w > 0) setStageSize({ width: w, height: Math.round(w * 0.62) })
     }
-    calc() // medir de inmediato
+    calc()
     const observer = new ResizeObserver(calc)
     observer.observe(mapaRef.current)
     return () => observer.disconnect()
-  }, [estaciones.length]) // se re-monta cuando aparece el bloque del mapa
+  }, [estaciones.length, activeTab])
 
   const handleSubmitDoc = (e) => {
     e.preventDefault()
@@ -238,46 +244,47 @@ function MiEventoPage() {
     loadData(cleaned, eventoParam)
   }
 
-  const handleScanQr = (detected, estId) => {
-    const rawValue = detected?.[0]?.rawValue || ''
-    if (!rawValue) return
-    let scannedEstId = null
-    try {
-      scannedEstId = new URL(rawValue).searchParams.get('id')
-    } catch { scannedEstId = null }
-    if (scannedEstId === estId) {
-      setScannedSet((prev) => new Set([...prev, estId]))
-      setScanningId(null)
-      setScanError((prev) => ({ ...prev, [estId]: '' }))
-    } else {
-      setScanError((prev) => ({ ...prev, [estId]: 'QR incorrecto. Escanea el código de esta estación.' }))
+  const loadTriviaIfNeeded = (estId) => {
+    if (!trivias[estId] && trivias[estId] !== null) {
+      setLoadingTrivia((prev) => ({ ...prev, [estId]: true }))
+      getTriviaDeEstacion(estId)
+        .then((t) => setTrivias((prev) => ({ ...prev, [estId]: t || null })))
+        .catch(() => setTrivias((prev) => ({ ...prev, [estId]: null })))
+        .finally(() => setLoadingTrivia((prev) => ({ ...prev, [estId]: false })))
     }
   }
 
-  const handleOpenEstacion = async (estId) => {
-    if (visitadasSet.has(estId)) return
+  // Escaneo global desde la pestaña QR
+  const handleGlobalScan = (detected) => {
+    const rawValue = detected?.[0]?.rawValue || ''
+    if (!rawValue) return
+    let estId = null
+    try { estId = new URL(rawValue).searchParams.get('id') } catch { estId = null }
+    if (!estId) { setScanError('QR no reconocido. Escanea el código de una estación.'); return }
+    const est = estaciones.find((e) => e.id === estId)
+    if (!est) { setScanError('Esta estación no pertenece al evento.'); return }
+    if (visitadasSet.has(estId)) { setScanError(`Ya completaste "${est.nombre}".`); return }
+    setScannedSet((prev) => new Set([...prev, estId]))
+    setScanError('')
+    setCameraEnabled(false)
+    setCameraError(false)
+    setOpenId(estId)
+    loadTriviaIfNeeded(estId)
+    setActiveTab('estaciones')
+    setTimeout(() => {
+      stationRefs.current[estId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 200)
+  }
+
+  const handleToggleStation = (estId) => {
     const isToggle = openId === estId
     setOpenId(isToggle ? null : estId)
     if (!isToggle) {
+      loadTriviaIfNeeded(estId)
       setTimeout(() => {
         stationRefs.current[estId]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 80)
     }
-    if (!isToggle && !trivias[estId] && trivias[estId] !== null) {
-      setLoadingTrivia((prev) => ({ ...prev, [estId]: true }))
-      try {
-        const t = await getTriviaDeEstacion(estId)
-        setTrivias((prev) => ({ ...prev, [estId]: t || null }))
-      } catch {
-        setTrivias((prev) => ({ ...prev, [estId]: null }))
-      }
-      setLoadingTrivia((prev) => ({ ...prev, [estId]: false }))
-    }
-  }
-
-  const handleMapClick = (est) => {
-    if (visitadasSet.has(est.id)) return
-    handleOpenEstacion(est.id)
   }
 
   const handleTriviaComplete = (estId, puntos, tiempoTotal) => {
@@ -287,7 +294,6 @@ function MiEventoPage() {
   const handleSetRating = (estId, stars) => {
     setRatings((prev) => ({ ...prev, [estId]: { ...(prev[estId] || {}), stars } }))
   }
-
   const handleSetComentario = (estId, comentario) => {
     setRatings((prev) => ({ ...prev, [estId]: { ...(prev[estId] || {}), comentario } }))
   }
@@ -297,13 +303,9 @@ function MiEventoPage() {
     const trivia = trivias[estId]
     const triviaRequired = Boolean(trivia?.preguntas?.length)
     const triviaScore = triviaScores[estId]
-
-    // Si tiene trivia, debe haberla jugado al menos una vez
     if (triviaRequired && !triviaScore) return
-
     const stars = ratings[estId]?.stars || 0
     if (stars === 0) return
-
     setRegistrando(estId)
     try {
       await registrarVisita(eventoId, estId, attendee.documentId, {
@@ -315,12 +317,11 @@ function MiEventoPage() {
       }
       setVisitadasSet((prev) => new Set([...prev, estId]))
       setOpenId(null)
-    } catch { /* silencioso */ }
-    finally { setRegistrando('') }
+    } catch { /* silencioso */ } finally { setRegistrando('') }
   }
 
   const handleResetRecorrido = async () => {
-    if (!window.confirm('¿Seguro que quieres borrar todo tu progreso? Esto es solo para pruebas.')) return
+    if (!window.confirm('¿Borrar todo tu progreso? Solo para pruebas.')) return
     await resetVisitasDeVisitante(eventoId, attendee.documentId)
     setVisitadasSet(new Set())
     setScannedSet(new Set())
@@ -331,9 +332,9 @@ function MiEventoPage() {
 
   const totalEstaciones = estaciones.length
   const totalVisitadas = visitadasSet.size
-  const pct = totalEstaciones > 0 ? (totalVisitadas / totalEstaciones) * 100 : 0
+  const pct = totalEstaciones > 0 ? Math.round((totalVisitadas / totalEstaciones) * 100) : 0
 
-  // Mapa: convertir % → px
+  // Mapa: % → px
   const estPx = estaciones.map((e) => ({
     ...e,
     px: (e.x / 100) * stageSize.width,
@@ -342,17 +343,19 @@ function MiEventoPage() {
     ph: (e.height / 100) * stageSize.height,
   }))
 
+  // ── Loading ──
   if (loading) {
     return (
-      <div className="public-shell">
-        <div className="public-loading">
+      <div className="mie-app" style={{ justifyContent: 'center', alignItems: 'center', display: 'flex' }}>
+        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
           <div className="public-loading-spinner" aria-hidden="true" />
-          <p>Cargando tu recorrido...</p>
+          <p style={{ marginTop: 12 }}>Cargando tu recorrido...</p>
         </div>
       </div>
     )
   }
 
+  // ── Input documento ──
   if (!attendee) {
     return (
       <div className="public-shell">
@@ -360,9 +363,7 @@ function MiEventoPage() {
           <div>
             <p className="eyebrow">Mi recorrido</p>
             <h1>¿Cuál es tu documento?</h1>
-            <p className="hero-text">
-              Ingresa tu número de documento para ver las estaciones del evento y registrar tu visita.
-            </p>
+            <p className="hero-text">Ingresa tu número de documento para ver las estaciones del evento.</p>
           </div>
         </header>
         <section className="panel public-panel">
@@ -370,14 +371,7 @@ function MiEventoPage() {
           <form onSubmit={handleSubmitDoc} className="attendee-form">
             <label className="field">
               <span>Número de documento</span>
-              <input
-                type="text"
-                value={docInput}
-                onChange={(e) => setDocInput(e.target.value)}
-                placeholder="Ej. 1032456789"
-                required
-                autoFocus
-              />
+              <input type="text" value={docInput} onChange={(e) => setDocInput(e.target.value)} placeholder="Ej. 1032456789" required autoFocus />
             </label>
             <button type="submit" className="submit-button">Ver mis estaciones</button>
           </form>
@@ -386,241 +380,383 @@ function MiEventoPage() {
     )
   }
 
+  // ── App shell ──
   return (
-    <div className="public-shell">
-      <header className="public-hero">
-        <div>
-          <p className="eyebrow">Hola, {attendee.fullName?.split(' ')[0]}</p>
-          <h1>Tu recorrido por el evento</h1>
-          <p className="hero-text">
-            {totalVisitadas === 0
-              ? 'Aún no has visitado ninguna estación. ¡Empieza!'
-              : totalVisitadas === totalEstaciones
-                ? '¡Completaste todas las estaciones!'
-                : `${totalVisitadas} de ${totalEstaciones} estaciones completadas`}
-          </p>
+    <div className="mie-app">
+      {/* Top bar */}
+      <header className="mie-topbar">
+        <div className="mie-topbar-brand">
+          <div className="mie-topbar-avatar">{attendee.fullName?.[0]?.toUpperCase() || '?'}</div>
+          <span className="mie-topbar-name">{attendee.fullName?.split(' ')[0]}</span>
+        </div>
+        <div className="mie-topbar-right">
+          <div className="mie-trophy-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            <span>{totalVisitadas}/{totalEstaciones}</span>
+          </div>
         </div>
       </header>
 
-      <div className="mi-evento-progress-wrap">
-        <div className="mi-evento-progress-bar" style={{ width: `${pct}%` }} />
-      </div>
+      {/* Tab content */}
+      <div className="mie-content">
 
-      {/* ── Mapa interactivo ── */}
-      {estaciones.length > 0 && (
-        <section className="panel public-panel" style={{ marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
-          <div className="panel-heading">
-            <p className="eyebrow">Mapa del evento</p>
-            <h2>Estaciones — toca una para empezar</h2>
-          </div>
-          <div ref={mapaRef} className="mapa-stage-container">
-            <Stage width={stageSize.width} height={stageSize.height}>
-              <Layer>
-                {planoImg && (
-                  <KonvaImage image={planoImg} x={0} y={0} width={stageSize.width} height={stageSize.height} opacity={0.85} />
-                )}
-                {estPx.map((est) => {
-                  const visitada = visitadasSet.has(est.id)
-                  const isOpen = openId === est.id
-                  const fill = visitada ? '#22c55ecc' : isOpen ? 'var(--accent, #ffd166)cc' : est.color + '99'
-                  const stroke = visitada ? '#16a34a' : isOpen ? 'var(--accent-strong, #b45309)' : est.color
-                  const commonProps = {
-                    key: est.id,
-                    x: est.px, y: est.py,
-                    fill, stroke,
-                    strokeWidth: isOpen ? 3 : visitada ? 2 : 1.5,
-                    onClick: () => handleMapClick(est),
-                    onTap: () => handleMapClick(est),
-                  }
-                  return est.forma === 'circle'
-                    ? <Circle {...commonProps} radius={Math.min(est.pw, est.ph) / 2} />
-                    : <Rect {...commonProps} width={est.pw} height={est.ph} cornerRadius={4} />
-                })}
-                {estPx.map((est) => (
-                  <Text
-                    key={`lbl-${est.id}`}
-                    x={est.px + 3} y={est.py + 3}
-                    text={`${visitadasSet.has(est.id) ? '✓ ' : ''}${est.nombre}`}
-                    fontSize={Math.max(9, Math.min(12, est.pw / 8))}
-                    fill={visitadasSet.has(est.id) ? '#fff' : '#13212d'}
-                    fontStyle="bold"
-                    shadowColor="rgba(0,0,0,0.4)"
-                    shadowBlur={2}
-                    shadowOffsetX={0}
-                    shadowOffsetY={1}
-                    listening={false}
-                    width={est.pw - 6}
-                    wrap="word"
-                    ellipsis
-                  />
-                ))}
-              </Layer>
-            </Stage>
-          </div>
-          <p className="helper-text" style={{ marginTop: 8, fontSize: '0.8rem', opacity: 0.65 }}>
-            Verde = completada · Toca una estación sin completar para abrirla abajo
-          </p>
-        </section>
-      )}
-
-      {/* ── Lista de estaciones ── */}
-      <section className="panel public-panel" style={estaciones.length > 0 ? { borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: 'none' } : {}}>
-        <div className="panel-heading" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <p className="eyebrow">Estaciones</p>
-            <h2>{totalVisitadas}/{totalEstaciones} completadas</h2>
-          </div>
-          {totalVisitadas > 0 ? (
-            <button type="button" className="ghost-action" style={{ fontSize: '0.78rem', opacity: 0.55, marginTop: 4 }} onClick={handleResetRecorrido}>
-              Reiniciar (pruebas)
-            </button>
-          ) : null}
-        </div>
-
-        {estaciones.length === 0 ? (
-          <p className="helper-text">Este evento aún no tiene estaciones configuradas.</p>
-        ) : (
-          <div className="mi-evento-accordion">
-            {estaciones.map((est) => {
-              const visitada = visitadasSet.has(est.id)
-              const isOpen = openId === est.id
-              const trivia = trivias[est.id]
-              const triviaRequired = Boolean(trivia?.preguntas?.length)
-              const triviaScore = triviaScores[est.id]
-              const estRating = ratings[est.id] || {}
-              const hasRating = (estRating.stars || 0) > 0
-              const canComplete = scannedSet.has(est.id) && hasRating && (!triviaRequired || Boolean(triviaScore))
-
+        {/* ── PISO ── */}
+        {activeTab === 'piso' && (
+          <div className="mie-piso">
+            <div className="mie-piso-header">
+              <h2 className="mie-piso-title">Piso Interactivo</h2>
+              <p className="mie-piso-sub">Toca el recuadro de la estación para ver el detalle</p>
+            </div>
+            <div ref={mapaRef} className="mie-mapa-wrap">
+              <Stage width={stageSize.width} height={stageSize.height}>
+                <Layer>
+                  {planoImg && (
+                    <KonvaImage image={planoImg} x={0} y={0} width={stageSize.width} height={stageSize.height} opacity={0.75} />
+                  )}
+                  {estPx.map((est) => {
+                    const visitada = visitadasSet.has(est.id)
+                    const scanned = scannedSet.has(est.id)
+                    const fill = visitada ? '#22c55ecc'
+                      : scanned ? 'rgba(59,130,246,0.7)'
+                      : est.color + 'bb'
+                    const stroke = visitada ? '#16a34a' : scanned ? '#3b82f6' : est.color
+                    const isSelected = selectedEstId === est.id
+                    const commonProps = {
+                      key: est.id, x: est.px, y: est.py, fill, stroke,
+                      strokeWidth: isSelected ? 3 : visitada || scanned ? 2.5 : 1.5,
+                      onClick: () => setSelectedEstId(est.id === selectedEstId ? null : est.id),
+                      onTap: () => setSelectedEstId(est.id === selectedEstId ? null : est.id),
+                    }
+                    return est.forma === 'circle'
+                      ? <Circle {...commonProps} radius={Math.min(est.pw, est.ph) / 2} />
+                      : <Rect {...commonProps} width={est.pw} height={est.ph} cornerRadius={5} />
+                  })}
+                  {estPx.map((est) => (
+                    <Text
+                      key={`lbl-${est.id}`}
+                      x={est.px} y={est.py}
+                      text={`${visitadasSet.has(est.id) ? '✓ ' : ''}${est.nombre}`}
+                      fontSize={Math.max(10, Math.min(14, est.pw / 6))}
+                      fill="#ffffff"
+                      fontStyle="bold"
+                      shadowColor="rgba(0,0,0,0.7)"
+                      shadowBlur={3}
+                      shadowOffsetX={0} shadowOffsetY={1}
+                      listening={false}
+                      width={est.pw} height={est.ph}
+                      align="center" verticalAlign="middle"
+                      wrap="word" ellipsis
+                    />
+                  ))}
+                </Layer>
+              </Stage>
+            </div>
+            {(() => {
+              const selEst = estaciones.find((e) => e.id === selectedEstId)
+              if (!selEst) {
+                return (
+                  <div className="mie-piso-detail mie-piso-detail--empty">
+                    <IconPin />
+                    <p>Selecciona una estación en el mapa para ver más detalles</p>
+                  </div>
+                )
+              }
+              const visitada = visitadasSet.has(selEst.id)
+              const scanned = scannedSet.has(selEst.id)
               return (
-                <div
-                  key={est.id}
-                  id={`est-${est.id}`}
-                  ref={(el) => { stationRefs.current[est.id] = el }}
-                  className={`mi-evento-item${visitada ? ' visitada' : ''}${isOpen ? ' open' : ''}`}
-                >
+                <div className="mie-piso-detail">
+                  <div className="mie-piso-detail-header">
+                    <div className="mie-piso-detail-dot" style={{ background: visitada ? '#22c55e' : selEst.color || '#94a3b8' }} />
+                    <div className="mie-piso-detail-info">
+                      <span className="mie-piso-detail-name">{selEst.nombre}</span>
+                      <span className="mie-piso-detail-tipo">{selEst.tipo || 'ESTACIÓN'}</span>
+                    </div>
+                    {visitada && <span className="mie-piso-detail-badge done">✓ Completada</span>}
+                    {scanned && !visitada && <span className="mie-piso-detail-badge scanned">QR ✓</span>}
+                  </div>
+                  {selEst.descripcion ? (
+                    <p className="mie-piso-detail-desc">{selEst.descripcion}</p>
+                  ) : null}
                   <button
                     type="button"
-                    className="mi-evento-item-header"
-                    onClick={() => handleOpenEstacion(est.id)}
-                    disabled={visitada}
+                    className="mie-piso-cerrar-btn"
+                    onClick={() => setSelectedEstId(null)}
                   >
-                    <span className="mi-evento-dot" style={{ background: visitada ? '#22c55e' : (est.color || '#cbd5e1') }} />
-                    <span className="mi-evento-nombre">{est.nombre}</span>
-                    {est.descripcion && !visitada ? (
-                      <span className="mi-evento-desc-hint">{est.descripcion}</span>
-                    ) : null}
-                    {visitada ? (
-                      <span className="mi-evento-check">✓ Completada</span>
-                    ) : (
-                      <span className="mi-evento-chevron" aria-hidden="true">{isOpen ? '▲' : '▼'}</span>
-                    )}
+                    Cerrar detalles
                   </button>
-
-                  {isOpen && !visitada ? (
-                    <div className="mi-evento-item-body">
-                      {est.descripcion ? (
-                        <p className="helper-text" style={{ marginBottom: 16 }}>{est.descripcion}</p>
-                      ) : null}
-
-                      {/* PASO 1: Escanear QR */}
-                      {!scannedSet.has(est.id) ? (
-                        <div className="mi-evento-scan-step">
-                          <p className="mi-evento-scan-label">Paso 1 — Escanea el código QR de esta estación</p>
-                          {scanningId === est.id ? (
-                            <div>
-                              {cameraError[est.id] ? (
-                                <div>
-                                  <p className="feedback error">No se detectó cámara. Abre esta página desde tu celular para escanear.</p>
-                                  <button type="button" className="ghost-action" style={{ marginTop: 8 }}
-                                    onClick={() => { setScannedSet((prev) => new Set([...prev, est.id])); setScanningId(null); setCameraError((p) => ({ ...p, [est.id]: false })) }}>
-                                    Continuar sin escanear (solo pruebas)
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="mi-evento-scanner-wrap">
-                                  <Scanner
-                                    onScan={(d) => handleScanQr(d, est.id)}
-                                    onError={() => setCameraError((p) => ({ ...p, [est.id]: true }))}
-                                    constraints={{ facingMode: 'environment' }}
-                                    styles={{ container: { width: '100%', borderRadius: '14px', overflow: 'hidden' } }}
-                                  />
-                                </div>
-                              )}
-                              {scanError[est.id] ? <p className="feedback error" style={{ marginTop: 8 }}>{scanError[est.id]}</p> : null}
-                              <button type="button" className="ghost-action" style={{ marginTop: 10 }}
-                                onClick={() => { setScanningId(null); setScanError((p) => ({ ...p, [est.id]: '' })); setCameraError((p) => ({ ...p, [est.id]: false })) }}>
-                                Cancelar
-                              </button>
-                            </div>
-                          ) : (
-                            <button type="button" className="submit-button"
-                              onClick={() => { setScanningId(est.id); setScanError((p) => ({ ...p, [est.id]: '' })) }}>
-                              Abrir cámara para escanear
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        /* PASOS 2 y 3 */
-                        <div>
-                          <p className="mi-evento-scan-ok">✓ QR de estación validado</p>
-
-                          {/* PASO 2: Trivia (si la tiene) */}
-                          {loadingTrivia[est.id] ? (
-                            <p className="helper-text">Cargando trivia...</p>
-                          ) : triviaRequired ? (
-                            <TriviaInline
-                              trivia={trivia}
-                              onComplete={(puntos, tiempoTotal) => handleTriviaComplete(est.id, puntos, tiempoTotal)}
-                            />
-                          ) : null}
-
-                          {/* PASO 3: Calificación */}
-                          {(!triviaRequired || Boolean(triviaScore)) && (
-                            <div className="mi-evento-rating-section">
-                              <p className="eyebrow" style={{ marginBottom: 10 }}>
-                                {triviaRequired ? 'Paso 3 — ' : 'Paso 2 — '}Califica esta estación
-                              </p>
-                              <div className="mi-evento-stars">
-                                {[1, 2, 3, 4, 5].map((n) => (
-                                  <button key={n} type="button"
-                                    className={`mi-evento-star${(estRating.stars || 0) >= n ? ' filled' : ''}`}
-                                    onClick={() => handleSetRating(est.id, n)}
-                                    aria-label={`${n} estrella${n > 1 ? 's' : ''}`}>
-                                    ★
-                                  </button>
-                                ))}
-                              </div>
-                              <textarea
-                                className="mi-evento-comentario"
-                                placeholder="Comentario opcional"
-                                value={estRating.comentario || ''}
-                                onChange={(e) => handleSetComentario(est.id, e.target.value)}
-                                rows={2}
-                                maxLength={300}
-                              />
-                            </div>
-                          )}
-
-                          <button type="button" className="submit-button" style={{ marginTop: 16 }}
-                            onClick={() => handleCompletar(est)}
-                            disabled={registrando === est.id || !canComplete}>
-                            {registrando === est.id ? 'Registrando...' : 'Completar estación ✓'}
-                          </button>
-                          {!canComplete && (
-                            <p className="helper-text" style={{ marginTop: 6, fontSize: '0.8rem', opacity: 0.65 }}>
-                              {!scannedSet.has(est.id) ? 'Escanea el QR primero.' : triviaRequired && !triviaScore ? 'Completa la trivia primero.' : 'Califica con estrellas para finalizar.'}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
                 </div>
               )
-            })}
+            })()}
           </div>
         )}
-      </section>
+
+        {/* ── QR ── */}
+        {activeTab === 'qr' && (
+          <div className="mie-qr-view">
+            <div className="mie-qr-card">
+              <div className="mie-qr-icon"><IconCamera /></div>
+              <h2 className="mie-qr-title">Escanear Estación</h2>
+              <p className="mie-qr-sub">Apunta la cámara al código QR de la estación para registrar tu visita</p>
+            </div>
+
+            {cameraEnabled ? (
+              <div className="mie-qr-scanner-card">
+                {cameraError ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <p className="feedback error" style={{ marginBottom: 16 }}>
+                      No se detectó cámara. Usa tu celular para escanear, o selecciona una estación manualmente (pruebas).
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {estaciones.filter((e) => !visitadasSet.has(e.id)).map((est) => (
+                        <button
+                          key={est.id}
+                          type="button"
+                          className="mie-btn-ghost"
+                          style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10 }}
+                          onClick={() => {
+                            setScannedSet((prev) => new Set([...prev, est.id]))
+                            setScanError('')
+                            setCameraEnabled(false)
+                            setCameraError(false)
+                            setOpenId(est.id)
+                            loadTriviaIfNeeded(est.id)
+                            setActiveTab('estaciones')
+                            setTimeout(() => stationRefs.current[est.id]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200)
+                          }}
+                        >
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', background: est.color || '#94a3b8', flexShrink: 0 }} />
+                          {est.nombre}
+                        </button>
+                      ))}
+                      {estaciones.filter((e) => !visitadasSet.has(e.id)).length === 0 && (
+                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Ya completaste todas las estaciones.</p>
+                      )}
+                      <button className="mie-btn-ghost" style={{ marginTop: 4 }} onClick={() => { setCameraError(false); setCameraEnabled(false) }}>
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ borderRadius: '12px', overflow: 'hidden' }}>
+                      <Scanner
+                        onScan={handleGlobalScan}
+                        onError={() => setCameraError(true)}
+                        constraints={{ facingMode: 'environment' }}
+                        styles={{ container: { width: '100%' } }}
+                      />
+                    </div>
+                    <button className="mie-btn-ghost" style={{ marginTop: 12, width: '100%' }} onClick={() => { setCameraEnabled(false); setScanError('') }}>
+                      Cancelar
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="mie-qr-scanner-card">
+                <p style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 16, textAlign: 'center' }}>
+                  Para iniciar el escaneo, habilita la cámara trasera.
+                </p>
+                <button className="mie-btn-primary" style={{ width: '100%' }} onClick={() => { setCameraEnabled(true); setScanError(''); setCameraError(false) }}>
+                  Habilitar cámara
+                </button>
+              </div>
+            )}
+
+            {scanError ? (
+              <p className="feedback error" style={{ margin: '12px 16px 0' }}>{scanError}</p>
+            ) : null}
+          </div>
+        )}
+
+        {/* ── ESTACIONES ── */}
+        {activeTab === 'estaciones' && (
+          <div className="mie-est-view">
+            {/* Progreso */}
+            <div className="mie-est-progress-card">
+              <div className="mie-est-avatar">
+                <IconPerson />
+              </div>
+              <h2 className="mie-est-progress-title">Tu Progreso</h2>
+              <p className="mie-est-progress-sub">Completa todas las estaciones para ganar premios exclusivos.</p>
+              <div className="mie-est-progress-bar-wrap">
+                <div className="mie-est-progress-bar-label">
+                  <span>{totalVisitadas} de {totalEstaciones} estaciones</span>
+                  <span className="mie-est-pct">{pct}%</span>
+                </div>
+                <div className="mie-est-progress-track">
+                  <div className="mie-est-progress-fill" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Lista */}
+            <div className="mie-est-historial">
+              <div className="mie-est-historial-header">
+                <span className="mie-est-historial-title">Historial</span>
+                <span className="mie-est-recientes">RECIENTES</span>
+              </div>
+
+              {[...estaciones].sort((a, b) => {
+                const av = visitadasSet.has(a.id) ? 0 : 1
+                const bv = visitadasSet.has(b.id) ? 0 : 1
+                return av - bv
+              }).map((est) => {
+                const visitada = visitadasSet.has(est.id)
+                const scanned = scannedSet.has(est.id)
+                const isOpen = openId === est.id
+                const trivia = trivias[est.id]
+                const triviaRequired = Boolean(trivia?.preguntas?.length)
+                const triviaScore = triviaScores[est.id]
+                const estRating = ratings[est.id] || {}
+                const hasRating = (estRating.stars || 0) > 0
+                const canComplete = scanned && hasRating && (!triviaRequired || Boolean(triviaScore))
+
+                return (
+                  <div
+                    key={est.id}
+                    ref={(el) => { stationRefs.current[est.id] = el }}
+                    className={`mie-est-item${isOpen && !visitada ? ' open' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="mie-est-item-row"
+                      onClick={() => !visitada && handleToggleStation(est.id)}
+                      disabled={visitada}
+                    >
+                      <div className={`mie-est-item-icon ${visitada ? 'done' : ''}`}>
+                        {visitada ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        ) : (
+                          <div style={{ color: est.color || '#94a3b8' }}><IconPin /></div>
+                        )}
+                      </div>
+                      <div className="mie-est-item-info">
+                        <span className="mie-est-item-name">{est.nombre}</span>
+                        <span className="mie-est-item-tipo">ESTACIÓN</span>
+                      </div>
+                      {!visitada && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2">
+                          <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                      )}
+                    </button>
+
+                    {isOpen && !visitada && (
+                      <div className="mie-est-item-body">
+                        {est.descripcion ? (
+                          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.88rem', marginBottom: 16 }}>{est.descripcion}</p>
+                        ) : null}
+
+                        {!scanned ? (
+                          <div className="mie-scan-prompt">
+                            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', marginBottom: 12 }}>
+                              Ve a la estación físicamente y escanea su código QR para registrar tu visita.
+                            </p>
+                            <button
+                              type="button"
+                              className="mie-btn-primary"
+                              onClick={() => { setActiveTab('qr'); setCameraEnabled(true); setScanError(''); setCameraError(false) }}
+                            >
+                              Abrir escáner QR
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="mie-scan-ok">✓ QR de estación validado</p>
+
+                            {loadingTrivia[est.id] ? (
+                              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Cargando trivia...</p>
+                            ) : triviaRequired ? (
+                              <TriviaInline
+                                trivia={trivia}
+                                onComplete={(puntos, tiempoTotal) => handleTriviaComplete(est.id, puntos, tiempoTotal)}
+                              />
+                            ) : null}
+
+                            {(!triviaRequired || Boolean(triviaScore)) && (
+                              <div className="mie-rating-section">
+                                <p className="eyebrow" style={{ marginBottom: 10 }}>
+                                  {triviaRequired ? 'Paso 3 — ' : 'Paso 2 — '}Califica esta estación
+                                </p>
+                                <div className="mi-evento-stars">
+                                  {[1, 2, 3, 4, 5].map((n) => (
+                                    <button key={n} type="button"
+                                      className={`mi-evento-star${(estRating.stars || 0) >= n ? ' filled' : ''}`}
+                                      onClick={() => handleSetRating(est.id, n)}
+                                      aria-label={`${n} estrella${n > 1 ? 's' : ''}`}>★</button>
+                                  ))}
+                                </div>
+                                <textarea
+                                  className="mi-evento-comentario"
+                                  placeholder="Comentario opcional"
+                                  value={estRating.comentario || ''}
+                                  onChange={(e) => handleSetComentario(est.id, e.target.value)}
+                                  rows={2} maxLength={300}
+                                />
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              className="mie-btn-primary"
+                              style={{ marginTop: 16, width: '100%' }}
+                              onClick={() => handleCompletar(est)}
+                              disabled={registrando === est.id || !canComplete}
+                            >
+                              {registrando === est.id ? 'Registrando...' : 'Completar estación ✓'}
+                            </button>
+                            {!canComplete && (
+                              <p style={{ marginTop: 6, fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>
+                                {triviaRequired && !triviaScore ? 'Completa la trivia primero.' : 'Califica con estrellas para finalizar.'}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              <div style={{ height: 8 }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom nav */}
+      <nav className="mie-nav">
+        <button
+          type="button"
+          className={`mie-nav-btn ${activeTab === 'piso' ? 'active' : ''}`}
+          onClick={() => setActiveTab('piso')}
+        >
+          <IconMap />
+          <span>PISO</span>
+        </button>
+
+        <button
+          type="button"
+          className="mie-nav-qr-btn"
+          onClick={() => { setActiveTab('qr'); setScanError('') }}
+        >
+          <IconQr />
+        </button>
+
+        <button
+          type="button"
+          className={`mie-nav-btn ${activeTab === 'estaciones' ? 'active' : ''}`}
+          onClick={() => setActiveTab('estaciones')}
+        >
+          <IconPerson />
+          <span>ESTACIONES</span>
+        </button>
+
+        <span className="mie-footer-text">Powered by Divergency AI</span>
+      </nav>
     </div>
   )
 }

@@ -75,16 +75,21 @@ function getEstadoEvento(evento, now = new Date()) {
 }
 
 function HorarioEventoPanel({ evento, onEventoChange }) {
+  const [nombre, setNombre] = useState('')
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
+  const [puntosText, setPuntosText] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
+    setNombre(evento?.nombre || '')
     setFechaInicio(toLocalInputValue(evento?.fechaInicio))
     setFechaFin(toLocalInputValue(evento?.fechaFin))
-  }, [evento?.id, evento?.fechaInicio, evento?.fechaFin])
+    const puntos = Array.isArray(evento?.puntosAcceso) ? evento.puntosAcceso : []
+    setPuntosText(puntos.join('\n'))
+  }, [evento?.id, evento?.nombre, evento?.fechaInicio, evento?.fechaFin, evento?.puntosAcceso])
 
   // Refrescar el "estado" del evento cada minuto
   useEffect(() => {
@@ -97,6 +102,10 @@ function HorarioEventoPanel({ evento, onEventoChange }) {
   const estado = getEstadoEvento(evento, now)
 
   const handleSave = async () => {
+    if (!nombre.trim()) {
+      setErrorMessage('El nombre del evento no puede estar vacío.')
+      return
+    }
     if (!fechaInicio || !fechaFin) {
       setErrorMessage('Debes definir fecha de inicio y fin.')
       return
@@ -110,11 +119,17 @@ function HorarioEventoPanel({ evento, onEventoChange }) {
     setIsSaving(true)
     setErrorMessage('')
     try {
+      const puntosAcceso = puntosText
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
       await updateEvento(evento.id, {
+        nombre: nombre.trim(),
         fechaInicio: inicioIso,
         fechaFin: finIso,
+        puntosAcceso,
       })
-      onEventoChange?.({ ...evento, fechaInicio: inicioIso, fechaFin: finIso })
+      onEventoChange?.({ ...evento, nombre: nombre.trim(), fechaInicio: inicioIso, fechaFin: finIso, puntosAcceso })
     } catch (error) {
       setErrorMessage(error.message || 'No fue posible guardar el horario.')
     } finally {
@@ -139,6 +154,17 @@ function HorarioEventoPanel({ evento, onEventoChange }) {
       </div>
 
       <div className="horario-form">
+        <label className="field" style={{ gridColumn: '1 / -1' }}>
+          <span>Nombre del evento</span>
+          <input
+            type="text"
+            value={nombre}
+            onChange={(event) => setNombre(event.target.value)}
+            disabled={isSaving}
+            placeholder="Ej. Premios Mélida 2026"
+          />
+        </label>
+
         <label className="field">
           <span>Inicio del evento</span>
           <input
@@ -162,6 +188,21 @@ function HorarioEventoPanel({ evento, onEventoChange }) {
           />
           <small className="helper-text">
             Guardado: {formatHumano(evento.fechaFin)}
+          </small>
+        </label>
+
+        <label className="field" style={{ gridColumn: '1 / -1' }}>
+          <span>Puntos de acceso del scanner (uno por línea)</span>
+          <textarea
+            value={puntosText}
+            onChange={(event) => setPuntosText(event.target.value)}
+            disabled={isSaving}
+            rows={3}
+            placeholder={'Entrada principal\nAcceso VIP\nBackstage'}
+            style={{ resize: 'vertical', fontFamily: 'inherit' }}
+          />
+          <small className="helper-text">
+            Si defines 2 o más, el scanner mostrará un selector. Si dejas vacío o escribes solo uno, no aparece selector.
           </small>
         </label>
       </div>

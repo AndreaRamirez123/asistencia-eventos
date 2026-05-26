@@ -3,10 +3,12 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   getAuth,
+  getRedirectResult,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
@@ -43,19 +45,22 @@ export async function loginWithGoogle() {
   if (!isFirebaseConfigured || !auth) {
     throw new Error('Firebase Auth no esta configurado. Revisa .env.local.')
   }
-
   const provider = new GoogleAuthProvider()
-  const credential = await signInWithPopup(auth, provider)
-  const firebaseUser = credential.user
+  // iOS bloquea window.open() — usar redirect con mismo authDomain evita storage partitioning
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  if (isIOS) {
+    await signInWithRedirect(auth, provider)
+    return null
+  }
+  const result = await signInWithPopup(auth, provider)
+  const firebaseUser = result.user
   const profile = await fetchUserProfile(firebaseUser.uid, firebaseUser.email)
-
   if (!profile) {
     await signOut(auth)
     throw new Error(
-      'Tu cuenta de Google existe pero no tiene un rol asignado. Contacta al administrador.',
+      'Tu cuenta de Google no tiene un rol asignado. Contacta al administrador del evento.',
     )
   }
-
   return {
     uid: firebaseUser.uid,
     email: firebaseUser.email,
@@ -170,6 +175,19 @@ export function subscribeToAuthState(callback) {
     callback(null)
     return () => {}
   }
+
+  // Procesar resultado de signInWithRedirect si venimos de Google
+  getRedirectResult(auth)
+    .then(async (result) => {
+      if (!result?.user) return
+      const profile = await fetchUserProfile(result.user.uid, result.user.email)
+      if (!profile) {
+        await signOut(auth)
+      }
+    })
+    .catch((error) => {
+      console.error('Error en redirect de Google:', error.message)
+    })
 
   return onAuthStateChanged(auth, async (firebaseUser) => {
     if (!firebaseUser) {

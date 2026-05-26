@@ -79,6 +79,9 @@ function validateAttendee(attendee) {
   if (!attendee.fullName) errors.push('El nombre completo es obligatorio.')
   if (!attendee.documentId) errors.push('El documento es obligatorio.')
   if (!attendee.phone) errors.push('El telefono es obligatorio.')
+  if (attendee.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(attendee.email)) {
+    errors.push('El correo electronico no tiene un formato valido.')
+  }
   return errors
 }
 

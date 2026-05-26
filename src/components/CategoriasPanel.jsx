@@ -90,12 +90,8 @@ function CategoriasPanel({ evento, onChange }) {
                     type="button"
                     className="mini-action danger"
                     onClick={() => handleRemove(cat.id)}
-                    disabled={removingId === cat.id || categorias.length <= 1}
-                    title={
-                      categorias.length <= 1
-                        ? 'Debe quedar al menos una categoría'
-                        : 'Quitar categoría'
-                    }
+                    disabled={removingId === cat.id}
+                    title="Quitar categoría"
                   >
                     {removingId === cat.id ? 'Quitando...' : 'Quitar'}
                   </button>

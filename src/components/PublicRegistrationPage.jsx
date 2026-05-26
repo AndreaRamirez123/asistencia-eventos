@@ -453,7 +453,7 @@ function PublicRegistrationPage({
             {errorMessage ? (
               <div>
                 <p className="feedback error">{errorMessage}</p>
-                {form.documentId ? (
+                {form.documentId && /registrado|duplicado/i.test(errorMessage) ? (
                   <a
                     href={`/mi-evento?doc=${form.documentId}`}
                     className="submit-button"

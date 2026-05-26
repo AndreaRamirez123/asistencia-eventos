@@ -7,23 +7,16 @@ import KioskoInstructions from './KioskoInstructions'
 
 const ACCESS_POINT_KEY = 'asistencia-evento:accessPoint'
 
-const accessPoints = [
-  { value: 'entrada-norte', label: 'Entrada norte' },
-  { value: 'entrada-sur', label: 'Entrada sur' },
-  { value: 'acceso-vip', label: 'Acceso VIP' },
-  { value: 'backstage', label: 'Backstage / Staff' },
-]
+function toAccessPointValue(label) {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'entrada'
+}
 
 function loadStoredAccessPoint() {
   try {
-    const saved = localStorage.getItem(ACCESS_POINT_KEY)
-    if (saved && accessPoints.some((p) => p.value === saved)) {
-      return saved
-    }
+    return localStorage.getItem(ACCESS_POINT_KEY) || ''
   } catch {
-    // localStorage not available
+    return ''
   }
-  return accessPoints[0].value
 }
 
 const feedbackStyles = {
@@ -46,7 +39,21 @@ function loadExpressMode() {
 }
 
 function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBack }) {
-  const [accessPoint, setAccessPoint] = useState(loadStoredAccessPoint)
+  const accessPoints = (() => {
+    const puntos = evento?.puntosAcceso
+    if (Array.isArray(puntos) && puntos.length > 0) {
+      return puntos.map((label) => ({ value: toAccessPointValue(label), label }))
+    }
+    return []
+  })()
+  const showAccessSelector = accessPoints.length > 1
+
+  const [accessPoint, setAccessPoint] = useState(() => {
+    const saved = loadStoredAccessPoint()
+    if (accessPoints.length === 0) return saved || 'entrada'
+    const found = accessPoints.find((p) => p.value === saved)
+    return found ? saved : accessPoints[0].value
+  })
   const [isScanning, setIsScanning] = useState(true)
   const [cameraSupported, setCameraSupported] = useState(true)
   const [manualInput, setManualInput] = useState('')
@@ -204,7 +211,7 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
     }
 
     const rawValue = detected[0]?.rawValue || ''
-    if (!rawValue) {
+    if (!rawValue || rawValue.length > 2000) {
       return
     }
 
@@ -383,16 +390,18 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
         </div>
 
         <div className="public-status">
-          <label className="toolbar-field">
-            <span>Punto de acceso</span>
-            <select value={accessPoint} onChange={handleAccessPointChange}>
-              {accessPoints.map((point) => (
-                <option key={point.value} value={point.value}>
-                  {point.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {showAccessSelector ? (
+            <label className="toolbar-field">
+              <span>Punto de acceso</span>
+              <select value={accessPoint} onChange={handleAccessPointChange}>
+                {accessPoints.map((point) => (
+                  <option key={point.value} value={point.value}>
+                    {point.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="checkbox-field express-toggle" title="Reduce el tiempo entre escaneos para flujos rapidos (40+ personas/min)">
             <input
               type="checkbox"
@@ -431,7 +440,7 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
         <div>
           <p className="eyebrow">Estas validando en</p>
           <strong className="banner-point">
-            {accessPoints.find((p) => p.value === accessPoint)?.label || accessPoint}
+            {accessPoints.find((p) => p.value === accessPoint)?.label || (showAccessSelector ? accessPoint : 'Entrada')}
           </strong>
         </div>
         <div>

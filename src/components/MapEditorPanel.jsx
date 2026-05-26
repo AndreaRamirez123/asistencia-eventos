@@ -87,9 +87,24 @@ function MapEditorPanel({ evento, onEventoChange, estaciones: estacionesIniciale
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const base64 = ev.target.result
-      setPlanoBase64(base64)
-      cargarImagenDesdeBase64(base64)
+      const original = ev.target.result
+      const img = new window.Image()
+      img.onload = () => {
+        const MAX_PX = 1200
+        let { width, height } = img
+        if (width > MAX_PX || height > MAX_PX) {
+          if (width > height) { height = Math.round(height * MAX_PX / width); width = MAX_PX }
+          else { width = Math.round(width * MAX_PX / height); height = MAX_PX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        const compressed = canvas.toDataURL('image/jpeg', 0.75)
+        setPlanoBase64(compressed)
+        cargarImagenDesdeBase64(compressed)
+      }
+      img.src = original
     }
     reader.readAsDataURL(file)
   }
@@ -267,6 +282,25 @@ Responde SOLO con el array JSON, sin texto adicional.`,
     }
   }
 
+  const comprimirBase64 = (b64) =>
+    new Promise((resolve) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const MAX_PX = 1200
+        let { width, height } = img
+        if (width > MAX_PX || height > MAX_PX) {
+          if (width > height) { height = Math.round(height * MAX_PX / width); width = MAX_PX }
+          else { width = Math.round(width * MAX_PX / height); height = MAX_PX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.75))
+      }
+      img.src = b64
+    })
+
   // ── Guardar ─────────────────────────────────────────────────────────────────
   const handleGuardar = async () => {
     if (!evento) return
@@ -275,8 +309,13 @@ Responde SOLO con el array JSON, sin texto adicional.`,
     try {
       // Guardar plano en el evento
       if (planoBase64 !== (evento.planoBase64 || '')) {
-        await updateEvento(evento.id, { planoBase64 })
-        onEventoChange?.({ ...evento, planoBase64 })
+        // Comprimir si supera ~900KB en base64
+        const planoFinal = planoBase64.length > 900_000
+          ? await comprimirBase64(planoBase64)
+          : planoBase64
+        if (planoFinal !== planoBase64) setPlanoBase64(planoFinal)
+        await updateEvento(evento.id, { planoBase64: planoFinal })
+        onEventoChange?.({ ...evento, planoBase64: planoFinal })
       }
 
       // Estado ya almacena porcentajes — solo quitar localId antes de guardar
@@ -406,16 +445,23 @@ Responde SOLO con el array JSON, sin texto adicional.`,
               {estacionesEnPx.map((est) => (
                 <Text
                   key={`lbl-${est.localId}`}
-                  x={est.x + 4}
-                  y={est.y + 4}
+                  x={est.x}
+                  y={est.y}
                   text={est.nombre}
-                  fontSize={11}
-                  fill="#13212d"
+                  fontSize={14}
+                  fill="#ffffff"
                   fontStyle="bold"
                   listening={false}
-                  width={est.width - 8}
+                  width={est.width}
+                  height={est.height}
+                  align="center"
+                  verticalAlign="middle"
                   wrap="word"
                   ellipsis
+                  shadowColor="rgba(0,0,0,0.6)"
+                  shadowBlur={3}
+                  shadowOffsetX={0}
+                  shadowOffsetY={1}
                 />
               ))}
               <Transformer ref={trRef} rotateEnabled={false} boundBoxFunc={(old, nw) => ({
