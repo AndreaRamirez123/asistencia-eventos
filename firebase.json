@@ -1,4 +1,10 @@
 {
+  "firestore": [
+    {
+      "database": "eventos-divergentes",
+      "rules": "firestore.rules"
+    }
+  ],
   "hosting": {
     "site": "asistencia-evento",
     "public": "dist",

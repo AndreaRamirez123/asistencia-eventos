@@ -16,14 +16,9 @@ const COLLECTION = 'eventoEstaciones'
 
 export async function listEstaciones(eventoId) {
   if (!isFirebaseConfigured || !db) return []
-  try {
-    const q = query(collection(db, COLLECTION), where('eventoId', '==', eventoId))
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-  } catch (error) {
-    console.error('No fue posible cargar estaciones.', error)
-    return []
-  }
+  const q = query(collection(db, COLLECTION), where('eventoId', '==', eventoId))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
 
 export function subscribeToEstaciones(eventoId, callback) {

@@ -1163,6 +1163,7 @@ function App() {
             }
             eventoLoaded={true}
             eventoNombre={activeEvento?.nombre || ''}
+            eventoId={activeEvento?.id || ''}
             empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
             onResetSubmission={() => {
               setPublicSubmission(null)

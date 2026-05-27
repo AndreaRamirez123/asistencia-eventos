@@ -199,15 +199,26 @@ function MiEventoPage() {
         } catch { /* silencioso */ }
       }
       setEventoId(realEventoId)
-      const [ests, visitas] = await Promise.all([
-        listEstaciones(realEventoId),
-        getVisitasPorVisitante(realEventoId, documentId),
-      ])
+
+      let ests = []
+      let estError = ''
+      try {
+        ests = await listEstaciones(realEventoId)
+      } catch (e) {
+        estError = e?.code === 'permission-denied'
+          ? `Sin permiso para leer estaciones (Firestore rules). EventoId: ${realEventoId}`
+          : `Error cargando estaciones: ${e?.message || e}`
+      }
+
+      const visitas = await getVisitasPorVisitante(realEventoId, documentId).catch(() => [])
       setEstaciones(ests)
       setVisitadasSet(new Set(visitas.map((v) => v.estacionId)))
       if (realEventoId) getEventoById(realEventoId).then((ev) => { if (ev) setEvento(ev) })
-    } catch {
-      setError('No fue posible cargar tus datos. Intenta de nuevo.')
+
+      if (estError) setError(estError)
+      else if (ests.length === 0 && realEventoId) setError(`EventoId: ${realEventoId} — sin estaciones en Firestore para ese ID.`)
+    } catch (e) {
+      setError(`Error: ${e?.message || 'No fue posible cargar tus datos.'}`)
     } finally {
       setLoading(false)
     }
@@ -399,6 +410,11 @@ function MiEventoPage() {
 
       {/* Tab content */}
       <div className="mie-content">
+        {error ? (
+          <div style={{ margin: '12px 16px 0', padding: '10px 14px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, fontSize: '0.78rem', color: '#ef4444', wordBreak: 'break-all' }}>
+            {error}
+          </div>
+        ) : null}
 
         {/* ── PISO ── */}
         {activeTab === 'piso' && (
@@ -725,6 +741,11 @@ function MiEventoPage() {
             </div>
           </div>
         )}
+
+        <footer className="mie-footer">
+          <span>Powered by <strong>Divergency AI</strong></span>
+          <span>© 2026 Todos los derechos reservados.</span>
+        </footer>
       </div>
 
       {/* Bottom nav */}
@@ -755,7 +776,6 @@ function MiEventoPage() {
           <span>ESTACIONES</span>
         </button>
 
-        <span className="mie-footer-text">Powered by Divergency AI</span>
       </nav>
     </div>
   )

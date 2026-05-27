@@ -2842,6 +2842,11 @@
   border-radius: 18px;
 }
 
+.dark .manual-checkin {
+  background: var(--surface) !important;
+  border-color: rgba(255, 168, 38, 0.25) !important;
+}
+
 .manual-checkin .field span {
   font-size: 0.88rem;
   color: var(--muted-strong);
@@ -6243,6 +6248,21 @@ html.dark .toolbar-field select option {
 }
 
 /* Bottom nav */
+.mie-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 16px 16px;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.mie-footer strong {
+  color: var(--accent, #ffa826);
+}
+
 .mie-nav {
   position: fixed;
   bottom: 0;
@@ -6255,18 +6275,7 @@ html.dark .toolbar-field select option {
   align-items: center;
   justify-content: space-around;
   z-index: 50;
-  padding: 0 8px 10px;
-}
-
-.mie-footer-text {
-  position: absolute;
-  bottom: 3px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 0.58rem;
-  color: #9ca3af;
-  pointer-events: none;
+  padding: 0 8px;
 }
 
 .mie-nav-btn {

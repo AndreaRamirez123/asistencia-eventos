@@ -1,10 +1,13 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
+  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
 
@@ -46,6 +49,18 @@ export async function saveRating({ stars, comment, empresaId, eventoId }) {
     eventoId: String(eventoId || '').trim(),
     createdAt: serverTimestamp(),
   })
+}
+
+export async function deleteRating(id) {
+  ensureFirestore()
+  await deleteDoc(doc(db, COLLECTION_NAME, id))
+}
+
+export async function deleteAllRatings(ids) {
+  ensureFirestore()
+  const batch = writeBatch(db)
+  ids.forEach((id) => batch.delete(doc(db, COLLECTION_NAME, id)))
+  await batch.commit()
 }
 
 export function subscribeToRatings(eventoId, onChange, onError) {

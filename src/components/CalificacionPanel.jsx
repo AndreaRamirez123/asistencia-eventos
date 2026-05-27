@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { updateEvento } from '../eventosStore'
+import { deleteRating, deleteAllRatings } from '../ratingsStore'
 
 function buildRatingUrl(slug) {
   if (typeof window === 'undefined') return ''
@@ -15,6 +16,8 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresaSlug =
   const [errorMessage, setErrorMessage] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
+  const [isDeletingAll, setIsDeletingAll] = useState(false)
 
   const url = buildRatingUrl(empresaSlug)
   const habilitada = Boolean(evento?.calificacionHabilitada)
@@ -72,6 +75,30 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresaSlug =
     } catch {
       setCopyState('error')
       setTimeout(() => setCopyState(''), 2000)
+    }
+  }
+
+  const handleDeleteOne = async (id) => {
+    if (!window.confirm('¿Eliminar esta calificación?')) return
+    setDeletingId(id)
+    try {
+      await deleteRating(id)
+    } catch {
+      setErrorMessage('No fue posible eliminar la calificación.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm(`¿Eliminar las ${total} calificaciones? Esta acción no se puede deshacer.`)) return
+    setIsDeletingAll(true)
+    try {
+      await deleteAllRatings(ratings.map((r) => r.id))
+    } catch {
+      setErrorMessage('No fue posible eliminar las calificaciones.')
+    } finally {
+      setIsDeletingAll(false)
     }
   }
 
@@ -181,7 +208,20 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresaSlug =
       </div>
 
       <div className="rating-stats">
-        <h3>Resultados (todas las empresas)</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>Resultados (todas las empresas)</h3>
+          {total > 0 ? (
+            <button
+              type="button"
+              className="ghost-action"
+              style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.82rem' }}
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll}
+            >
+              {isDeletingAll ? 'Eliminando...' : `Limpiar todo (${total})`}
+            </button>
+          ) : null}
+        </div>
         <div className="rating-stats-grid">
           <div className="rating-stat-card">
             <strong className="rating-stat-value">{avg}</strong>
@@ -215,21 +255,32 @@ function CalificacionPanel({ evento, onEventoChange, ratings = [], empresaSlug =
           <p className="helper-text">Aún no hay calificaciones.</p>
         )}
 
-        {ratings.some((r) => r.comment) ? (
+        {total > 0 ? (
           <div className="rating-comments">
-            <h4>Comentarios</h4>
+            <h4>Detalle de respuestas</h4>
             <ul className="rating-comments-list">
-              {ratings
-                .filter((r) => r.comment)
-                .map((r) => (
-                  <li key={r.id} className="rating-comment-item">
-                    <span className="rating-comment-stars">
-                      {'★'.repeat(r.stars)}
-                      {'☆'.repeat(5 - r.stars)}
-                    </span>
-                    <p>{r.comment}</p>
-                  </li>
-                ))}
+              {ratings.map((r) => (
+                <li key={r.id} className="rating-comment-item">
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div>
+                      <span className="rating-comment-stars">
+                        {'★'.repeat(r.stars)}
+                        {'☆'.repeat(5 - r.stars)}
+                      </span>
+                      {r.comment ? <p style={{ margin: '4px 0 0' }}>{r.comment}</p> : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="ghost-action"
+                      style={{ color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)', fontSize: '0.78rem', padding: '2px 8px', flexShrink: 0 }}
+                      onClick={() => handleDeleteOne(r.id)}
+                      disabled={deletingId === r.id}
+                    >
+                      {deletingId === r.id ? '...' : 'Eliminar'}
+                    </button>
+                  </div>
+                </li>
+              ))}
             </ul>
           </div>
         ) : null}

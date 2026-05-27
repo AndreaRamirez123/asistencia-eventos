@@ -25,6 +25,7 @@ function PublicRegistrationPage({
   eventoLoaded = true,
   onResetSubmission,
   eventoNombre = '',
+  eventoId = '',
   empresaConfig = null,
 }) {
   const [showScanner, setShowScanner] = useState(false)
@@ -227,7 +228,7 @@ function PublicRegistrationPage({
                 <small className="lookup-feedback found">
                   &#10003; Te encontramos registrado en esta empresa.{' '}
                   <a
-                    href={`/mi-evento?doc=${form.documentId}`}
+                    href={`/mi-evento?doc=${form.documentId}${eventoId ? `&evento=${eventoId}` : ''}`}
                     className="lookup-estaciones-link"
                   >
                     Ver mis estaciones →
@@ -455,7 +456,7 @@ function PublicRegistrationPage({
                 <p className="feedback error">{errorMessage}</p>
                 {form.documentId && /registrado|duplicado/i.test(errorMessage) ? (
                   <a
-                    href={`/mi-evento?doc=${form.documentId}`}
+                    href={`/mi-evento?doc=${form.documentId}${eventoId ? `&evento=${eventoId}` : ''}`}
                     className="submit-button"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', marginTop: '10px', minHeight: '44px', boxSizing: 'border-box' }}
                   >

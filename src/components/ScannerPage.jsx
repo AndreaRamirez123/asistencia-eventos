@@ -188,10 +188,12 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
       return
     }
     const docId = lastResult.attendee.documentId
+    const evId = evento?.id || lastResult.attendee.eventoId || ''
     const slug = empresaConfig?.slug
+    const eventoParam = evId ? `&evento=${evId}` : ''
     const url = slug
-      ? `${window.location.origin}/e/${slug}/mi-evento?doc=${docId}`
-      : `${window.location.origin}/mi-evento?doc=${docId}`
+      ? `${window.location.origin}/e/${slug}/mi-evento?doc=${docId}${eventoParam}`
+      : `${window.location.origin}/mi-evento?doc=${docId}${eventoParam}`
     QRCode.toDataURL(url, { width: 220, margin: 1, color: { dark: '#13212d', light: '#fffaf1' } })
       .then(setMiEventoQr)
       .catch(() => setMiEventoQr(''))
