@@ -1607,7 +1607,7 @@
 .kiosko-qr-image {
   width: 100%;
   max-width: 260px;
-  border-radius: 14px;
+  border-radius: 22px;
   background: #fffaf1;
   padding: 12px;
   border: 1px solid rgba(19, 33, 45, 0.1);
@@ -2135,6 +2135,11 @@
 
 .feedback.error {
   color: #a33d2c;
+  background: rgba(220, 38, 38, 0.07);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin: 0 0 12px;
 }
 
 .preview-card {
@@ -2225,7 +2230,7 @@
 }
 
 .attendee-table-wrap {
-  border-radius: 20px;
+  border-radius: 24px;
   border: 1px solid var(--border-strong);
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(19, 33, 45, 0.06), 0 12px 32px rgba(19, 33, 45, 0.04);
@@ -2843,8 +2848,8 @@
 }
 
 .dark .manual-checkin {
-  background: var(--surface) !important;
-  border-color: rgba(255, 168, 38, 0.25) !important;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .manual-checkin .field span {
@@ -4806,7 +4811,7 @@
 
 .estacion-qr-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 20px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -4826,7 +4831,7 @@
 .estacion-qr-img {
   width: 160px;
   height: 160px;
-  border-radius: 6px;
+  border-radius: 16px;
 }
 
 .estacion-qr-actions {
@@ -4924,7 +4929,7 @@
 .mi-evento-qr {
   width: 120px;
   height: 120px;
-  border-radius: 14px;
+  border-radius: 20px;
   border: 3px solid rgba(19, 33, 45, 0.1);
   background: #fffaf1;
 }
@@ -5818,7 +5823,7 @@
 .scanner-mi-evento-qr {
   width: 160px;
   height: 160px;
-  border-radius: 10px;
+  border-radius: 18px;
   display: block;
   margin: 0 auto;
 }
@@ -6271,6 +6276,7 @@ html.dark .toolbar-field select option {
   height: 68px;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
+  border-radius: 20px 20px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -6693,6 +6699,7 @@ html.dark .toolbar-field select option {
 .dark .mie-nav {
   background: #0d1425;
   border-top-color: rgba(255,255,255,0.07);
+  border-radius: 20px 20px 0 0;
 }
 .dark .mie-nav-btn { color: rgba(255,255,255,0.35); }
 .dark .mie-nav-btn.active { color: #22c55e; }

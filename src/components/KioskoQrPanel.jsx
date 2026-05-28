@@ -43,18 +43,21 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     return () => { cancelled = true }
   }, [preUrl])
 
-  const modoRegistro =
+  const modoRegistroFromProp =
     evento?.modoRegistro || (evento?.registroEnSitio ? 'onsite' : 'pre')
+  const [pendingModo, setPendingModo] = useState(null)
+  const modoRegistro = pendingModo ?? modoRegistroFromProp
   const [isTogglingMode, setIsTogglingMode] = useState(false)
   const [modeError, setModeError] = useState('')
 
   const handleModoChange = async (event) => {
     if (!evento) return
     const next = event.target.value
+    const isOnsite = next === 'onsite' || next === 'both'
+    setPendingModo(next)
     setIsTogglingMode(true)
     setModeError('')
     try {
-      const isOnsite = next === 'onsite' || next === 'both'
       await updateEvento(evento.id, {
         modoRegistro: next,
         registroEnSitio: isOnsite,
@@ -64,7 +67,9 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
         modoRegistro: next,
         registroEnSitio: isOnsite,
       })
+      setPendingModo(null)
     } catch (err) {
+      setPendingModo(null)
       setModeError(err.message || 'No fue posible guardar el modo.')
     } finally {
       setIsTogglingMode(false)
