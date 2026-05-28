@@ -353,11 +353,9 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
         <div className="scanner-kiosko-body">
           <div className="scanner-kiosko-qr-wrap">
             {kioskoQrDataUrl ? (
-              <img
-                className="scanner-kiosko-qr"
-                src={kioskoQrDataUrl}
-                alt="QR de registro"
-              />
+              <div className="scanner-kiosko-qr">
+                <img src={kioskoQrDataUrl} alt="QR de registro" />
+              </div>
             ) : (
               <div className="qr-placeholder">
                 <span>Generando...</span>

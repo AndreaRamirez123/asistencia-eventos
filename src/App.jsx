@@ -1414,6 +1414,15 @@ function App() {
           </div>
         ) : null}
 
+        {!activeEvento && eventosLoaded ? (
+          <div className="no-evento-banner">
+            <div>
+              <strong>No hay ningún evento activo</strong>
+              <p>Crea un evento en la sección de abajo para comenzar a usar el panel.</p>
+            </div>
+          </div>
+        ) : null}
+
         <AdminSection
           id="crear-evento"
           title="Crear nuevo evento"
@@ -1448,6 +1457,8 @@ function App() {
           </section>
         </AdminSection>
 
+        {activeEvento ? (
+          <>
         <AdminSection
           id="empresas-invitadas"
           title="Empresas invitadas"
@@ -1595,6 +1606,8 @@ function App() {
             estaciones={estaciones}
           />
         </AdminSection>
+          </>
+        ) : null}
 
         <AdminSection
           id="gestion-eventos"

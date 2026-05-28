@@ -188,7 +188,9 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
 
           <div className="kiosko-preview">
             {preQrDataUrl ? (
-              <img src={preQrDataUrl} alt="QR de pre-registro" className="kiosko-qr-image" />
+              <div className="kiosko-qr-image-wrap">
+                <img src={preQrDataUrl} alt="QR de pre-registro" />
+              </div>
             ) : (
               <div className="qr-placeholder"><span>QR</span></div>
             )}
@@ -225,7 +227,9 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
 
           <div className="kiosko-preview">
             {qrDataUrl ? (
-              <img src={qrDataUrl} alt="QR de registro" className="kiosko-qr-image" />
+              <div className="kiosko-qr-image-wrap">
+                <img src={qrDataUrl} alt="QR de registro" />
+              </div>
             ) : (
               <div className="qr-placeholder"><span>QR</span></div>
             )}
