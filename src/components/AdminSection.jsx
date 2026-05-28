@@ -24,7 +24,13 @@ function AdminSection({ id, title, subtitle, defaultOpen = false, badge, childre
 
   return (
     <div className={`admin-section ${open ? 'is-open' : 'is-closed'}`}>
-      <div className="admin-section-header">
+      <button
+        type="button"
+        className="admin-section-header"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls={`admin-section-body-${id}`}
+      >
         <div className="admin-section-text">
           <span className="admin-section-title">{title}</span>
           {subtitle ? (
@@ -33,20 +39,13 @@ function AdminSection({ id, title, subtitle, defaultOpen = false, badge, childre
         </div>
         <div className="admin-section-controls">
           {badge != null ? <span className="admin-section-badge">{badge}</span> : null}
-          <button
-            type="button"
-            className="admin-section-toggle"
-            onClick={() => setOpen((current) => !current)}
-            aria-expanded={open}
-            aria-controls={`admin-section-body-${id}`}
-            aria-label={open ? 'Contraer' : 'Expandir'}
-          >
-            <span className="admin-section-chevron" aria-hidden="true">
+          <span className="admin-section-toggle" aria-hidden="true">
+            <span className="admin-section-chevron">
               {open ? '▾' : '▸'}
             </span>
-          </button>
+          </span>
         </div>
-      </div>
+      </button>
       {open ? (
         <div id={`admin-section-body-${id}`} className="admin-section-body">
           {children}
