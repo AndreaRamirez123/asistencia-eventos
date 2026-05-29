@@ -42,6 +42,58 @@ body {
   min-height: 100vh;
 }
 
+#theme-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 50px;
+  padding: 0 12px;
+  background: rgba(255, 251, 243, 0.88);
+  border-bottom: 1px solid rgba(17, 31, 45, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+html.dark #theme-overlay {
+  background: rgba(13, 22, 35, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+#theme-overlay button {
+  pointer-events: all;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(17, 31, 45, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+#theme-overlay button:hover {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+html.dark #theme-overlay button {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+html.dark #theme-overlay button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 body::before {
   content: '';
   position: fixed;

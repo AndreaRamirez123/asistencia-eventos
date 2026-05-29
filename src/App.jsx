@@ -312,6 +312,7 @@ function App() {
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
+  const [activeSectionId, setActiveSectionId] = useState('listado')
 
   const activeClienteId = superadminClienteActivo?.id || activeCliente?.id || currentUser?.clienteId || ''
   const brandingCliente = superadminClienteActivo || activeCliente
@@ -936,7 +937,7 @@ function App() {
   }, [attendees, activeEventoId])
 
   const eventRatings = useMemo(() => {
-    if (!activeEventoId) return ratings
+    if (!activeEventoId) return []
     return ratings.filter(
       (r) => !r.eventoId || r.eventoId === activeEventoId,
     )
@@ -1121,14 +1122,13 @@ function App() {
   const themeTogglePortal = createPortal(
     <button
       type="button"
-      className="theme-toggle"
       onClick={toggleTheme}
       title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
       aria-label={dark ? 'Activar modo claro' : 'Activar modo oscuro'}
     >
       {dark ? '☀️' : '🌙'}
     </button>,
-    document.body,
+    document.getElementById('theme-overlay') || document.body,
   )
 
   const publicFooter = (
@@ -1140,10 +1140,10 @@ function App() {
 
   if (currentView === 'public') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <PublicRegistrationPage
+        <div className="public-overlay-spacer" />
+        <PublicRegistrationPage
             errorMessage={publicErrorMessage}
             form={publicForm}
             handleChange={handlePublicChange}
@@ -1173,71 +1173,65 @@ function App() {
           />
           {publicFooter}
         </div>
-      </>
     )
   }
 
   if (currentView === 'mapa') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <MapaPublicoPage />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <MapaPublicoPage />
+        {publicFooter}
+      </div>
     )
   }
 
   if (currentView === 'trivia') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <TriviaQuizPage />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <TriviaQuizPage />
+        {publicFooter}
+      </div>
     )
   }
 
   if (currentView === 'estacion') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <EstacionPublicaPage />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <EstacionPublicaPage />
+        {publicFooter}
+      </div>
     )
   }
 
   if (currentView === 'mi-evento') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <MiEventoPage />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <MiEventoPage />
+        {publicFooter}
+      </div>
     )
   }
 
   if (currentView === 'rating') {
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <CalificacionPage
-            evento={activeEvento}
-            empresasInvitadas={empresasInvitadas}
-            eventoLoaded={eventosLoaded}
-          />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <CalificacionPage
+          evento={activeEvento}
+          empresasInvitadas={empresasInvitadas}
+          eventoLoaded={eventosLoaded}
+        />
+        {publicFooter}
+      </div>
     )
   }
 
@@ -1249,13 +1243,12 @@ function App() {
       return null
     }
     return (
-      <>
+      <div className="public-page-outer">
         {themeTogglePortal}
-        <div className="public-page-outer">
-          <LoginPage />
-          {publicFooter}
-        </div>
-      </>
+        <div className="public-overlay-spacer" />
+        <LoginPage />
+        {publicFooter}
+      </div>
     )
   }
 
@@ -1282,13 +1275,15 @@ function App() {
     }
     return (
       <>
-        {themeTogglePortal}
         <div className="public-page-outer">
+          <div className="public-overlay-spacer" />
           <ScannerPage
             currentUser={currentUser}
             onLogout={handleLogout}
             evento={activeEvento}
             empresaConfig={empresaConfigFromCliente}
+            dark={dark}
+            onToggleTheme={toggleTheme}
             onBack={currentUser.role !== 'staff' ? () => {
               if (currentUser.role === 'superadmin' && !superadminClienteActivo && activeCliente) {
                 setSuperadminClienteActivo(activeCliente)
@@ -1309,12 +1304,14 @@ function App() {
   if (currentUser.role === 'superadmin' && !superadminClienteActivo) {
     return (
       <>
-        {themeTogglePortal}
         <div className="public-page-outer">
+          <div className="public-overlay-spacer" />
           <SuperAdminPage
             currentUser={currentUser}
             onLogout={handleLogout}
             onEnterPanel={(cliente) => setSuperadminClienteActivo(cliente)}
+            dark={dark}
+            onToggleTheme={toggleTheme}
           />
           {publicFooter}
         </div>
@@ -1350,6 +1347,8 @@ function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         empresaConfig={empresaConfigFromCliente}
+        dark={dark}
+        onToggleTheme={toggleTheme}
         onOpenScanner={() => {
           const scannerPath = brandingCliente?.slug
             ? `/e/${brandingCliente.slug}/scanner`
@@ -1423,282 +1422,303 @@ function App() {
           </div>
         ) : null}
 
-        <AdminSection
-          id="crear-evento"
-          title="Crear nuevo evento"
-          subtitle="Crea un evento independiente del activo"
-          defaultOpen={eventos.filter((e) => !e.archivado).length === 0}
-        >
-          <section className="panel">
-            <div className="panel-heading">
-              <p className="eyebrow">Nuevo evento</p>
-              <h2>Crear evento desde cero</h2>
-              <p className="section-copy">
-                Crea un evento nuevo. El evento activo no se cierra; puedes cambiar entre eventos
-                desde el selector de arriba.
-              </p>
-            </div>
-            <form className="crear-evento-form" onSubmit={handleCrearEvento}>
-              <label className="field">
-                <span>Nombre del evento</span>
-                <input
-                  type="text"
-                  value={nuevoEventoNombre}
-                  onChange={(e) => setNuevoEventoNombre(e.target.value)}
-                  placeholder={`Evento ${new Date().toLocaleDateString('es-CO')}`}
-                  disabled={isCreandoEvento}
-                />
-              </label>
-              {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
-              <button type="submit" className="submit-button" disabled={isCreandoEvento}>
-                {isCreandoEvento ? 'Creando...' : 'Crear evento'}
+        {/* Tile nav grid */}
+        <div className="admin-tile-nav">
+          {/* ── Configuración del evento ── */}
+          <button
+            type="button"
+            className={`admin-tile ${activeSectionId === 'crear-evento' ? 'is-active' : ''}`}
+            onClick={() => setActiveSectionId('crear-evento')}
+          >
+            <span className="admin-tile-title">Crear nuevo evento</span>
+            <span className="admin-tile-sub">Crea un evento independiente del activo</span>
+          </button>
+
+          {activeEvento ? (
+            <>
+              <button type="button" className={`admin-tile ${activeSectionId === 'evento-config' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('evento-config')}>
+                <span className="admin-tile-title">Configuración del evento</span>
+                <span className="admin-tile-sub">Modo de registro y QR del evento</span>
               </button>
-            </form>
-          </section>
-        </AdminSection>
 
-        {activeEvento ? (
-          <>
-        <AdminSection
-          id="empresas-invitadas"
-          title="Empresas invitadas"
-          subtitle="Configurar empresas y sus encuestas"
-          badge={empresasInvitadas.length}
-          defaultOpen={false}
-        >
-          <EmpresasInvitadasPanel
-            evento={activeEvento}
-            onChange={handleEmpresasInvitadasChange}
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'horario' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('horario')}>
+                <span className="admin-tile-title">Horario del evento</span>
+                <span className="admin-tile-sub">Inicio, fin y estado actual</span>
+              </button>
 
-        <AdminSection
-          id="categorias"
-          title="Categorías de asistentes"
-          subtitle="Tipos de asistente disponibles en el evento"
-          badge={categoriasEvento.length}
-          defaultOpen={false}
-        >
-          <CategoriasPanel
-            evento={activeEvento}
-            onChange={(nextEvento) =>
-              setEventos((current) =>
-                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-              )
-            }
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'empresas-invitadas' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('empresas-invitadas')}>
+                <span className="admin-tile-title">Empresas invitadas</span>
+                <span className="admin-tile-sub">Configurar empresas y sus encuestas</span>
+                {empresasInvitadas.length > 0 ? <span className="admin-tile-badge">{empresasInvitadas.length}</span> : null}
+              </button>
 
-        <AdminSection
-          id="evento-config"
-          title="Configuración del evento"
-          subtitle="Modo de registro y QR del evento"
-          defaultOpen={false}
-        >
-          <KioskoQrPanel
-            empresasInvitadas={empresasInvitadas}
-            evento={activeEvento}
-            empresaSlug={brandingCliente?.slug || ''}
-            onEventoChange={(nextEvento) =>
-              setEventos((current) =>
-                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-              )
-            }
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'categorias' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('categorias')}>
+                <span className="admin-tile-title">Categorías de asistentes</span>
+                <span className="admin-tile-sub">Tipos de asistente disponibles en el evento</span>
+                {categoriasEvento.length > 0 ? <span className="admin-tile-badge">{categoriasEvento.length}</span> : null}
+              </button>
 
-        <AdminSection
-          id="horario"
-          title="Horario del evento"
-          subtitle="Inicio, fin y estado actual"
-          defaultOpen={false}
-        >
-          <HorarioEventoPanel
-            evento={activeEvento}
-            onEventoChange={(nextEvento) =>
-              setEventos((current) =>
-                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-              )
-            }
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'mapa' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('mapa')}>
+                <span className="admin-tile-title">Mapa del evento</span>
+                <span className="admin-tile-sub">Editor de plano y estaciones con IA</span>
+              </button>
 
-        <AdminSection
-          id="calificacion"
-          title="Calificación del evento"
-          subtitle="Encuesta de satisfacción post-evento"
-          defaultOpen={false}
-        >
-          <CalificacionPanel
-            evento={activeEvento}
-            ratings={eventRatings}
-            empresaSlug={brandingCliente?.slug || ''}
-            empresasInvitadas={empresasInvitadas}
-            onEventoChange={(nextEvento) =>
-              setEventos((current) =>
-                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-              )
-            }
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'trivia' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('trivia')}>
+                <span className="admin-tile-title">Trivia por estación</span>
+                <span className="admin-tile-sub">Configura preguntas para cada punto del evento</span>
+              </button>
 
-        <AdminSection
-          id="mapa"
-          title="Mapa del evento"
-          subtitle="Editor de plano y estaciones con IA"
-          defaultOpen={false}
-        >
-          <MapEditorPanel
-            evento={activeEvento}
-            estaciones={estaciones}
-            onEventoChange={(nextEvento) =>
-              setEventos((current) =>
-                current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-              )
-            }
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'estacion-qr' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('estacion-qr')}>
+                <span className="admin-tile-title">QR por estación</span>
+                <span className="admin-tile-sub">Imprime el QR de cada punto</span>
+              </button>
+            </>
+          ) : null}
 
-        <AdminSection
-          id="trivia"
-          title="Trivia por estación"
-          subtitle="Configura preguntas para cada punto del evento"
-          defaultOpen={false}
-        >
-          <TriviaEditorPanel
-            evento={activeEvento}
-            estaciones={estaciones}
-          />
-        </AdminSection>
+          {/* ── Gestión en vivo ── */}
+          <button
+            type="button"
+            className={`admin-tile ${activeSectionId === 'listado' ? 'is-active' : ''}`}
+            onClick={() => setActiveSectionId('listado')}
+          >
+            <span className="admin-tile-title">Listado de asistentes</span>
+            <span className="admin-tile-sub">Control y aprobación de asistentes</span>
+            {filteredAttendees.length > 0 ? <span className="admin-tile-badge">{filteredAttendees.length}</span> : null}
+          </button>
 
-        <AdminSection
-          id="estacion-qr"
-          title="QR por estación"
-          subtitle="Imprime el QR de cada punto para colocarlo en el evento"
-          defaultOpen={false}
-        >
-          <EstacionQRPanel
-            evento={activeEvento}
-            estaciones={estaciones}
-          />
-        </AdminSection>
+          {activeEvento ? (
+            <>
+              <button type="button" className={`admin-tile ${activeSectionId === 'dashboard' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('dashboard')}>
+                <span className="admin-tile-title">Dashboard de estaciones</span>
+                <span className="admin-tile-sub">Estadísticas de visitas y trivia</span>
+              </button>
 
-        <AdminSection
-          id="dashboard"
-          title="Dashboard de estaciones"
-          subtitle="Estadísticas de visitas y trivia por estación"
-          defaultOpen={false}
-        >
-          <EstacionesDashboard
-            evento={activeEvento}
-            estaciones={estaciones}
-          />
-        </AdminSection>
+              <button type="button" className={`admin-tile ${activeSectionId === 'calificacion' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('calificacion')}>
+                <span className="admin-tile-title">Calificación del evento</span>
+                <span className="admin-tile-sub">Encuesta de satisfacción post-evento</span>
+              </button>
 
-        <AdminSection
-          id="calificaciones-estaciones"
-          title="Calificaciones de estaciones"
-          subtitle="Opiniones y estrellas por punto del evento"
-          defaultOpen={false}
-        >
-          <CalificacionEstacionesPanel
-            evento={activeEvento}
-            estaciones={estaciones}
-          />
-        </AdminSection>
-          </>
-        ) : null}
+              <button type="button" className={`admin-tile ${activeSectionId === 'calificaciones-estaciones' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('calificaciones-estaciones')}>
+                <span className="admin-tile-title">Calificaciones de estaciones</span>
+                <span className="admin-tile-sub">Opiniones y estrellas por punto del evento</span>
+              </button>
+            </>
+          ) : null}
 
-        <AdminSection
-          id="gestion-eventos"
-          title="Gestionar eventos guardados"
-          subtitle="Eliminar eventos archivados (uno o varios)"
-          badge={eventos.filter((e) => e.archivado).length}
-          defaultOpen={false}
-        >
-          <GestionEventosPanel
-            eventos={eventos}
-            activeEventoId={activeEventoId}
-            attendees={attendees}
-            ratings={ratings}
-            onEliminados={(ids) => {
-              const idSet = new Set(ids)
-              setEventos((current) => current.filter((e) => !idSet.has(e.id)))
-              setAttendees((current) =>
-                current.filter((a) => !idSet.has(a.eventoId)),
-              )
-              if (idSet.has(activeEventoId)) {
-                // si por algo eliminaron el activo (no debería, son archivados)
-                handleSelectEvento('')
+          {/* ── Cierre ── */}
+          <button type="button" className={`admin-tile ${activeSectionId === 'gestion-eventos' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('gestion-eventos')}>
+            <span className="admin-tile-title">Gestionar eventos</span>
+            <span className="admin-tile-sub">Eliminar eventos archivados</span>
+            {eventos.filter((e) => e.archivado).length > 0 ? <span className="admin-tile-badge">{eventos.filter((e) => e.archivado).length}</span> : null}
+          </button>
+
+          <button type="button" className={`admin-tile ${activeSectionId === 'cerrar-evento' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('cerrar-evento')}>
+            <span className="admin-tile-title">Cierre del evento</span>
+            <span className="admin-tile-sub">Archivar el evento actual</span>
+          </button>
+        </div>
+
+        {/* Contenido de la sección activa */}
+        <div className="admin-tile-content">
+          {activeSectionId === 'listado' && (
+            <AttendeeTableSection
+              attendees={filteredAttendees}
+              empresasMap={empresasMap}
+              empresasInvitadas={empresasInvitadas}
+              categorias={categoriasEvento}
+              handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
+              handleViewQr={setViewingQrAttendee}
+              handleBulkApprove={handleBulkApprove}
+              isBulkApproving={isBulkApproving}
+              handleBulkDelete={handleBulkDelete}
+              isBulkDeleting={isBulkDeleting}
+              filterState={filters}
+              filteredCount={filteredAttendees.length}
+              handleDelete={handleRequestDelete}
+              handleEdit={handleEdit}
+              handleFilterChange={handleFilterChange}
+              handleStatusAction={handleStatusAction}
+              formatDate={formatDate}
+              isDeletingId={isDeletingId}
+              isUpdatingStatusId={isUpdatingStatusId}
+              isLoadingAttendees={isLoadingAttendees}
+              loadAttendees={loadAttendees}
+            />
+          )}
+
+          {activeSectionId === 'crear-evento' && (
+            <section className="panel">
+              <div className="panel-heading">
+                <p className="eyebrow">Nuevo evento</p>
+                <h2>Crear evento desde cero</h2>
+                <p className="section-copy">
+                  Crea un evento nuevo. El evento activo no se cierra; puedes cambiar entre eventos
+                  desde el selector de arriba.
+                </p>
+              </div>
+              <form className="crear-evento-form" onSubmit={handleCrearEvento}>
+                <label className="field">
+                  <span>Nombre del evento</span>
+                  <input
+                    type="text"
+                    value={nuevoEventoNombre}
+                    onChange={(e) => setNuevoEventoNombre(e.target.value)}
+                    placeholder={`Evento ${new Date().toLocaleDateString('es-CO')}`}
+                    disabled={isCreandoEvento}
+                  />
+                </label>
+                {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
+                <button type="submit" className="submit-button" disabled={isCreandoEvento}>
+                  {isCreandoEvento ? 'Creando...' : 'Crear evento'}
+                </button>
+              </form>
+            </section>
+          )}
+
+          {activeSectionId === 'empresas-invitadas' && activeEvento && (
+            <EmpresasInvitadasPanel
+              evento={activeEvento}
+              onChange={handleEmpresasInvitadasChange}
+            />
+          )}
+
+          {activeSectionId === 'categorias' && activeEvento && (
+            <CategoriasPanel
+              evento={activeEvento}
+              onChange={(nextEvento) =>
+                setEventos((current) =>
+                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                )
               }
-            }}
-          />
-        </AdminSection>
+            />
+          )}
 
-        <AdminSection
-          id="listado"
-          title="Listado de asistentes"
-          subtitle="Control y aprobación de asistentes"
-          badge={filteredAttendees.length}
-          defaultOpen={true}
-        >
-          <AttendeeTableSection
-            attendees={filteredAttendees}
-            empresasMap={empresasMap}
-            empresasInvitadas={empresasInvitadas}
-            categorias={categoriasEvento}
-            handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
-            handleViewQr={setViewingQrAttendee}
-            handleBulkApprove={handleBulkApprove}
-            isBulkApproving={isBulkApproving}
-            handleBulkDelete={handleBulkDelete}
-            isBulkDeleting={isBulkDeleting}
-            filterState={filters}
-            filteredCount={filteredAttendees.length}
-            handleDelete={handleRequestDelete}
-            handleEdit={handleEdit}
-            handleFilterChange={handleFilterChange}
-            handleStatusAction={handleStatusAction}
-            formatDate={formatDate}
-            isDeletingId={isDeletingId}
-            isUpdatingStatusId={isUpdatingStatusId}
-            isLoadingAttendees={isLoadingAttendees}
-            loadAttendees={loadAttendees}
-          />
-        </AdminSection>
+          {activeSectionId === 'evento-config' && activeEvento && (
+            <KioskoQrPanel
+              empresasInvitadas={empresasInvitadas}
+              evento={activeEvento}
+              empresaSlug={brandingCliente?.slug || ''}
+              onEventoChange={(nextEvento) =>
+                setEventos((current) =>
+                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                )
+              }
+            />
+          )}
 
-        <AdminSection
-          id="cerrar-evento"
-          title="Cierre del evento"
-          subtitle="Archivar el evento actual"
-          defaultOpen={false}
-        >
-          <CerrarEventoPanel
-            evento={activeEvento}
-            onCerrado={() => {
-              setEventos((current) =>
-                current.map((e) =>
-                  e.id === activeEventoId
-                    ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
-                    : e,
-                ),
-              )
-              const next = eventos.find((e) => e.id !== activeEventoId && !e.archivado)
-              handleSelectEvento(next?.id || '')
-            }}
-            onEliminado={(eventoIdEliminado) => {
-              setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
-              setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
-              setEventos((current) => {
-                const remaining = current
-                const next =
-                  remaining.find((e) => !e.archivado) || remaining[0]
+          {activeSectionId === 'horario' && activeEvento && (
+            <HorarioEventoPanel
+              evento={activeEvento}
+              onEventoChange={(nextEvento) =>
+                setEventos((current) =>
+                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                )
+              }
+            />
+          )}
+
+          {activeSectionId === 'calificacion' && activeEvento && (
+            <CalificacionPanel
+              evento={activeEvento}
+              ratings={eventRatings}
+              empresaSlug={brandingCliente?.slug || ''}
+              empresasInvitadas={empresasInvitadas}
+              onEventoChange={(nextEvento) =>
+                setEventos((current) =>
+                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                )
+              }
+            />
+          )}
+
+          {activeSectionId === 'mapa' && activeEvento && (
+            <MapEditorPanel
+              evento={activeEvento}
+              estaciones={estaciones}
+              onEventoChange={(nextEvento) =>
+                setEventos((current) =>
+                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                )
+              }
+            />
+          )}
+
+          {activeSectionId === 'trivia' && activeEvento && (
+            <TriviaEditorPanel
+              evento={activeEvento}
+              estaciones={estaciones}
+            />
+          )}
+
+          {activeSectionId === 'estacion-qr' && activeEvento && (
+            <EstacionQRPanel
+              evento={activeEvento}
+              estaciones={estaciones}
+            />
+          )}
+
+          {activeSectionId === 'dashboard' && activeEvento && (
+            <EstacionesDashboard
+              evento={activeEvento}
+              estaciones={estaciones}
+            />
+          )}
+
+          {activeSectionId === 'calificaciones-estaciones' && activeEvento && (
+            <CalificacionEstacionesPanel
+              evento={activeEvento}
+              estaciones={estaciones}
+            />
+          )}
+
+          {activeSectionId === 'gestion-eventos' && (
+            <GestionEventosPanel
+              eventos={eventos}
+              activeEventoId={activeEventoId}
+              attendees={attendees}
+              ratings={ratings}
+              onEliminados={(ids) => {
+                const idSet = new Set(ids)
+                setEventos((current) => current.filter((e) => !idSet.has(e.id)))
+                setAttendees((current) =>
+                  current.filter((a) => !idSet.has(a.eventoId)),
+                )
+                if (idSet.has(activeEventoId)) {
+                  // si por algo eliminaron el activo (no debería, son archivados)
+                  handleSelectEvento('')
+                }
+              }}
+            />
+          )}
+
+          {activeSectionId === 'cerrar-evento' && (
+            <CerrarEventoPanel
+              evento={activeEvento}
+              onCerrado={() => {
+                setEventos((current) =>
+                  current.map((e) =>
+                    e.id === activeEventoId
+                      ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
+                      : e,
+                  ),
+                )
+                const next = eventos.find((e) => e.id !== activeEventoId && !e.archivado)
                 handleSelectEvento(next?.id || '')
-                return current
-              })
-            }}
-          />
-        </AdminSection>
+              }}
+              onEliminado={(eventoIdEliminado) => {
+                setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
+                setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
+                setEventos((current) => {
+                  const remaining = current
+                  const next =
+                    remaining.find((e) => !e.archivado) || remaining[0]
+                  handleSelectEvento(next?.id || '')
+                  return current
+                })
+              }}
+            />
+          )}
+        </div>
       </main>
 
       <DeleteConfirmModal
@@ -1707,8 +1727,6 @@ function App() {
         onCancel={handleCancelDelete}
         onConfirm={handleConfirmDelete}
       />
-
-      {themeTogglePortal}
 
       {editingAttendeeId ? (
         <EditAttendeeModal

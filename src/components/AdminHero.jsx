@@ -6,6 +6,8 @@ function AdminHero({
   onLogout,
   empresaConfig = null,
   onOpenScanner,
+  dark = false,
+  onToggleTheme,
 }) {
   const handleScanner = (e) => {
     e.preventDefault()
@@ -33,11 +35,24 @@ function AdminHero({
           <a href="/scanner" className="primary-action" onClick={handleScanner}>
             Abrir scanner QR
           </a>
-          {onLogout ? (
-            <button type="button" className="ghost-action" onClick={onLogout}>
-              Cerrar sesion
-            </button>
-          ) : null}
+          <div className="hero-secondary-actions">
+            {onLogout ? (
+              <button type="button" className="ghost-action" onClick={onLogout}>
+                Cerrar sesion
+              </button>
+            ) : null}
+            {onToggleTheme ? (
+              <button
+                type="button"
+                className="ghost-action hero-theme-toggle"
+                onClick={onToggleTheme}
+                title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                aria-label={dark ? 'Activar modo claro' : 'Activar modo oscuro'}
+              >
+                {dark ? '☀️' : '🌙'}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

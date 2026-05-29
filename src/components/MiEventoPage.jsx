@@ -14,16 +14,26 @@ function TriviaInline({ trivia, onComplete }) {
   const [seleccion, setSeleccion] = useState(null)
   const [respuestas, setRespuestas] = useState([])
   const [tiempoRestante, setTiempoRestante] = useState(0)
+  const [textoAbierto, setTextoAbierto] = useState('')
+  const textoAbiertoRef = useRef('')
   const intervalRef = useRef(null)
   const preguntaActual = trivia?.preguntas?.[preguntaIdx]
 
   useEffect(() => {
-    if (fase !== 'jugando' || !preguntaActual) return
+    if (fase !== 'jugando' || !preguntaActual || !preguntaActual.tiempo) return
     setTiempoRestante(preguntaActual.tiempo)
     clearInterval(intervalRef.current)
     intervalRef.current = setInterval(() => {
       setTiempoRestante((t) => {
-        if (t <= 1) { clearInterval(intervalRef.current); avanzar(null); return 0 }
+        if (t <= 1) {
+          clearInterval(intervalRef.current)
+          if (preguntaActual.tipo === 'abierta') {
+            avanzarAbierta(textoAbiertoRef.current)
+          } else {
+            avanzar(null)
+          }
+          return 0
+        }
         return t - 1
       })
     }, 1000)
@@ -31,12 +41,19 @@ function TriviaInline({ trivia, onComplete }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preguntaIdx, fase])
 
-  const iniciar = () => { setRespuestas([]); setPreguntaIdx(0); setSeleccion(null); setFase('jugando') }
+  const iniciar = () => {
+    setRespuestas([])
+    setPreguntaIdx(0)
+    setSeleccion(null)
+    setTextoAbierto('')
+    textoAbiertoRef.current = ''
+    setFase('jugando')
+  }
 
   const avanzar = (opcionIdx) => {
     clearInterval(intervalRef.current)
     const correcta = preguntaActual.correcta
-    const tiempoUsado = preguntaActual.tiempo - tiempoRestante
+    const tiempoUsado = preguntaActual.tiempo ? preguntaActual.tiempo - tiempoRestante : 0
     const nueva = { opcionIdx, correcta, acerto: opcionIdx === correcta, tiempoUsado }
     const nuevasRespuestas = [...respuestas, nueva]
     setRespuestas(nuevasRespuestas)
@@ -47,7 +64,28 @@ function TriviaInline({ trivia, onComplete }) {
       else {
         const aciertos = nuevasRespuestas.filter((r) => r.acerto).length
         const puntos = Math.round((aciertos / trivia.preguntas.length) * 100)
-        const tiempoFinal = nuevasRespuestas.reduce((a, r) => a + r.tiempoUsado, 0)
+        const tiempoFinal = nuevasRespuestas.reduce((a, r) => a + (r.tiempoUsado || 0), 0)
+        setFase('resultado')
+        onComplete?.(puntos, tiempoFinal)
+      }
+    }, 900)
+  }
+
+  const avanzarAbierta = (texto) => {
+    clearInterval(intervalRef.current)
+    const tiempoUsado = preguntaActual.tiempo ? preguntaActual.tiempo - tiempoRestante : 0
+    const nueva = { texto, acerto: true, tiempoUsado }
+    const nuevasRespuestas = [...respuestas, nueva]
+    setRespuestas(nuevasRespuestas)
+    setSeleccion('enviado')
+    setTextoAbierto('')
+    textoAbiertoRef.current = ''
+    setTimeout(() => {
+      const siguiente = preguntaIdx + 1
+      if (siguiente < trivia.preguntas.length) { setPreguntaIdx(siguiente); setSeleccion(null) }
+      else {
+        const puntos = 100
+        const tiempoFinal = nuevasRespuestas.reduce((a, r) => a + (r.tiempoUsado || 0), 0)
         setFase('resultado')
         onComplete?.(puntos, tiempoFinal)
       }
@@ -55,15 +93,18 @@ function TriviaInline({ trivia, onComplete }) {
   }
 
   if (!trivia?.preguntas?.length) return null
+  const esAbiertaTodas = trivia.preguntas.every((q) => q.tipo === 'abierta')
   const aciertos = respuestas.filter((r) => r.acerto).length
-  const puntos = fase === 'resultado' ? Math.round((aciertos / trivia.preguntas.length) * 100) : 0
+  const puntos = fase === 'resultado'
+    ? (esAbiertaTodas ? 100 : Math.round((aciertos / trivia.preguntas.length) * 100))
+    : 0
 
   return (
     <div className="trivia-inline-wrap">
       <p className="eyebrow" style={{ marginBottom: 10 }}>Trivia de la estación</p>
       {fase === 'inicio' && (
         <div>
-          <p className="helper-text">{trivia.preguntas.length} pregunta(s) con tiempo límite</p>
+          <p className="helper-text">{trivia.preguntas.length} pregunta(s)</p>
           <button className="mie-btn-primary" onClick={iniciar} style={{ marginTop: 12 }}>Comenzar trivia</button>
         </div>
       )}
@@ -72,36 +113,66 @@ function TriviaInline({ trivia, onComplete }) {
           <div className="trivia-progreso-bar">
             <div className="trivia-progreso-fill" style={{ width: `${(preguntaIdx / trivia.preguntas.length) * 100}%` }} />
           </div>
-          <div className="trivia-timer">
-            <div className="trivia-timer-ring" style={{ background: `conic-gradient(${tiempoRestante > 10 ? '#3b82f6' : '#ef4444'} ${(tiempoRestante / preguntaActual.tiempo) * 360}deg, rgba(255,255,255,0.1) 0deg)` }}>
-              <span>{tiempoRestante}</span>
+          {preguntaActual.tiempo > 0 && (
+            <div className="trivia-timer">
+              <div className="trivia-timer-ring" style={{ background: `conic-gradient(${tiempoRestante > 10 ? '#3b82f6' : '#ef4444'} ${(tiempoRestante / preguntaActual.tiempo) * 360}deg, rgba(255,255,255,0.1) 0deg)` }}>
+                <span>{tiempoRestante}</span>
+              </div>
             </div>
-          </div>
+          )}
           <p className="helper-text" style={{ marginBottom: 6, textAlign: 'center' }}>Pregunta {preguntaIdx + 1} de {trivia.preguntas.length}</p>
           <h3 className="trivia-pregunta-texto">{preguntaActual.texto}</h3>
-          <div className="trivia-opciones-quiz">
-            {preguntaActual.opciones.map((op, idx) => {
-              let cls = 'trivia-opcion-btn'
-              if (seleccion !== null) {
-                if (idx === preguntaActual.correcta) cls += ' trivia-opcion-btn--correcta'
-                else if (idx === seleccion) cls += ' trivia-opcion-btn--incorrecta'
-              }
-              return (
-                <button key={idx} type="button" className={cls} onClick={() => { if (seleccion === null) avanzar(idx) }} disabled={seleccion !== null}>
-                  <span className="trivia-opcion-letra">{['A', 'B', 'C', 'D'][idx]}</span>
-                  {op}
-                </button>
-              )
-            })}
-          </div>
+          {preguntaActual.tipo === 'abierta' ? (
+            <div className="trivia-abierta">
+              <textarea
+                className="trivia-abierta-input"
+                value={textoAbierto}
+                onChange={(e) => { setTextoAbierto(e.target.value); textoAbiertoRef.current = e.target.value }}
+                placeholder="Escribe tu respuesta..."
+                rows={3}
+                disabled={seleccion !== null}
+              />
+              <button
+                type="button"
+                className="trivia-opcion-btn"
+                style={{ marginTop: 10 }}
+                onClick={() => avanzarAbierta(textoAbierto)}
+                disabled={seleccion !== null}
+              >
+                Enviar respuesta
+              </button>
+            </div>
+          ) : (
+            <div className="trivia-opciones-quiz">
+              {(preguntaActual.opciones || []).map((op, idx) => {
+                let cls = 'trivia-opcion-btn'
+                if (seleccion !== null) {
+                  if (idx === preguntaActual.correcta) cls += ' trivia-opcion-btn--correcta'
+                  else if (idx === seleccion) cls += ' trivia-opcion-btn--incorrecta'
+                }
+                return (
+                  <button key={idx} type="button" className={cls} onClick={() => { if (seleccion === null) avanzar(idx) }} disabled={seleccion !== null}>
+                    <span className="trivia-opcion-letra">{['A', 'B', 'C', 'D'][idx]}</span>
+                    {op}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
       {fase === 'resultado' && (
         <div style={{ textAlign: 'center', padding: '12px 0' }}>
-          <div className="trivia-resultado-score" style={{ marginBottom: 8 }}>
-            <strong>{puntos}</strong><span>puntos</span>
-          </div>
-          <p className="helper-text">{aciertos} de {trivia.preguntas.length} respuestas correctas</p>
+          {!esAbiertaTodas && (
+            <div className="trivia-resultado-score" style={{ marginBottom: 8 }}>
+              <strong>{puntos}</strong><span>puntos</span>
+            </div>
+          )}
+          <p className="helper-text">
+            {esAbiertaTodas
+              ? `${trivia.preguntas.length} respuesta(s) enviada(s)`
+              : `${aciertos} de ${trivia.preguntas.length} respuestas correctas`}
+          </p>
           <p className="feedback success" style={{ marginTop: 10 }}>✓ Trivia completada — ahora califica la estación</p>
           <button type="button" className="mie-btn-ghost" onClick={iniciar} style={{ marginTop: 8, fontSize: '0.8rem' }}>Reintentar</button>
         </div>
@@ -723,6 +794,21 @@ function MiEventoPage() {
 
               <div style={{ height: 8 }} />
             </div>
+
+            {/* ── Banner de completado ── */}
+            {totalEstaciones > 0 && totalVisitadas === totalEstaciones && (
+              <div className="mie-completado-banner">
+                <div className="mie-completado-icon">🏆</div>
+                <h2 className="mie-completado-titulo">¡Recorrido completo!</h2>
+                <p className="mie-completado-sub">
+                  ¡Completaste todas las {totalEstaciones} estaciones del evento!
+                  Gracias por participar.
+                </p>
+                <div className="mie-completado-badge">
+                  {totalEstaciones}/{totalEstaciones} estaciones ✓
+                </div>
+              </div>
+            )}
           </div>
         )}
 

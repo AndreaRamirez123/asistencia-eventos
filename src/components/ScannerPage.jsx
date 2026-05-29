@@ -38,7 +38,7 @@ function loadExpressMode() {
   }
 }
 
-function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBack }) {
+function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBack, dark = false, onToggleTheme }) {
   const accessPoints = (() => {
     const puntos = evento?.puntosAcceso
     if (Array.isArray(puntos) && puntos.length > 0) {
@@ -347,6 +347,11 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
                 Cerrar sesion
               </button>
             ) : null}
+            {onToggleTheme ? (
+              <button type="button" className="ghost-action hero-theme-toggle" onClick={onToggleTheme} title={dark ? 'Modo claro' : 'Modo oscuro'}>
+                {dark ? '☀️' : '🌙'}
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -431,6 +436,11 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
           {onLogout ? (
             <button type="button" className="ghost-action" onClick={onLogout}>
               Cerrar sesion
+            </button>
+          ) : null}
+          {onToggleTheme ? (
+            <button type="button" className="ghost-action hero-theme-toggle" onClick={onToggleTheme} title={dark ? 'Modo claro' : 'Modo oscuro'}>
+              {dark ? '☀️' : '🌙'}
             </button>
           ) : null}
         </div>

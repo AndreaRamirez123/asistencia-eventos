@@ -380,7 +380,7 @@ function ClienteCard({ cliente, onEdit, onToggle, onDelete, onEnterPanel, onInvi
   )
 }
 
-function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
+function SuperAdminPage({ currentUser, onLogout, onEnterPanel, dark = false, onToggleTheme }) {
   const [clientes, setClientes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(null) // null | 'create' | cliente obj para editar
@@ -433,6 +433,16 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel }) {
           <button type="button" className="ghost-action" onClick={onLogout}>
             Cerrar sesión
           </button>
+          {onToggleTheme ? (
+            <button
+              type="button"
+              className="ghost-action hero-theme-toggle"
+              onClick={onToggleTheme}
+              title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
+          ) : null}
         </div>
       </header>
 

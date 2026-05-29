@@ -40,7 +40,12 @@ function TriviaEditorPanel({ evento, estaciones = [] }) {
     setPreguntas((p) =>
       p.map((q) => {
         if (q.id !== id) return q
-        const opciones = q.opciones?.length >= 2 ? q.opciones : ['', '']
+        if (tipo === 'abierta') {
+          return { ...q, tipo, opciones: [], correcta: 0, correctas: [] }
+        }
+        const opciones = q.opciones?.filter((o) => o !== '').length >= 2
+          ? q.opciones.filter((o) => o !== '')
+          : ['', '']
         return { ...q, tipo, opciones, correcta: 0, correctas: [] }
       }),
     )
