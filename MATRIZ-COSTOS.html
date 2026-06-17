@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matriz de costos — Análisis de rentabilidad</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; line-height: 1.5; }
+
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      color: white; padding: 36px 32px 28px;
+    }
+    .header h1 { font-size: 1.7rem; font-weight: 800; margin-bottom: 6px; }
+    .header p { opacity: 0.65; font-size: 0.88rem; }
+
+    .container { max-width: 1150px; margin: 0 auto; padding: 28px 20px; }
+
+    .card {
+      background: white; border-radius: 16px; padding: 26px 28px;
+      margin-bottom: 24px; border: 1px solid #e8e8e8;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .card h2 { font-size: 1.05rem; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .card .sub { font-size: 0.8rem; color: #888; margin-bottom: 20px; }
+
+    .tag {
+      display: inline-block; background: #e3eaff; color: #0f3460;
+      font-size: 0.68rem; font-weight: 700; padding: 3px 10px;
+      border-radius: 10px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+    }
+
+    /* ── Variables ── */
+    .vars-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+    .var-item label {
+      display: block; font-size: 0.72rem; font-weight: 700; color: #666;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;
+    }
+    .var-item input {
+      width: 100%; padding: 9px 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 700; color: #0f3460; background: #f8faff;
+      transition: border-color 0.2s;
+    }
+    .var-item input:focus { outline: none; border-color: #0f3460; }
+    .var-item .hint { font-size: 0.7rem; color: #bbb; margin-top: 4px; }
+
+    /* ── Summary stats ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; margin-top: 20px; }
+    .stat-box { background: #f5f7ff; border-radius: 10px; padding: 14px; text-align: center; border: 1px solid #dde3f5; }
+    .stat-box .big { font-size: 1.25rem; font-weight: 900; color: #0f3460; }
+    .stat-box .lbl { font-size: 0.68rem; color: #888; margin-top: 3px; line-height: 1.3; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 600px; }
+    thead th {
+      background: #f5f5f0; padding: 10px 14px; text-align: right;
+      font-weight: 700; font-size: 0.71rem; color: #666;
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    }
+    thead th:first-child { text-align: left; }
+    tbody td { padding: 10px 14px; text-align: right; border-bottom: 1px solid #f0f0f0; color: #333; }
+    tbody td:first-child { text-align: left; font-weight: 700; color: #1a1a2e; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #fafaf8; }
+
+    .free { color: #2e7d32; font-weight: 700; }
+    .charged { color: #c62828; }
+    .profit { color: #1b5e20; font-weight: 800; }
+
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; }
+    .b-green { background: #e8f5e9; color: #2e7d32; }
+    .b-yellow { background: #fff8e1; color: #e65100; }
+    .b-red { background: #ffebee; color: #c62828; }
+    .b-blue { background: #e3f2fd; color: #1565c0; }
+
+    .note {
+      background: #fffbf0; border-left: 3px solid #ffd166; padding: 11px 14px;
+      border-radius: 0 8px 8px 0; font-size: 0.79rem; color: #666; margin-top: 14px;
+    }
+    .note strong { color: #1a1a2e; }
+
+    .threshold-row td { background: #fffde7 !important; }
+
+    @media print {
+      body { background: white; }
+      .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card { box-shadow: none; border: 1px solid #ddd; }
+    }
+    @media (max-width: 640px) {
+      .vars-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Matriz de análisis de costos</h1>
+  <p>Modifica tus variables arriba — todas las tablas se recalculan en tiempo real</p>
+</div>
+
+<div class="container">
+
+  <!-- VARIABLES -->
+  <div class="card">
+    <div class="tag">Variables de entrada</div>
+    <h2>Ingresa tus datos reales</h2>
+    <p class="sub">Todos los valores son editables. Los cálculos se actualizan al instante.</p>
+
+    <div class="vars-grid">
+      <div class="var-item">
+        <label>Tarifa por hora (COP)</label>
+        <input type="number" id="hourly" value="100000" min="0" step="5000" />
+        <div class="hint">¿Cuánto vale tu hora de trabajo?</div>
+      </div>
+      <div class="var-item">
+        <label>Horas mantenimiento / mes</label>
+        <input type="number" id="maint_h" value="4" min="0" step="0.5" />
+        <div class="hint">Revisión mensual de la plataforma (costo compartido)</div>
+      </div>
+      <div class="var-item">
+        <label>Horas soporte por evento</label>
+        <input type="number" id="support_h" value="2" min="0" step="0.5" />
+        <div class="hint">Si el cliente pide acompañamiento durante el evento</div>
+      </div>
+      <div class="var-item">
+        <label>Horas capacitación (activación)</label>
+        <input type="number" id="training_h" value="1" min="0" step="0.5" />
+        <div class="hint">Capacitar al admin y staff del cliente</div>
+      </div>
+      <div class="var-item">
+        <label>Horas config. sin admin propio</label>
+        <input type="number" id="config_h" value="5" min="0" step="0.5" />
+        <div class="hint">Si el cliente no tiene admin y hay que configurar todo</div>
+      </div>
+      <div class="var-item">
+        <label>Tasa de cambio USD → COP</label>
+        <input type="number" id="usd_rate" value="3631" min="1000" step="10" />
+        <div class="hint">Actualiza con la tasa del día</div>
+      </div>
+    </div>
+
+    <div class="summary-grid" id="summary"></div>
+  </div>
+
+  <!-- TABLA 1: Firebase -->
+  <div class="card">
+    <div class="tag">Tabla 1 · Servidor Firebase</div>
+    <h2>Costo Firebase por número de asistentes — por evento (1 día)</h2>
+    <p class="sub">Basado en 25 lecturas y 15 escrituras por asistente. El límite gratuito diario de Google es 50.000 lecturas / 20.000 escrituras.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asistentes</th>
+            <th>Lecturas totales</th>
+            <th>Escrituras totales</th>
+            <th>Lecturas cobradas</th>
+            <th>Escrituras cobradas</th>
+            <th>Costo USD</th>
+            <th>Costo COP</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="fb-body"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      💡 <strong>El QR, el escaneo y la trivia corren en el celular del usuario</strong> — no generan costo de servidor.<br>
+      Las filas en amarillo son los puntos exactos donde Google empieza a cobrar.
+    </div>
+  </div>
+
+  <!-- TABLA 2: Desglose completo -->
+  <div class="card">
+    <div class="tag">Tabla 2 · Costo total por escenario</div>
+    <h2>Desglose de costos por número de asistentes</h2>
+    <p class="sub">El costo mensual incluye el mantenimiento + Firebase. El soporte se suma solo si el cliente lo solicita.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asistentes</th>
+            <th>Firebase / evento</th>
+            <th>Mantenimiento / mes</th>
+            <th>Total mensual (sin soporte)</th>
+            <th>+ Soporte / evento</th>
+            <th>Total mensual (con soporte)</th>
+            <th>Costo activación</th>
+          </tr>
+        </thead>
+        <tbody id="cost-body"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      📌 <strong>Costo de activación</strong> = capacitación (lo que cobras). Si el cliente no tiene admin propio, súmale el costo de configuración (ver resumen arriba).
+    </div>
+  </div>
+
+  <!-- TABLA 3: Precio sugerido por margen -->
+  <div class="card">
+    <div class="tag">Tabla 3 · Precio sugerido por margen objetivo</div>
+    <h2>¿Cuánto cobrar al cliente según el margen que quieres?</h2>
+    <p class="sub">Fórmula: Precio = Tu costo ÷ (1 − Margen%). Basado en costo mensual sin soporte. El soporte se cotiza aparte.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Asistentes</th>
+            <th>Tu costo / mes</th>
+            <th>Precio → 40% margen</th>
+            <th>Precio → 50% margen</th>
+            <th>Precio → 60% margen</th>
+            <th>Precio → 70% margen</th>
+            <th>Precio → 80% margen</th>
+          </tr>
+        </thead>
+        <tbody id="price-body"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      📐 Ejemplo: si tu costo mensual es <strong>$400.000</strong> y quieres <strong>60% de margen</strong> → cobras $400.000 ÷ 0,40 = <strong>$1.000.000/mes</strong>.
+      Tu ganancia sería $600.000 (60% de $1.000.000).
+    </div>
+  </div>
+
+  <!-- TABLA 4: Múltiples clientes -->
+  <div class="card">
+    <div class="tag">Tabla 4 · Escala · Varios clientes activos</div>
+    <h2>¿Qué pasa cuando tienes varios clientes?</h2>
+    <p class="sub">El mantenimiento de la plataforma es un costo fijo compartido — no se multiplica por cada cliente. A más clientes, menor el costo por cliente.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Clientes activos</th>
+            <th>Ingresos / mes</th>
+            <th>Costo mantenimiento (compartido)</th>
+            <th>Ganancia / mes</th>
+            <th>Margen real</th>
+            <th>Costo por cliente</th>
+          </tr>
+        </thead>
+        <tbody id="scale-body"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      🚀 Ingreso calculado con el precio del <strong>60% de margen</strong> para 1.000 asistentes. Cambia tus variables arriba y los números se actualizan.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const READS_PA  = 25;
+  const WRITES_PA = 15;
+  const FREE_R    = 50000;
+  const FREE_W    = 20000;
+  const P_READ    = 0.06  / 100000;
+  const P_WRITE   = 0.18  / 100000;
+
+  const SIZES = [100, 250, 500, 1000, 1333, 2000, 3000, 5000, 8000, 10000, 15000, 20000];
+  const THRESHOLDS = new Set([1333, 2000]); // where free tier runs out
+
+  function cop(n) {
+    if (n < 1) return '<span class="free">$0</span>';
+    return '$' + Math.round(n).toLocaleString('es-CO');
+  }
+  function copPlain(n) {
+    return '$' + Math.round(n).toLocaleString('es-CO');
+  }
+  function usd(n) {
+    return '$' + n.toFixed(4);
+  }
+  function num(n) {
+    return Math.round(n).toLocaleString('es-CO');
+  }
+
+  function firebase(a, rate) {
+    const reads  = a * READS_PA;
+    const writes = a * WRITES_PA;
+    const xr = Math.max(0, reads  - FREE_R);
+    const xw = Math.max(0, writes - FREE_W);
+    const costUSD = xr * P_READ + xw * P_WRITE;
+    return { reads, writes, xr, xw, costUSD, costCOP: costUSD * rate };
+  }
+
+  function badge(cop) {
+    if (cop === 0)    return '<span class="badge b-green">Gratis ✓</span>';
+    if (cop < 500)    return '<span class="badge b-blue">Mínimo</span>';
+    if (cop < 3000)   return '<span class="badge b-yellow">Bajo</span>';
+    return '<span class="badge b-red">Notable</span>';
+  }
+
+  function get(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+  function update() {
+    const hourly   = get('hourly');
+    const maintH   = get('maint_h');
+    const supportH = get('support_h');
+    const trainH   = get('training_h');
+    const configH  = get('config_h');
+    const rate     = get('usd_rate') || 3631;
+
+    const maintCost   = maintH   * hourly;
+    const supportCost = supportH * hourly;
+    const trainCost   = trainH   * hourly;
+    const configCost  = configH  * hourly;
+
+    // Summary
+    document.getElementById('summary').innerHTML = `
+      <div class="stat-box"><div class="big">${copPlain(maintCost)}</div><div class="lbl">costo mantenimiento / mes</div></div>
+      <div class="stat-box"><div class="big">${copPlain(supportCost)}</div><div class="lbl">costo soporte por evento</div></div>
+      <div class="stat-box"><div class="big">${copPlain(trainCost)}</div><div class="lbl">costo activación (capacitación)</div></div>
+      <div class="stat-box"><div class="big">${copPlain(configCost)}</div><div class="lbl">costo config. sin admin propio</div></div>
+    `;
+
+    // Table 1: Firebase
+    let fb = '';
+    for (const a of SIZES) {
+      const f = firebase(a, rate);
+      const thr = THRESHOLDS.has(a) ? ' class="threshold-row"' : '';
+      fb += `<tr${thr}>
+        <td>${num(a)}</td>
+        <td>${num(f.reads)}</td>
+        <td>${num(f.writes)}</td>
+        <td ${f.xr === 0 ? 'class="free"' : 'class="charged"'}>${num(f.xr)}</td>
+        <td ${f.xw === 0 ? 'class="free"' : 'class="charged"'}>${num(f.xw)}</td>
+        <td>${usd(f.costUSD)}</td>
+        <td ${f.costCOP < 1 ? 'class="free"' : ''}>${f.costCOP < 1 ? '$0' : copPlain(Math.round(f.costCOP))}</td>
+        <td>${badge(f.costCOP)}</td>
+      </tr>`;
+    }
+    document.getElementById('fb-body').innerHTML = fb;
+
+    // Table 2: Cost breakdown
+    let ct = '';
+    for (const a of SIZES) {
+      const f = firebase(a, rate);
+      const base = maintCost + f.costCOP;
+      const withSup = base + supportCost;
+      ct += `<tr>
+        <td>${num(a)}</td>
+        <td>${f.costCOP < 1 ? '<span class="free">$0</span>' : copPlain(Math.round(f.costCOP))}</td>
+        <td>${copPlain(maintCost)}</td>
+        <td><strong>${copPlain(Math.round(base))}</strong></td>
+        <td>${copPlain(supportCost)}</td>
+        <td>${copPlain(Math.round(withSup))}</td>
+        <td>${copPlain(trainCost)}</td>
+      </tr>`;
+    }
+    document.getElementById('cost-body').innerHTML = ct;
+
+    // Table 3: Price vs margin
+    let pr = '';
+    for (const a of SIZES) {
+      const f = firebase(a, rate);
+      const cost = maintCost + f.costCOP;
+      pr += `<tr>
+        <td>${num(a)}</td>
+        <td>${copPlain(Math.round(cost))}</td>
+        <td>${copPlain(Math.round(cost / 0.60))}</td>
+        <td>${copPlain(Math.round(cost / 0.50))}</td>
+        <td>${copPlain(Math.round(cost / 0.40))}</td>
+        <td>${copPlain(Math.round(cost / 0.30))}</td>
+        <td>${copPlain(Math.round(cost / 0.20))}</td>
+      </tr>`;
+    }
+    document.getElementById('price-body').innerHTML = pr;
+
+    // Table 4: Scale (use 1000-attendee base price at 60% margin)
+    const baseCost1k = maintCost + firebase(1000, rate).costCOP;
+    const price1k    = baseCost1k / 0.40; // 60% margin
+    const clientCounts = [1, 2, 3, 5, 8, 10];
+    let sc = '';
+    for (const c of clientCounts) {
+      const revenue = price1k * c;
+      const profit  = revenue - maintCost;
+      const margin  = revenue > 0 ? (profit / revenue * 100) : 0;
+      const perCli  = maintCost / c;
+      sc += `<tr>
+        <td>${c} cliente${c > 1 ? 's' : ''}</td>
+        <td>${copPlain(Math.round(revenue))}</td>
+        <td>${copPlain(Math.round(maintCost))}</td>
+        <td class="profit">${copPlain(Math.round(profit))}</td>
+        <td><span class="badge ${margin >= 70 ? 'b-green' : margin >= 50 ? 'b-yellow' : 'b-blue'}">${margin.toFixed(0)} %</span></td>
+        <td>${copPlain(Math.round(perCli))}</td>
+      </tr>`;
+    }
+    document.getElementById('scale-body').innerHTML = sc;
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

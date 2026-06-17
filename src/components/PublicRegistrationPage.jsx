@@ -153,17 +153,21 @@ function PublicRegistrationPage({
 
       <section className="panel public-panel">
         <div className="panel-heading">
-          <p className="eyebrow">Formulario del asistente</p>
-          <h2>Completa tu informacion</h2>
-          <p className="section-copy">
-            {isOnSite
-              ? 'Al finalizar quedaras registrado y podras ingresar al evento.'
-              : 'Al finalizar se genera tu confirmacion con QR para el ingreso al evento.'}
+          <p className="eyebrow">
+            {submission ? 'Registro exitoso' : 'Formulario del asistente'}
           </p>
+          <h2>{submission ? 'Tu registro está listo ✓' : 'Completa tu informacion'}</h2>
+          {!submission && (
+            <p className="section-copy">
+              {isOnSite
+                ? 'Al finalizar quedaras registrado y podras ingresar al evento.'
+                : 'Al finalizar se genera tu confirmacion con QR para el ingreso al evento.'}
+            </p>
+          )}
         </div>
 
-        <div className={`registration-layout ${isOnSite ? 'no-preview' : ''}`}>
-          <form className="attendee-form" onSubmit={handleSubmit}>
+        <div className={`registration-layout ${isOnSite || submission ? 'no-preview' : ''}`}>
+          {!submission && <form className="attendee-form" onSubmit={handleSubmit}>
             {SHOW_CEDULA_SCANNER ? (
               <div className="cedula-shortcut">
                 <div>
@@ -469,7 +473,7 @@ function PublicRegistrationPage({
             <button type="submit" className="submit-button" disabled={isSubmitting}>
               {isSubmitting ? 'Enviando registro...' : 'Registrarme'}
             </button>
-          </form>
+          </form>}
 
           {!isOnSite ? (
             <aside className="preview-card">
@@ -522,6 +526,16 @@ function PublicRegistrationPage({
                       {isGeneratingPase ? 'Generando pase...' : '⬇ Descargar pase completo'}
                     </button>
                   </div>
+                  {onResetSubmission && (
+                    <button
+                      type="button"
+                      className="ghost-action"
+                      style={{ marginTop: '14px', width: '100%', textAlign: 'center' }}
+                      onClick={onResetSubmission}
+                    >
+                      ← Registrar otra persona
+                    </button>
+                  )}
                 </>
               ) : (
                 <>

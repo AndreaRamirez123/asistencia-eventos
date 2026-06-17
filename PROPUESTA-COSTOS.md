@@ -1,88 +1,144 @@
-# Propuesta de costos — App de registro de asistentes
+# Propuesta de costos — Plataforma de gestión de eventos
 
-Plataforma web (marca blanca) | Stack: Firebase serverless | TC: 1 USD = $4.000 COP | Sin IVA
+**Versión para revisión interna** | Precios en pesos colombianos (COP) | Tasa de referencia: 1 USD = $3.631 COP
 
 ---
 
-## 1. Supuestos del modelo
+## ¿Qué es este producto?
 
-| Concepto | Valor | Notas |
+Es una **plataforma web** que permite a empresas organizar eventos de forma profesional. Los asistentes no necesitan instalar ninguna aplicación — todo funciona desde el navegador del celular o computador.
+
+**Lo que hace la plataforma:**
+
+| Función | Para quién | Cómo funciona |
 |---|---|---|
-| Lecturas Firestore | $0,06 USD/100k | Free: 50k/día |
-| Escrituras Firestore | $0,18 USD/100k | Free: 20k/día |
-| Almacenamiento Firestore | $0,18 USD/GB/mes | Free: 1 GB |
-| Hosting transferencia | $0,15 USD/GB | Free: 10 GB/mes |
-| Auth usuario adicional | $0,0055 USD/MAU | Free: 50k MAU/mes |
-| Lecturas por asistente | 20 | Login + consulta + dashboard + listas |
-| Escrituras por asistente | 5 | Registro + checkin + encuesta + calificación |
-| Bundle web | 5 MB | React + Vite + ZXing + libs |
-| Tarifa dev | $100.000 COP/h | Mid-senior Colombia |
-| Cloud Functions | $5 USD/mes | $0 si no se usan |
-| Egress multi-región | $2 USD/mes | Buffer |
-| Buffer contingencia | 40% | Sobre infra |
-| Setup inicial | 12 h | One-time |
-| Capacitación | 3 h | One-time |
-| Mantenimiento mensual | 7 h | Base |
-| Soporte por evento | 3 h | Adicional |
-| IA / OCR / QR / scan | $0 | Todo local en navegador |
+| Registro de asistentes | El asistente | Llena un formulario en su celular. Queda registrado y recibe su código QR |
+| Check-in en la puerta | Staff del evento | Escanea el QR con la cámara del celular. Sin dispositivos especiales |
+| Mapa del evento | El asistente | Ve un plano con los puntos de visita (estaciones) |
+| Estaciones con QR | El asistente | Escanea el QR de cada estación al visitarla |
+| Trivia interactiva | El asistente | Responde preguntas en su celular al llegar a cada estación. Puede tener temporizador |
+| Mi recorrido | El asistente | Ve cuáles estaciones ha visitado y un mensaje cuando completa el recorrido |
+| Calificación del evento | El asistente | Puntúa el evento con estrellas y comentario |
+| Panel del organizador | Admin de la empresa | Gestiona asistentes, eventos, estaciones, reportes y estadísticas en tiempo real |
+| Exportar datos | Admin de la empresa | Descarga un archivo Excel con todos los asistentes y sus datos |
+| Acceso por roles | Admin y staff | El admin tiene control total; el staff solo puede hacer check-in |
+
+**Cada empresa cliente tiene su propio espacio independiente** con su logo, colores corporativos y dirección web personalizada (ejemplo: `plataforma.com/e/nombre-empresa/`).
 
 ---
 
-## 2. Costo de operación por escenario (mensual)
+## Resumen ejecutivo — costos y ganancias
 
-| | Piloto | Pequeño | Mediano | Grande | Recurrente |
+| | Plan Piloto | Plan Básico | Plan Mediano | Plan Grande | Plan Recurrente |
 |---|---|---|---|---|---|
-| Eventos/mes | 1 | 1 | 1 | 1 | 4 |
-| Asistentes/evento | 500 | 2.000 | 5.000 | 15.000 | 5.000 |
-| Asistentes totales/mes | 500 | 2.000 | 5.000 | 15.000 | 20.000 |
-| Lecturas Firestore | 10.000 | 40.000 | 100.000 | 300.000 | 400.000 |
-| Lecturas cobradas | — | — | 50.000 | 250.000 | 200.000 |
-| Escrituras Firestore | 2.500 | 10.000 | 25.000 | 75.000 | 100.000 |
-| Escrituras cobradas | — | — | 5.000 | 55.000 | 20.000 |
-| Hosting GB transferidos | 2,4 | 9,8 | 24,4 | 73,2 | 97,7 |
-| Hosting GB cobrados | 0 | 0 | 14,4 | 63,2 | 87,7 |
-| Almacenamiento Firestore (GB) | 0,001 | 0,004 | 0,010 | 0,029 | 0,038 |
-| MAU | 500 | 2.000 | 5.000 | 15.000 | 20.000 |
-| Costo Firestore (USD) | — | — | $0,04 | $0,25 | $0,16 |
-| Costo Hosting (USD) | — | — | $2,16 | $9,49 | $13,15 |
-| Cloud Functions (USD) | $5 | $5 | $5 | $5 | $5 |
-| Egress (USD) | $2 | $2 | $2 | $2 | $2 |
-| IA / procesamiento | — | — | — | — | — |
-| Subtotal infra (USD) | $7,00 | $7,00 | $9,20 | $16,74 | $20,30 |
-| Buffer 40% (USD) | $2,80 | $2,80 | $3,68 | $6,69 | $8,12 |
-| **Infra total (USD)** | **$9,80** | **$9,80** | **$12,88** | **$23,43** | **$28,43** |
-| **Infra total (COP)** | **$39.200** | **$39.200** | **$51.526** | **$93.718** | **$113.705** |
-| Total horas humanas/mes | 5 | 7 | 10 | 15 | 24 |
-| **Costo humano (COP)** | **$500.000** | **$700.000** | **$1.000.000** | **$1.500.000** | **$2.400.000** |
-| **TOTAL mensual (COP)** | **$539.200** | **$739.200** | **$1.051.526** | **$1.593.718** | **$2.513.705** |
-| **Setup one-time (COP)** | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 |
+| **¿Para quién?** | Evento de prueba | Evento pequeño | Evento mediano | Evento grande | Cliente frecuente |
+| **Capacidad** | Hasta 500 personas | Hasta 2.000 personas | Hasta 5.000 personas | Hasta 15.000 personas | 4 eventos de 5.000 |
+| **Cobro de activación** | $500.000 | $500.000 | $500.000 | $500.000 | $500.000 |
+| **Cobro mensual al cliente** | $1.000.000 | $1.100.000 | $1.500.000 | $2.000.000 | $3.800.000 |
+| Nuestro costo mensual | ~$400.000 | ~$400.000 | ~$401.000 | ~$416.000 | ~$424.000 |
+| **Ganancia mensual** | **~$600.000** | **~$700.000** | **~$1.099.000** | **~$1.584.000** | **~$3.376.000** |
+| **Margen de ganancia** | **60 %** | **64 %** | **73 %** | **79 %** | **89 %** |
+| Ingreso total en 1 año | $13.000.000 | $14.400.000 | $19.500.000 | $26.500.000 | $47.600.000 |
+| Costo total en 1 año | $5.900.000 | $6.000.000 | $6.312.000 | $7.492.000 | $7.088.000 |
+| **Ganancia en 1 año** | **$7.100.000** | **$8.400.000** | **$13.188.000** | **$19.008.000** | **$40.512.000** |
 
-> Cifras validables en Google Cloud Pricing Calculator (cloud.google.com/products/calculator) usando los valores de Firestore, Hosting y Auth de la tabla anterior.
+> El ingreso anual incluye el pago de activación más 12 cuotas mensuales.
+> El costo mensual es el mantenimiento de la plataforma (4 h = $400.000) + costo de servidor si aplica. El soporte por evento se cobra aparte.
 
 ---
 
-## 3. Pricing al cliente y margen
+## ¿En qué consisten nuestros costos?
 
-| | Plan Básico | Plan Profesional | Plan Enterprise | Plan Recurrente |
-|---|---|---|---|---|
-| Cubre | 1 evento × 2.000 | 1 evento × 5.000 | 1 evento × 15.000 | 4 eventos × 5.000 |
-| Costo total mensual | $739.200 | $1.051.526 | $1.593.718 | $2.513.705 |
-| Costo setup | $1.500.000 | $1.500.000 | $1.500.000 | $1.500.000 |
-| **Setup al cliente** | $1.500.000 | $2.000.000 | $3.000.000 | $2.500.000 |
-| **Cuota mensual al cliente** | **$1.200.000** | **$1.800.000** | **$2.800.000** | **$3.800.000** |
-| Margen mensual COP | $460.800 | $748.474 | $1.206.282 | $1.286.295 |
-| **Margen mensual %** | **38,4%** | **41,6%** | **43,1%** | **33,8%** |
-| Ingreso anual (setup + 12) | $15.900.000 | $23.600.000 | $36.600.000 | $48.100.000 |
-| Costo anual (setup + 12) | $10.370.400 | $14.118.315 | $20.624.614 | $31.664.458 |
-| Margen anual COP | $5.529.600 | $9.481.685 | $15.975.386 | $16.435.542 |
-| **Margen anual %** | **34,8%** | **40,2%** | **43,6%** | **34,2%** |
+### 1. Activación — $500.000 (pago único)
+
+Se cobra una sola vez al inicio. Cubre:
+
+| Qué incluye | |
+|---|---|
+| Acceso a la plataforma | Incluido |
+| URL personalizada del cliente | Incluido |
+| Capacitación al administrador y staff | Incluido |
+
+> Si el cliente no tiene administrador propio, la configuración inicial se cotiza aparte.
+
+### 2. Cuota mensual — según plan
+
+Cubre el acceso continuo, actualizaciones y funcionamiento del sistema. El único costo de operación real es el servidor de Google Firebase.
+
+| Costo de servidor Firebase | Por evento |
+|---|---|
+| Hasta 1.333 asistentes | $0 |
+| Hasta 2.000 asistentes | $65 COP |
+| Hasta 5.000 asistentes | $523 COP |
+| Hasta 10.000 asistentes | $1.286 COP |
+| Hasta 15.000 asistentes | $2.049 COP |
+
+> El QR, el escaneo y la trivia corren directamente en el celular del usuario — costo de servidor $0.
+> El soporte presencial durante el evento se cotiza aparte si el cliente lo requiere.
+
+### 3. Servidor y base de datos — infraestructura
+
+La plataforma usa los servidores de Google, que son **prácticamente gratuitos** para eventos pequeños y medianos. Solo se empieza a cobrar cuando hay más de 10.000 asistentes en un mes.
+
+| Plan | Costo de servidor / mes |
+|---|---|
+| Piloto (500 personas) | $0 |
+| Básico (2.000 personas) | $85 |
+| Mediano (5.000 personas) | $756 |
+| Grande (15.000 personas) | $15.708 |
+| Recurrente (4 × 5.000) | $23.520 |
+
+El servidor cuesta poco porque el QR, el escaneo y la trivia se procesan directamente en el celular del usuario — no necesitamos servidores adicionales.
 
 ---
 
-## 4. Notas
+## Proyección con varios clientes activos
 
-- Costo dominante = tiempo humano (>90%). Infra Firebase es <8% del total.
-- Validar 20 reads / 5 writes por asistente con evento real antes de firmar.
-- Eventos fuera del rango del plan: fee adicional aparte.
-- Cloud Functions, integraciones CRM, correos masivos, hardware (tablets, pendones) = cotización aparte.
-- SLA estricto durante eventos sube el tiempo humano comprometido.
+El mantenimiento de la plataforma (4 horas al mes) es un costo fijo compartido — no se cobra una vez por cada cliente. A más clientes, mayor el margen:
+
+| Clientes activos | Ingresos / mes | Costo total / mes | Ganancia / mes |
+|---|---|---|---|
+| 1 cliente (Plan Básico) | $1.100.000 | $400.000 | $700.000 — 64 % |
+| 3 clientes | $3.300.000 | $400.000 | $2.900.000 — 88 % |
+| 5 clientes | $5.500.000 | $400.000 | $5.100.000 — 93 % |
+| 10 clientes | $11.000.000 | $400.000 | $10.600.000 — 96 % |
+
+> Costo = 4 h mantenimiento compartido ($400.000). Soporte por evento y servidor se suman si aplica.
+
+---
+
+## Lo que NO está incluido — se cotiza aparte
+
+- **Hardware:** tablets para registro en sitio, impresión de QR, pendones
+- **Correos masivos:** notificaciones por email a los asistentes
+- **Integraciones externas:** conexión con otros sistemas (CRM, pagos, plataformas de terceros)
+- **Disponibilidad garantizada en el evento:** soporte presencial o en línea durante el evento
+- **Asistentes por encima del límite del plan contratado**
+
+---
+
+## Anexo técnico — solo para el equipo de desarrollo
+
+**Tecnología utilizada:**
+- La plataforma es una aplicación web construida con React y Vite
+- La base de datos y el hosting son de Google (Firebase) — sin servidores propios
+- Solo los administradores y el staff se registran con cuenta; los asistentes no necesitan cuenta
+- El escaneo y la generación de QR se hacen en el celular, sin costo de servidor
+- No se usan funciones en la nube adicionales (Cloud Functions) — costo $0
+
+**Estimado de uso por asistente (base de los cálculos):**
+- Consultas a la base de datos: ~25 por asistente por evento
+- Registros en la base de datos: ~15 por asistente por evento (registro, check-in, visitas, trivia, calificación)
+- Peso de la app: ~0,45 MB comprimido (medido en producción)
+
+**Umbrales gratuitos de Google Firebase:**
+- 50.000 consultas gratis por día
+- 20.000 registros gratis por día
+- 10 GB de descarga gratis por mes
+
+**Seguridad de los datos:**
+- Reglas de acceso por rol implementadas en la base de datos
+- Solo el superadministrador puede crear o eliminar empresas clientes
+- Los datos de los asistentes están protegidos — solo el personal autorizado puede verlos
+
+**Tasa de cambio:** 1 USD = $3.631 COP (01/06/2026).

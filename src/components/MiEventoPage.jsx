@@ -245,7 +245,13 @@ function MiEventoPage() {
   // Map
   const [evento, setEvento] = useState(null)
   const [planoImg, setPlanoImg] = useState(null)
-  const [stageSize, setStageSize] = useState({ width: 340, height: 240 })
+  const calcMapSize = () => {
+    const vw = window.innerWidth
+    if (vw >= 900) return { width: 480, height: 298 }
+    const w = Math.max(vw - 48, 280)
+    return { width: w, height: Math.round(w * 0.62) }
+  }
+  const [stageSize, setStageSize] = useState(calcMapSize)
   const mapaRef = useRef(null)
   const stationRefs = useRef({})
 
@@ -294,16 +300,10 @@ function MiEventoPage() {
   }, [evento?.planoBase64])
 
   useEffect(() => {
-    if (!mapaRef.current) return
-    const calc = () => {
-      const w = mapaRef.current?.offsetWidth
-      if (w > 0) setStageSize({ width: w, height: Math.round(w * 0.62) })
-    }
-    calc()
-    const observer = new ResizeObserver(calc)
-    observer.observe(mapaRef.current)
-    return () => observer.disconnect()
-  }, [estaciones.length, activeTab])
+    const handleResize = () => setStageSize(calcMapSize())
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleSubmitDoc = (e) => {
     e.preventDefault()

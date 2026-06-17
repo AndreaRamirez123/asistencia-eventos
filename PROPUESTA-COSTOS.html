@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Propuesta de costos — Plataforma de gestión de eventos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f0;
+      color: #1a1a2e;
+      line-height: 1.6;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      color: white;
+      padding: 64px 40px 56px;
+      text-align: center;
+    }
+    .hero-tag {
+      display: inline-block;
+      background: rgba(255,209,102,0.2);
+      color: #ffd166;
+      border: 1px solid rgba(255,209,102,0.4);
+      border-radius: 20px;
+      padding: 6px 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+    .hero h1 span { color: #ffd166; }
+    .hero p {
+      font-size: 1.1rem;
+      opacity: 0.8;
+      max-width: 580px;
+      margin: 0 auto 32px;
+    }
+    .hero-meta {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      opacity: 0.6;
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+    .section { padding: 60px 0; }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #0f3460;
+      margin-bottom: 8px;
+    }
+    .section-title {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 800;
+      color: #1a1a2e;
+      margin-bottom: 12px;
+    }
+    .section-sub {
+      color: #555;
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    /* ── WHAT IT DOES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #e8e8e8;
+      transition: box-shadow 0.2s;
+    }
+    .feature-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 6px;
+    }
+    .feature-card p { font-size: 0.875rem; color: #666; }
+
+    /* ── HIGHLIGHT BOX ── */
+    .highlight-box {
+      background: linear-gradient(135deg, #ffd166 0%, #ff9f43 100%);
+      border-radius: 20px;
+      padding: 36px 40px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .highlight-box .text h2 { font-size: 1.5rem; color: #1a1a2e; margin-bottom: 8px; }
+    .highlight-box .text p { color: rgba(26,26,46,0.75); max-width: 480px; font-size: 0.95rem; }
+    .highlight-stat {
+      text-align: center;
+      background: rgba(255,255,255,0.4);
+      border-radius: 14px;
+      padding: 20px 28px;
+      min-width: 140px;
+    }
+    .highlight-stat .big { font-size: 2.2rem; font-weight: 900; color: #1a1a2e; }
+    .highlight-stat .label { font-size: 0.75rem; color: rgba(26,26,46,0.65); font-weight: 600; }
+
+    /* ── PLANS ── */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+      gap: 16px;
+    }
+    .plan-card {
+      background: white;
+      border-radius: 18px;
+      padding: 28px 20px;
+      border: 2px solid #e8e8e8;
+      text-align: center;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .plan-card.featured {
+      border-color: #0f3460;
+      box-shadow: 0 12px 32px rgba(15,52,96,0.15);
+      transform: translateY(-4px);
+    }
+    .plan-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffd166;
+      color: #1a1a2e;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: 20px;
+      white-space: nowrap;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .plan-card h3 { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .plan-capacity { font-size: 0.78rem; color: #888; margin-bottom: 20px; }
+    .plan-price-label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .plan-setup { font-size: 0.95rem; font-weight: 600; color: #555; margin-bottom: 16px; }
+    .plan-divider { height: 1px; background: #f0f0f0; margin: 16px 0; }
+    .plan-monthly-label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .plan-price { font-size: 1.6rem; font-weight: 900; color: #0f3460; }
+    .plan-price sup { font-size: 0.8rem; vertical-align: super; }
+    .plan-per { font-size: 0.75rem; color: #888; margin-bottom: 16px; }
+    .plan-margin {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 4px;
+    }
+    .plan-margin-sub { font-size: 0.7rem; color: #888; }
+
+    /* ── VIP CARD ── */
+    .plan-card.vip {
+      background: linear-gradient(145deg, #1a1a2e 0%, #0f3460 100%);
+      border-color: #ffd166;
+      box-shadow: 0 12px 40px rgba(255,209,102,0.2);
+      transform: translateY(-4px);
+    }
+    .plan-card.vip h3 { color: #ffd166; }
+    .plan-card.vip .plan-capacity { color: rgba(255,255,255,0.5); }
+    .plan-card.vip .plan-price-label { color: rgba(255,255,255,0.4); }
+    .plan-card.vip .plan-divider { background: rgba(255,255,255,0.1); }
+    .plan-card.vip .vip-desc {
+      font-size: 0.78rem; color: rgba(255,255,255,0.65);
+      margin: 12px 0 20px; line-height: 1.5;
+    }
+    .vip-btn {
+      display: block; width: 100%;
+      background: #ffd166; color: #1a1a2e;
+      border: none; border-radius: 10px;
+      padding: 11px 0; font-size: 0.85rem;
+      font-weight: 800; cursor: pointer;
+      text-decoration: none; margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .vip-btn:hover { background: #ffbe2e; }
+    .vip-badge {
+      position: absolute; top: -12px; left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, #ffd166, #ff9f43);
+      color: #1a1a2e; font-size: 0.7rem; font-weight: 800;
+      padding: 4px 14px; border-radius: 20px;
+      white-space: nowrap; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+
+    /* ── COSTS BREAKDOWN ── */
+    .costs-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .cost-block {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      border: 1px solid #e8e8e8;
+    }
+    .cost-block .icon { font-size: 2rem; margin-bottom: 12px; }
+    .cost-block h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .cost-block .desc { font-size: 0.85rem; color: #666; margin-bottom: 16px; }
+    .cost-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      padding: 6px 0;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .cost-line:last-child { border-bottom: none; }
+    .cost-line .label { color: #555; }
+    .cost-line .value { font-weight: 600; color: #1a1a2e; }
+    .cost-line .value.free { color: #2e7d32; }
+
+    /* ── SCALE TABLE ── */
+    .scale-table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; }
+    .scale-table th {
+      background: #1a1a2e;
+      color: white;
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .scale-table td { padding: 14px 20px; font-size: 0.9rem; border-bottom: 1px solid #f0f0f0; }
+    .scale-table tr:last-child td { border-bottom: none; }
+    .scale-table tr:hover td { background: #fafaf8; }
+    .profit { color: #2e7d32; font-weight: 700; }
+    .pct {
+      display: inline-block;
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    /* ── NOT INCLUDED ── */
+    .not-included {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      border: 1px solid #e8e8e8;
+    }
+    .ni-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ni-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: #444;
+    }
+    .ni-list li::before {
+      content: '→';
+      color: #ffd166;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #1a1a2e;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 0.8rem;
+    }
+    .footer strong { color: rgba(255,255,255,0.8); }
+
+    /* ── DIVIDER ── */
+    .wave-divider { height: 4px; background: linear-gradient(90deg, #ffd166, #ff9f43, #0f3460); }
+
+    @media (max-width: 640px) {
+      .costs-row { grid-template-columns: 1fr; }
+      .ni-list { grid-template-columns: 1fr; }
+      .highlight-box { padding: 28px 24px; }
+      .plans-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ── BOTÓN DESCARGA ── */
+    .pdf-bar {
+      position: sticky; top: 0; z-index: 200;
+      background: #0f3460; padding: 10px 32px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .pdf-bar-text { color: rgba(255,255,255,0.7); font-size: 0.82rem; }
+    .pdf-bar-text strong { color: white; }
+    .btn-pdf {
+      background: #ffd166; color: #1a1a2e;
+      border: none; border-radius: 8px;
+      padding: 10px 22px; font-size: 0.88rem; font-weight: 800;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-pdf:hover { background: #ffbe2e; transform: translateY(-1px); }
+    .btn-pdf:active { transform: translateY(0); }
+
+    /* ── EVITAR CORTES EN PDF ── */
+    .feature-card, .plan-card, .cost-block, .highlight-box,
+    .not-included, .costs-row, .plans-grid, .section,
+    .scale-table, .plan-card.vip {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* ── ESTILOS DE IMPRESIÓN ── */
+    @media print {
+      @page { margin: 12mm 14mm; size: A4; }
+
+      .pdf-bar { display: none !important; }
+
+      body { background: white !important; font-size: 11pt; }
+
+      .hero {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 36px 32px 28px;
+      }
+      .wave-divider {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .section { padding: 28px 0; }
+      .container { padding: 0 8px; }
+
+      .feature-card, .plan-card, .cost-block, .not-included {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .plans-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .plan-card.featured { transform: none; }
+      .plan-card.vip {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .highlight-box {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .scale-table th {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .pct, .plan-margin {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .footer {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .section-label, .tag {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      h2, h3 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- BARRA DE DESCARGA -->
+<div class="pdf-bar">
+  <span class="pdf-bar-text"><strong>Propuesta de costos</strong> — Plataforma de gestión de eventos · 2026</span>
+  <button class="btn-pdf" onclick="imprimirPDF()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Descargar PDF
+  </button>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Propuesta comercial interna</div>
+  <h1>Plataforma de gestión de<br><span>eventos inteligentes</span></h1>
+  <p>Sistema web completo para registrar asistentes, controlar accesos, gamificar el recorrido y medir resultados — sin instalar ninguna aplicación.</p>
+  <div class="hero-meta">
+    <span>📅 2026</span>
+    <span>💱 1 USD = $3.631 COP</span>
+    <span>📌 Precios en pesos colombianos</span>
+    <span>🔒 Infraestructura Google Firebase</span>
+  </div>
+</div>
+<div class="wave-divider"></div>
+
+<!-- QUÉ HACE -->
+<div class="section" style="background: #f5f5f0;">
+  <div class="container">
+    <div class="section-label">El producto</div>
+    <div class="section-title">¿Qué hace la plataforma?</div>
+    <p class="section-sub">Funciona desde el navegador del celular o computador. El asistente no instala nada.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">📋</span>
+        <h3>Registro de asistentes</h3>
+        <p>Formulario web con autocompletado por cédula. Genera código QR automáticamente al registrarse.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📷</span>
+        <h3>Check-in con QR</h3>
+        <p>El staff escanea el QR con la cámara del celular en la entrada. Sin lectores especiales.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🗺️</span>
+        <h3>Mapa interactivo del evento</h3>
+        <p>El asistente ve un plano con las estaciones del evento ubicadas visualmente.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📍</span>
+        <h3>Estaciones con QR</h3>
+        <p>Cada punto del evento tiene su propio QR imprimible. El asistente lo escanea al visitar la estación.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🧠</span>
+        <h3>Trivia interactiva</h3>
+        <p>Preguntas de opción múltiple o respuesta abierta al llegar a cada estación. Con temporizador opcional.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🏆</span>
+        <h3>Mi recorrido</h3>
+        <p>El asistente ve en tiempo real cuáles estaciones ha visitado y recibe un mensaje al completar el recorrido.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">⭐</span>
+        <h3>Calificación del evento</h3>
+        <p>Encuesta de satisfacción post-evento con estrellas y comentario por asistente.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h3>Dashboard en tiempo real</h3>
+        <p>El organizador ve asistentes, visitas por estación y calificaciones actualizadas al instante.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🏢</span>
+        <h3>Multi-empresa</h3>
+        <p>Cada cliente tiene su propio espacio con logo, colores y URL personalizada. Completamente independiente.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- POR QUÉ CONVIENE -->
+<div class="section" style="background: white;">
+  <div class="container">
+    <div class="highlight-box">
+      <div class="text">
+        <h2>La infraestructura es casi gratuita</h2>
+        <p>La plataforma corre sobre los servidores de Google (Firebase). Para eventos de hasta 5.000 personas, el costo de servidor es menor a $1.000 COP al mes. El 97% de nuestro costo es tiempo de trabajo — no tecnología.</p>
+      </div>
+      <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div class="highlight-stat">
+          <div class="big">$0</div>
+          <div class="label">servidor hasta<br>5.000 asistentes</div>
+        </div>
+        <div class="highlight-stat">
+          <div class="big">97%</div>
+          <div class="label">del costo es<br>tiempo humano</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLANES Y PRECIOS -->
+<div class="section" style="background: #f5f5f0;">
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <div class="section-title">Planes y precios al cliente</div>
+    <p class="section-sub">Cada plan incluye activación + cuota mensual de mantenimiento. El soporte por evento se cobra aparte si se necesita.</p>
+
+    <div class="plans-grid">
+
+      <div class="plan-card">
+        <h3>Plan Piloto</h3>
+        <div class="plan-capacity">Hasta 500 personas · 1 evento</div>
+        <div class="plan-price-label">Cuota mensual</div>
+        <div class="plan-price"><sup>$</sup>1.000.000</div>
+        <div class="plan-per">/ mes</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price-label">Matrícula (pago único)</div>
+        <div class="plan-setup" style="font-size:1.1rem; color:#0f3460; font-weight:800;">$500.000</div>
+      </div>
+
+      <div class="plan-card">
+        <h3>Plan Básico</h3>
+        <div class="plan-capacity">Hasta 2.000 personas · 1 evento</div>
+        <div class="plan-price-label">Cuota mensual</div>
+        <div class="plan-price"><sup>$</sup>1.100.000</div>
+        <div class="plan-per">/ mes</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price-label">Matrícula (pago único)</div>
+        <div class="plan-setup" style="font-size:1.1rem; color:#0f3460; font-weight:800;">$500.000</div>
+      </div>
+
+      <div class="plan-card featured">
+        <div class="plan-badge">⭐ Más vendido</div>
+        <h3>Plan Mediano</h3>
+        <div class="plan-capacity">Hasta 5.000 personas · 1 evento</div>
+        <div class="plan-price-label">Cuota mensual</div>
+        <div class="plan-price"><sup>$</sup>1.500.000</div>
+        <div class="plan-per">/ mes</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price-label">Matrícula (pago único)</div>
+        <div class="plan-setup" style="font-size:1.1rem; color:#0f3460; font-weight:800;">$500.000</div>
+      </div>
+
+      <div class="plan-card">
+        <h3>Plan Grande</h3>
+        <div class="plan-capacity">Hasta 15.000 personas · 1 evento</div>
+        <div class="plan-price-label">Cuota mensual</div>
+        <div class="plan-price"><sup>$</sup>2.000.000</div>
+        <div class="plan-per">/ mes</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price-label">Matrícula (pago único)</div>
+        <div class="plan-setup" style="font-size:1.1rem; color:#0f3460; font-weight:800;">$500.000</div>
+      </div>
+
+      <div class="plan-card">
+        <h3>Plan Recurrente</h3>
+        <div class="plan-capacity">4 eventos × 5.000 personas / mes</div>
+        <div class="plan-price-label">Cuota mensual</div>
+        <div class="plan-price"><sup>$</sup>3.800.000</div>
+        <div class="plan-per">/ mes</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price-label">Matrícula (pago único)</div>
+        <div class="plan-setup" style="font-size:1.1rem; color:#0f3460; font-weight:800;">$500.000</div>
+      </div>
+
+      <div class="plan-card vip">
+        <div class="vip-badge">✦ Cliente VIP</div>
+        <h3>Plan Empresarial</h3>
+        <div class="plan-capacity">Capacidad y condiciones a medida</div>
+        <div class="plan-divider"></div>
+        <p class="vip-desc">
+          Eventos de gran escala, integraciones personalizadas, soporte dedicado y condiciones especiales negociadas directamente con un asesor.
+        </p>
+        <a class="vip-btn" href="mailto:andrea_ramirezt@cun.edu.co?subject=Solicitud%20Plan%20VIP">
+          Contactar un asesor
+        </a>
+        <div style="font-size:0.68rem; color:rgba(255,255,255,0.35); margin-top:10px;">Respuesta en menos de 24 h</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:20px; background:#fff8e1; border-left:3px solid #ffd166; padding:12px 16px; border-radius:0 8px 8px 0; font-size:0.82rem; color:#666;">
+      <strong style="color:#1a1a2e;">Matrícula $500.000 (igual para todos los planes):</strong> pago único que registra a la empresa en la plataforma y habilita el acceso al sistema. La cuota mensual cubre el funcionamiento continuo según el plan contratado.
+    </div>
+  </div>
+</div>
+
+<!-- DESGLOSE DE COSTOS -->
+<div class="section" style="background: white;">
+  <div class="container">
+    <div class="section-label">Estructura de cobro</div>
+    <div class="section-title">¿Qué incluye cada cobro?</div>
+    <p class="section-sub">Dos cobros simples: uno único al inicio y una cuota mensual. El servidor de Google cuesta casi nada.</p>
+
+    <div class="costs-row">
+
+      <div class="cost-block">
+        <div class="icon">🚀</div>
+        <h3>Activación — $500.000 (única vez)</h3>
+        <p class="desc">Se cobra una sola vez al inicio. Cubre todo lo necesario para que el cliente arranque.</p>
+        <div class="cost-line"><span class="label">✅ Acceso a la plataforma</span><span class="value free">Incluido</span></div>
+        <div class="cost-line"><span class="label">✅ URL personalizada del cliente</span><span class="value free">Incluido</span></div>
+        <div class="cost-line"><span class="label">✅ Capacitación al admin y staff</span><span class="value free">Incluido</span></div>
+        <div class="cost-line" style="margin-top:8px; padding-top:10px; border-top: 1px dashed #e0e0e0;">
+          <span class="label" style="font-size:0.78rem; color:#999; font-style:italic;">Si el cliente no tiene administrador propio, la configuración inicial se cotiza aparte.</span>
+        </div>
+      </div>
+
+      <div class="cost-block">
+        <div class="icon">🔄</div>
+        <h3>Cuota mensual — según plan</h3>
+        <p class="desc">Cubre el acceso continuo a la plataforma, actualizaciones y funcionamiento del sistema.</p>
+        <div class="cost-line"><span class="label">✅ Plataforma disponible y actualizada</span><span class="value free">Incluido</span></div>
+        <div class="cost-line"><span class="label">✅ Panel de administración</span><span class="value free">Incluido</span></div>
+        <div class="cost-line"><span class="label">✅ Soporte técnico básico</span><span class="value free">Incluido</span></div>
+        <div class="cost-line" style="margin-top:8px; padding-top:10px; border-top: 1px dashed #e0e0e0;">
+          <span class="label" style="font-size:0.78rem; color:#999; font-style:italic;">Soporte presencial durante el evento se cotiza aparte si el cliente lo requiere.</span>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</div>
+
+<!-- ESCALA -->
+<div class="section" style="background: #f5f5f0;">
+  <div class="container">
+    <div class="section-label">Proyección de crecimiento</div>
+    <div class="section-title">A más clientes, mayor la rentabilidad</div>
+    <p class="section-sub">La cuota mensual cubre completamente el costo de Firebase. El tiempo de desarrollo está cubierto por contrato — el único costo variable es el servidor, que es mínimo.</p>
+
+    <table class="scale-table">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Cuota mensual</th>
+          <th>Costo Firebase / evento</th>
+          <th>Ingreso neto / mes</th>
+          <th>Rentabilidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Piloto — hasta 500 personas</td>
+          <td>$1.000.000</td>
+          <td style="color:#2e7d32;">~ $0</td>
+          <td class="profit">$1.000.000</td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+        <tr>
+          <td>Básico — hasta 2.000 personas</td>
+          <td>$1.100.000</td>
+          <td style="color:#2e7d32;">~ $65</td>
+          <td class="profit">$1.099.935</td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+        <tr style="background:#f0f4ff;">
+          <td><strong>Mediano — hasta 5.000 personas ⭐</strong></td>
+          <td><strong>$1.500.000</strong></td>
+          <td style="color:#2e7d32;">~ $523</td>
+          <td class="profit"><strong>$1.499.477</strong></td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+        <tr>
+          <td>Grande — hasta 15.000 personas</td>
+          <td>$2.000.000</td>
+          <td style="color:#2e7d32;">~ $2.049</td>
+          <td class="profit">$1.997.951</td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+        <tr>
+          <td>Recurrente — 4 eventos × 5.000</td>
+          <td>$3.800.000</td>
+          <td style="color:#2e7d32;">~ $2.092</td>
+          <td class="profit">$3.797.908</td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+        <tr style="border-top: 2px solid #1a1a2e;">
+          <td><strong>10 clientes (mix de planes)</strong></td>
+          <td><strong>~ $19.400.000</strong></td>
+          <td style="color:#2e7d32;">~ $6.729</td>
+          <td class="profit"><strong>~ $19.393.271</strong></td>
+          <td><span class="pct">≈ 100 %</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.8rem; color:#888; margin-top:12px;">* Costo Firebase calculado con 25 lecturas y 15 escrituras por asistente sobre la tarifa oficial de Google. La fila de 10 clientes asume 2 Piloto + 3 Básico + 3 Mediano + 1 Grande + 1 Recurrente.</p>
+  </div>
+</div>
+
+<!-- NO INCLUIDO -->
+<div class="section" style="background: white;">
+  <div class="container">
+    <div class="section-label">Adicionales</div>
+    <div class="section-title">¿Qué no está incluido en los planes?</div>
+    <p class="section-sub">Los siguientes servicios se cotizan por separado según la necesidad del cliente.</p>
+
+    <div class="not-included">
+      <ul class="ni-list">
+        <li>Tablets o equipos para el kiosk de registro en sitio</li>
+        <li>Impresión de QR y material físico del evento</li>
+        <li>Envío de correos masivos a asistentes</li>
+        <li>Integración con CRM, sistemas de pago o plataformas externas</li>
+        <li>Soporte presencial durante el evento</li>
+        <li>Asistentes por encima del límite del plan contratado</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <strong>Plataforma de gestión de eventos</strong> — Documento de uso interno<br>
+  Precios aproximados · Tasa de referencia 1 USD = $3.631 COP · Actualizar tasa al momento de presentar
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  function imprimirPDF() {
+    const btn  = document.querySelector('.btn-pdf');
+    const bar  = document.querySelector('.pdf-bar');
+
+    btn.textContent = 'Generando PDF...';
+    btn.disabled = true;
+    bar.style.display = 'none';
+    window.scrollTo(0, 0);
+
+    // Clonar body sin la barra de descarga para que no afecte el layout
+    const clone = document.body.cloneNode(true);
+    const cloneBar = clone.querySelector('.pdf-bar');
+    if (cloneBar) cloneBar.remove();
+
+    const opt = {
+      margin:      [8, 8, 8, 8],
+      filename:    'Propuesta-Costos-Plataforma-2026.pdf',
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f5f5f0',
+        logging: false,
+        scrollX: 0,
+        scrollY: -window.scrollY
+      },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:   {
+        mode: ['css', 'legacy'],
+        avoid: ['.section', '.plan-card', '.cost-block', '.feature-card',
+                '.highlight-box', '.not-included', '.costs-row',
+                '.plans-grid', '.scale-table', 'table']
+      }
+    };
+
+    html2pdf().set(opt).from(clone).save().then(() => {
+      bar.style.display = 'flex';
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar PDF`;
+      btn.disabled = false;
+    });
+  }
+</script>
+</body>
+</html>

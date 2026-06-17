@@ -313,6 +313,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [isAuthChecking, setIsAuthChecking] = useState(true)
   const [activeSectionId, setActiveSectionId] = useState('listado')
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false)
 
   const activeClienteId = superadminClienteActivo?.id || activeCliente?.id || currentUser?.clienteId || ''
   const brandingCliente = superadminClienteActivo || activeCliente
@@ -1324,6 +1325,23 @@ function App() {
     return null
   }
 
+  const sectionLabels = {
+    'crear-evento': 'Crear nuevo evento',
+    'evento-config': 'Configuración del evento',
+    'horario': 'Horario del evento',
+    'empresas-invitadas': 'Empresas invitadas',
+    'categorias': 'Categorías de asistentes',
+    'mapa': 'Mapa del evento',
+    'trivia': 'Trivia por estación',
+    'estacion-qr': 'QR por estación',
+    'listado': 'Listado de asistentes',
+    'dashboard': 'Dashboard de estaciones',
+    'calificacion': 'Calificación del evento',
+    'calificaciones-estaciones': 'Calificaciones de estaciones',
+    'gestion-eventos': 'Gestionar eventos',
+    'cerrar-evento': 'Cierre del evento',
+  }
+
   return (
     <div className="app-shell">
       {superadminClienteActivo ? (
@@ -1422,104 +1440,129 @@ function App() {
           </div>
         ) : null}
 
-        {/* Tile nav grid */}
-        <div className="admin-tile-nav">
-          {/* ── Configuración del evento ── */}
+        {/* Admin navigation: sidebar + content */}
+        <div className="admin-layout">
+
+          {/* Hamburger toggle — visible only on mobile */}
           <button
             type="button"
-            className={`admin-tile ${activeSectionId === 'crear-evento' ? 'is-active' : ''}`}
-            onClick={() => setActiveSectionId('crear-evento')}
+            className="admin-menu-toggle"
+            onClick={() => setAdminMenuOpen((o) => !o)}
+            aria-label="Abrir menú de navegación"
           >
-            <span className="admin-tile-title">Crear nuevo evento</span>
-            <span className="admin-tile-sub">Crea un evento independiente del activo</span>
+            <span className="admin-menu-toggle-icon">{adminMenuOpen ? '✕' : '☰'}</span>
+            <span className="admin-menu-toggle-label">{sectionLabels[activeSectionId] || 'Menú'}</span>
+            <span className="admin-menu-toggle-chevron">{adminMenuOpen ? '▲' : '▼'}</span>
           </button>
 
-          {activeEvento ? (
-            <>
-              <button type="button" className={`admin-tile ${activeSectionId === 'evento-config' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('evento-config')}>
-                <span className="admin-tile-title">Configuración del evento</span>
-                <span className="admin-tile-sub">Modo de registro y QR del evento</span>
-              </button>
+          {/* Overlay for mobile tap-to-close */}
+          {adminMenuOpen && (
+            <div className="admin-sidebar-overlay" onClick={() => setAdminMenuOpen(false)} />
+          )}
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'horario' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('horario')}>
-                <span className="admin-tile-title">Horario del evento</span>
-                <span className="admin-tile-sub">Inicio, fin y estado actual</span>
-              </button>
+          {/* Sidebar nav */}
+          <nav className={`admin-sidebar${adminMenuOpen ? ' is-open' : ''}`}>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'empresas-invitadas' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('empresas-invitadas')}>
-                <span className="admin-tile-title">Empresas invitadas</span>
-                <span className="admin-tile-sub">Configurar empresas y sus encuestas</span>
-                {empresasInvitadas.length > 0 ? <span className="admin-tile-badge">{empresasInvitadas.length}</span> : null}
-              </button>
+            <div className="admin-sidebar-section-label">Configuración</div>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'categorias' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('categorias')}>
-                <span className="admin-tile-title">Categorías de asistentes</span>
-                <span className="admin-tile-sub">Tipos de asistente disponibles en el evento</span>
-                {categoriasEvento.length > 0 ? <span className="admin-tile-badge">{categoriasEvento.length}</span> : null}
-              </button>
+            <button
+              type="button"
+              className={`admin-tile ${activeSectionId === 'crear-evento' ? 'is-active' : ''}`}
+              onClick={() => { setActiveSectionId('crear-evento'); setAdminMenuOpen(false) }}
+            >
+              <span className="admin-tile-title">Crear nuevo evento</span>
+              <span className="admin-tile-sub">Crea un evento independiente del activo</span>
+            </button>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'mapa' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('mapa')}>
-                <span className="admin-tile-title">Mapa del evento</span>
-                <span className="admin-tile-sub">Editor de plano y estaciones con IA</span>
-              </button>
+            {activeEvento ? (
+              <>
+                <button type="button" className={`admin-tile ${activeSectionId === 'evento-config' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('evento-config'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Configuración del evento</span>
+                  <span className="admin-tile-sub">Modo de registro y QR del evento</span>
+                </button>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'trivia' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('trivia')}>
-                <span className="admin-tile-title">Trivia por estación</span>
-                <span className="admin-tile-sub">Configura preguntas para cada punto del evento</span>
-              </button>
+                <button type="button" className={`admin-tile ${activeSectionId === 'horario' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('horario'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Horario del evento</span>
+                  <span className="admin-tile-sub">Inicio, fin y estado actual</span>
+                </button>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'estacion-qr' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('estacion-qr')}>
-                <span className="admin-tile-title">QR por estación</span>
-                <span className="admin-tile-sub">Imprime el QR de cada punto</span>
-              </button>
-            </>
-          ) : null}
+                <button type="button" className={`admin-tile ${activeSectionId === 'empresas-invitadas' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('empresas-invitadas'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Empresas invitadas</span>
+                  <span className="admin-tile-sub">Configurar empresas y sus encuestas</span>
+                  {empresasInvitadas.length > 0 ? <span className="admin-tile-badge">{empresasInvitadas.length}</span> : null}
+                </button>
 
-          {/* ── Gestión en vivo ── */}
-          <button
-            type="button"
-            className={`admin-tile ${activeSectionId === 'listado' ? 'is-active' : ''}`}
-            onClick={() => setActiveSectionId('listado')}
-          >
-            <span className="admin-tile-title">Listado de asistentes</span>
-            <span className="admin-tile-sub">Control y aprobación de asistentes</span>
-            {filteredAttendees.length > 0 ? <span className="admin-tile-badge">{filteredAttendees.length}</span> : null}
-          </button>
+                <button type="button" className={`admin-tile ${activeSectionId === 'categorias' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('categorias'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Categorías de asistentes</span>
+                  <span className="admin-tile-sub">Tipos de asistente disponibles en el evento</span>
+                  {categoriasEvento.length > 0 ? <span className="admin-tile-badge">{categoriasEvento.length}</span> : null}
+                </button>
 
-          {activeEvento ? (
-            <>
-              <button type="button" className={`admin-tile ${activeSectionId === 'dashboard' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('dashboard')}>
-                <span className="admin-tile-title">Dashboard de estaciones</span>
-                <span className="admin-tile-sub">Estadísticas de visitas y trivia</span>
-              </button>
+                <button type="button" className={`admin-tile ${activeSectionId === 'mapa' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('mapa'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Mapa del evento</span>
+                  <span className="admin-tile-sub">Editor de plano y estaciones con IA</span>
+                </button>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'calificacion' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('calificacion')}>
-                <span className="admin-tile-title">Calificación del evento</span>
-                <span className="admin-tile-sub">Encuesta de satisfacción post-evento</span>
-              </button>
+                <button type="button" className={`admin-tile ${activeSectionId === 'trivia' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('trivia'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Trivia por estación</span>
+                  <span className="admin-tile-sub">Configura preguntas para cada punto del evento</span>
+                </button>
 
-              <button type="button" className={`admin-tile ${activeSectionId === 'calificaciones-estaciones' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('calificaciones-estaciones')}>
-                <span className="admin-tile-title">Calificaciones de estaciones</span>
-                <span className="admin-tile-sub">Opiniones y estrellas por punto del evento</span>
-              </button>
-            </>
-          ) : null}
+                <button type="button" className={`admin-tile ${activeSectionId === 'estacion-qr' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('estacion-qr'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">QR por estación</span>
+                  <span className="admin-tile-sub">Imprime el QR de cada punto</span>
+                </button>
+              </>
+            ) : null}
 
-          {/* ── Cierre ── */}
-          <button type="button" className={`admin-tile ${activeSectionId === 'gestion-eventos' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('gestion-eventos')}>
-            <span className="admin-tile-title">Gestionar eventos</span>
-            <span className="admin-tile-sub">Eliminar eventos archivados</span>
-            {eventos.filter((e) => e.archivado).length > 0 ? <span className="admin-tile-badge">{eventos.filter((e) => e.archivado).length}</span> : null}
-          </button>
+            <div className="admin-sidebar-section-label">Gestión en vivo</div>
 
-          <button type="button" className={`admin-tile ${activeSectionId === 'cerrar-evento' ? 'is-active' : ''}`} onClick={() => setActiveSectionId('cerrar-evento')}>
-            <span className="admin-tile-title">Cierre del evento</span>
-            <span className="admin-tile-sub">Archivar el evento actual</span>
-          </button>
-        </div>
+            <button
+              type="button"
+              className={`admin-tile ${activeSectionId === 'listado' ? 'is-active' : ''}`}
+              onClick={() => { setActiveSectionId('listado'); setAdminMenuOpen(false) }}
+            >
+              <span className="admin-tile-title">Listado de asistentes</span>
+              <span className="admin-tile-sub">Control y aprobación de asistentes</span>
+              {filteredAttendees.length > 0 ? <span className="admin-tile-badge">{filteredAttendees.length}</span> : null}
+            </button>
 
-        {/* Contenido de la sección activa */}
-        <div className="admin-tile-content">
+            {activeEvento ? (
+              <>
+                <button type="button" className={`admin-tile ${activeSectionId === 'dashboard' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('dashboard'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Dashboard de estaciones</span>
+                  <span className="admin-tile-sub">Estadísticas de visitas y trivia</span>
+                </button>
+
+                <button type="button" className={`admin-tile ${activeSectionId === 'calificacion' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('calificacion'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Calificación del evento</span>
+                  <span className="admin-tile-sub">Encuesta de satisfacción post-evento</span>
+                </button>
+
+                <button type="button" className={`admin-tile ${activeSectionId === 'calificaciones-estaciones' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('calificaciones-estaciones'); setAdminMenuOpen(false) }}>
+                  <span className="admin-tile-title">Calificaciones de estaciones</span>
+                  <span className="admin-tile-sub">Opiniones y estrellas por punto del evento</span>
+                </button>
+              </>
+            ) : null}
+
+            <div className="admin-sidebar-section-label">Cierre</div>
+
+            <button type="button" className={`admin-tile ${activeSectionId === 'gestion-eventos' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('gestion-eventos'); setAdminMenuOpen(false) }}>
+              <span className="admin-tile-title">Gestionar eventos</span>
+              <span className="admin-tile-sub">Eliminar eventos archivados</span>
+              {eventos.filter((e) => e.archivado).length > 0 ? <span className="admin-tile-badge">{eventos.filter((e) => e.archivado).length}</span> : null}
+            </button>
+
+            <button type="button" className={`admin-tile ${activeSectionId === 'cerrar-evento' ? 'is-active' : ''}`} onClick={() => { setActiveSectionId('cerrar-evento'); setAdminMenuOpen(false) }}>
+              <span className="admin-tile-title">Cierre del evento</span>
+              <span className="admin-tile-sub">Archivar el evento actual</span>
+            </button>
+
+          </nav>
+
+          {/* Contenido de la sección activa */}
+          <div className="admin-tile-content">
           {activeSectionId === 'listado' && (
             <AttendeeTableSection
               attendees={filteredAttendees}
@@ -1718,7 +1761,8 @@ function App() {
               }}
             />
           )}
-        </div>
+          </div>{/* end admin-tile-content */}
+        </div>{/* end admin-layout */}
       </main>
 
       <DeleteConfirmModal

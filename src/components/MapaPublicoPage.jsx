@@ -9,7 +9,13 @@ function MapaPublicoPage() {
   const [evento, setEvento] = useState(null)
   const [estaciones, setEstaciones] = useState([])
   const [planoImg, setPlanoImg] = useState(null)
-  const [stageSize, setStageSize] = useState({ width: 340, height: 200 })
+  const MAX_MAP_WIDTH = 640
+  const calcSize = () => {
+    const w = Math.min(window.innerWidth - 56, MAX_MAP_WIDTH)
+    const ratio = window.innerWidth < 640 ? 0.5 : 0.58
+    return { width: w, height: Math.min(Math.round(w * ratio), 310) }
+  }
+  const [stageSize, setStageSize] = useState(calcSize)
   const [selectedEst, setSelectedEst] = useState(null)
   const [visitanteId, setVisitanteId] = useState('')
   const [visitas, setVisitas] = useState([])
@@ -49,16 +55,11 @@ function MapaPublicoPage() {
     img.onload = () => setPlanoImg(img)
   }, [evento?.planoBase64])
 
-  // Responsive
+  // Responsive: usa window.innerWidth directamente, evita el ciclo canvas→container
   useEffect(() => {
-    const observer = new ResizeObserver(() => {
-      if (containerRef.current) {
-        const w = containerRef.current.offsetWidth
-        setStageSize({ width: w, height: Math.round(w * 0.6) })
-      }
-    })
-    if (containerRef.current) observer.observe(containerRef.current)
-    return () => observer.disconnect()
+    const handleResize = () => setStageSize(calcSize())
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
   }, [])
 
   const yaVisito = (estId) => visitas.some((v) => v.estacionId === estId)
