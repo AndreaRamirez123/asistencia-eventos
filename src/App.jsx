@@ -484,7 +484,7 @@ function App() {
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) return
 
-    listEmpresas()
+    listEmpresas(currentUser.role === 'superadmin' ? superadminClienteActivo?.id : activeClienteId)
       .then(setEmpresas)
       .catch((error) => console.error(error))
     listEventos(activeClienteId)
@@ -605,6 +605,7 @@ function App() {
         empresasInvitadas.find((e) => e.id === empresaActual)?.nombre || ''
       const result = await findAttendeeByDocument(
         cleaned,
+        activeEvento?.id || '',
         empresaActual,
         empresaNombre,
       )

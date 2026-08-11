@@ -121,17 +121,22 @@ export async function listAttendees(clienteId = '') {
 
 export async function findAttendeeByDocument(
   documentId,
+  eventoId,
   empresaInvitadaId = '',
   empresaInvitadaNombre = '',
 ) {
   ensureFirestore()
   const cleaned = normalizeDocumentId(documentId)
-  if (!cleaned || cleaned.length < 5) {
+  if (!cleaned || cleaned.length < 5 || !eventoId) {
     return { match: null, personalMatch: null }
   }
 
   const attendeesRef = collection(db, COLLECTION_NAME)
-  const q = query(attendeesRef, where('documentId', '==', cleaned))
+  const q = query(
+    attendeesRef,
+    where('documentId', '==', cleaned),
+    where('eventoId', '==', eventoId),
+  )
   const snap = await getDocs(q)
   if (snap.empty) {
     return { match: null, personalMatch: null }
@@ -442,12 +447,14 @@ export async function performCheckin({
 }
 
 export async function getAttendeeByDocument(documentId, eventoId) {
-  if (!isFirebaseConfigured || !db) return null
+  if (!isFirebaseConfigured || !db || !eventoId) return null
   try {
     const normalized = normalizeDocumentId(documentId)
-    const constraints = [where('documentId', '==', normalized)]
-    if (eventoId) constraints.push(where('eventoId', '==', eventoId))
-    const q = query(collection(db, COLLECTION_NAME), ...constraints)
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('documentId', '==', normalized),
+      where('eventoId', '==', eventoId),
+    )
     const snap = await getDocs(q)
     if (snap.empty) return null
     const d = snap.docs[0]

@@ -6,6 +6,7 @@ import {
   getCountFromServer,
   getDoc,
   getDocs,
+  limit,
   orderBy,
   query,
   serverTimestamp,
@@ -88,7 +89,7 @@ export async function getClienteById(id) {
 export async function getClienteBySlug(slug) {
   if (!isFirebaseConfigured || !db || !slug) return null
   try {
-    const q = query(collection(db, COLLECTION), where('slug', '==', slug))
+    const q = query(collection(db, COLLECTION), where('slug', '==', slug), limit(1))
     const snap = await getDocs(q)
     if (snap.empty) return null
     const data = snap.docs[0].data()

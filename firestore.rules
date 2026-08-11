@@ -29,6 +29,12 @@ service cloud.firestore {
       return isAuth() && getUserRole() == 'superadmin';
     }
 
+    // clienteId del perfil del usuario autenticado (para acotar lecturas por tenant)
+    function getUserClienteId() {
+      let ref = /databases/$(database)/documents/eventoUsuarios/$(request.auth.uid);
+      return isAuth() && exists(ref) ? get(ref).data.clienteId : '';
+    }
+
     // ── Asistentes ───────────────────────────────────────────────────────────
     // Lectura pública necesaria para el autocompletado de cédula en el registro.
     match /eventoAsistentes/{doc} {
@@ -102,35 +108,54 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // ── Usuarios (cada quien lee/escribe el suyo; admins ven todos) ──────────
+    // ── Usuarios (cada quien lee/escribe el suyo; admins ven los de su cliente) ─
     match /eventoUsuarios/{userId} {
       // Leer el propio perfil: condición directa, sin llamar getUserRole()
       // para evitar recursión en el get() interno de los helpers.
       allow read: if isAuth() && request.auth.uid == userId;
-      // Admins pueden leer perfiles de otros usuarios
-      allow read: if isAdmin();
+      // Admins pueden leer perfiles de otros usuarios de su MISMO cliente;
+      // superadmin ve todos.
+      allow read: if isSuperAdmin() ||
+        (isAdmin() && resource.data.clienteId == getUserClienteId());
       // Crear el propio perfil al aceptar una invitación
       // (no permite auto-asignarse rol superadmin)
       allow create: if isAuth() && request.auth.uid == userId &&
         request.resource.data.role != 'superadmin';
-      // Actualizar el propio perfil o si es admin
-      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Actualizar el propio perfil, o un admin de su mismo cliente, o superadmin
+      allow update: if isAuth() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        (isAdmin() && resource.data.clienteId == getUserClienteId())
+      );
       allow delete: if isSuperAdmin();
     }
 
-    // ── Invitaciones (solo admins) ────────────────────────────────────────────
-    match /eventoInvitaciones/{doc} {
-      allow read, write: if isAdmin();
+    // ── Invitaciones (colección real: "invitaciones") ───────────────────────
+    // Se lee/actualiza durante el primer login (aceptar invitación), antes de
+    // que exista el perfil en eventoUsuarios — por eso no puede depender de
+    // isAdmin()/isStaff() para read/update, solo del email autenticado.
+    match /invitaciones/{doc} {
+      allow read, update: if isAuth() && resource.data.email == request.auth.token.email;
+      allow create: if isSuperAdmin() ||
+        (isAdmin() && request.resource.data.clienteId == getUserClienteId());
+      allow delete: if isSuperAdmin();
     }
 
-    // ── Empresas ──────────────────────────────────────────────────────────────
+    // ── Empresas (acotadas por clienteId; superadmin ve todas) ──────────────
     match /eventoEmpresas/{doc} {
-      allow read, write: if isAuth();
+      allow read: if isSuperAdmin() ||
+        (isAuth() && resource.data.clienteId == getUserClienteId());
+      allow write: if isSuperAdmin() ||
+        (isAdmin() && request.resource.data.clienteId == getUserClienteId());
     }
 
-    // ── Clientes (solo superadmin puede crear/modificar/eliminar) ────────────
-    match /eventoClientes/{doc} {
-      allow read: if isAuth();
+    // ── Clientes (colección real: "clientes") ────────────────────────────────
+    // get() individual (branding público por slug/id) queda abierto;
+    // list() completo (panel superadmin) solo para superadmin o consultas
+    // acotadas a 1 resultado (búsqueda por slug con limit(1) en el código).
+    match /clientes/{doc} {
+      allow get: if true;
+      allow list: if isSuperAdmin() || request.query.limit <= 1;
       allow write: if isSuperAdmin();
     }
   }
