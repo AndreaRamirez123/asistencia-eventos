@@ -352,6 +352,29 @@
   max-width: 56ch;
 }
 
+.public-hero-cologos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.public-hero-cologos img {
+  max-height: 44px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+@media (max-width: 480px) {
+  .public-hero-cologos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .public-status {
   display: grid;
   gap: 12px;
@@ -3744,6 +3767,12 @@
 .encuesta-section .field input,
 .encuesta-section .field select {
   background: #fff;
+}
+
+@media (max-width: 720px) {
+  .encuesta-section {
+    grid-template-columns: 1fr;
+  }
 }
 
 .qr-viewer-modal .qr-viewer-body {

@@ -842,20 +842,25 @@ function App() {
       const selectedEmpresa = empresasInvitadas.find(
         (e) => e.id === publicForm.empresaInvitadaId,
       )
-      if (
-        selectedEmpresa?.encuestaHabilitada &&
-        selectedEmpresa?.encuestaObligatoria
-      ) {
-        const preguntas = Array.isArray(selectedEmpresa.encuestaPreguntas)
-          ? selectedEmpresa.encuestaPreguntas
-          : []
-        const missing = preguntas.find((p) => {
+      const preguntasObligatoriasPendientes = []
+      if (selectedEmpresa?.encuestaHabilitada && selectedEmpresa?.encuestaObligatoria) {
+        preguntasObligatoriasPendientes.push(
+          ...(Array.isArray(selectedEmpresa.encuestaPreguntas) ? selectedEmpresa.encuestaPreguntas : []),
+        )
+      }
+      if (activeEvento?.preguntasExtraObligatorio) {
+        preguntasObligatoriasPendientes.push(
+          ...(Array.isArray(activeEvento.preguntasExtra) ? activeEvento.preguntasExtra : []),
+        )
+      }
+      if (preguntasObligatoriasPendientes.length > 0) {
+        const missing = preguntasObligatoriasPendientes.find((p) => {
           const value = publicForm.surveyAnswers?.[p.id]
           return !value || String(value).trim() === ''
         })
         if (missing) {
           setPublicErrorMessage(
-            'Debes responder todas las preguntas de la encuesta antes de continuar.',
+            'Debes responder todas las preguntas antes de continuar.',
           )
           setIsPublicSubmitting(false)
           return
@@ -1167,6 +1172,11 @@ function App() {
             eventoNombre={activeEvento?.nombre || ''}
             eventoId={activeEvento?.id || ''}
             empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
+            logosCoOrganizadores={activeEvento?.logosCoOrganizadores || []}
+            preguntasEvento={activeEvento?.preguntasExtra || []}
+            preguntasEventoObligatorio={Boolean(activeEvento?.preguntasExtraObligatorio)}
+            ocultarCategoria={Boolean(activeEvento?.ocultarCategoria)}
+            ocultarAcompanantes={Boolean(activeEvento?.ocultarAcompanantes)}
             onResetSubmission={() => {
               setPublicSubmission(null)
               setPublicForm(initialPublicForm)
@@ -1731,6 +1741,15 @@ function App() {
                   // si por algo eliminaron el activo (no debería, son archivados)
                   handleSelectEvento('')
                 }
+              }}
+              onRecuperado={(eventoId) => {
+                setEventos((current) =>
+                  current.map((e) =>
+                    e.id === eventoId
+                      ? { ...e, archivado: false, active: true, fechaCierre: null }
+                      : e,
+                  ),
+                )
               }}
             />
           )}

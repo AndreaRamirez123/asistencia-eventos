@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { bulkDeleteEventos } from '../eventosStore'
+import { bulkDeleteEventos, updateEvento } from '../eventosStore'
 
 function formatFecha(iso) {
   if (!iso) return '—'
@@ -20,12 +20,14 @@ function GestionEventosPanel({
   attendees = [],
   ratings = [],
   onEliminados,
+  onRecuperado,
 }) {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [confirmText, setConfirmText] = useState('')
   const [step, setStep] = useState('idle') // idle | confirm | running | done
   const [errorMessage, setErrorMessage] = useState('')
   const [resultMessage, setResultMessage] = useState('')
+  const [recuperandoId, setRecuperandoId] = useState('')
 
   const archivedEventos = useMemo(
     () => eventos.filter((e) => e.archivado),
@@ -52,6 +54,18 @@ function GestionEventosPanel({
     }
     return { asistentes, calificaciones, eventos: selectedIds.size }
   }, [selectedIds, counts])
+
+  const handleRecuperar = async (eventoId) => {
+    setRecuperandoId(eventoId)
+    try {
+      await updateEvento(eventoId, { archivado: false, active: true, fechaCierre: null })
+      onRecuperado?.(eventoId)
+    } catch (error) {
+      setErrorMessage(error.message || 'No fue posible recuperar el evento.')
+    } finally {
+      setRecuperandoId('')
+    }
+  }
 
   if (archivedEventos.length === 0) {
     return (
@@ -162,9 +176,10 @@ function GestionEventosPanel({
               <span>Cerrado</span>
               <span>Asistentes</span>
               <span>Calificaciones</span>
+              <span>Acciones</span>
             </div>
             {archivedEventos.map((ev) => (
-              <label key={ev.id} className="bulk-row">
+              <div key={ev.id} className="bulk-row">
                 <input
                   type="checkbox"
                   checked={selectedIds.has(ev.id)}
@@ -175,7 +190,16 @@ function GestionEventosPanel({
                 <span>{formatFecha(ev.fechaCierre)}</span>
                 <span>{counts[ev.id]?.asistentes || 0}</span>
                 <span>{counts[ev.id]?.calificaciones || 0}</span>
-              </label>
+                <button
+                  type="button"
+                  className="ghost-action"
+                  onClick={() => handleRecuperar(ev.id)}
+                  disabled={recuperandoId === ev.id || step === 'running'}
+                  title="Vuelve a poner este evento como activo, editable de nuevo"
+                >
+                  {recuperandoId === ev.id ? 'Recuperando...' : 'Recuperar'}
+                </button>
+              </div>
             ))}
           </div>
 

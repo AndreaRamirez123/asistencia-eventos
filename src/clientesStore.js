@@ -126,6 +126,54 @@ export async function migrarDatosHuerfanos(clienteId) {
   return total
 }
 
+// Borra eventos/asistentes (y su data relacionada: estaciones, visitas,
+// calificaciones, trivias) cuyo clienteId ya no corresponde a ningún cliente
+// existente — sobras de empresas eliminadas con deleteCliente(), que no
+// borra en cascada.
+export async function limpiarDatosHuerfanos() {
+  if (!isFirebaseConfigured || !db) throw new Error('Firebase no configurado.')
+
+  const clientesSnap = await getDocs(collection(db, COLLECTION))
+  const idsValidos = new Set(clientesSnap.docs.map((d) => d.id))
+
+  const eventosSnap = await getDocs(collection(db, 'eventoEventos'))
+  const eventosHuerfanos = eventosSnap.docs.filter((d) => {
+    const clienteId = d.data().clienteId
+    return clienteId && !idsValidos.has(clienteId)
+  })
+  const eventoIdsHuerfanos = new Set(eventosHuerfanos.map((d) => d.id))
+
+  let total = 0
+
+  const RELACIONADAS = [
+    'eventoAsistentes',
+    'eventoEstaciones',
+    'eventoVisitas',
+    'eventoCalificaciones',
+    'eventoTrivias',
+    'eventoTriviaResultados',
+  ]
+  for (const col of RELACIONADAS) {
+    const snap = await getDocs(collection(db, col))
+    for (const d of snap.docs) {
+      const data = d.data()
+      const esHuerfanaPorCliente = data.clienteId && !idsValidos.has(data.clienteId)
+      const esHuerfanaPorEvento = data.eventoId && eventoIdsHuerfanos.has(data.eventoId)
+      if (esHuerfanaPorCliente || esHuerfanaPorEvento) {
+        await deleteDoc(doc(db, col, d.id))
+        total++
+      }
+    }
+  }
+
+  for (const d of eventosHuerfanos) {
+    await deleteDoc(doc(db, 'eventoEventos', d.id))
+    total++
+  }
+
+  return total
+}
+
 export async function getClienteStats(clienteId) {
   if (!isFirebaseConfigured || !db || !clienteId) return { eventos: 0, asistentes: 0 }
   try {

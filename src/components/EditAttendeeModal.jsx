@@ -66,7 +66,7 @@ function EditAttendeeModal({
 
             {empresasInvitadas.length > 0 ? (
               <label className="field">
-                <span>Empresa o institucion</span>
+                <span>  Empresa u organización</span>
                 <select
                   name="empresaInvitadaId"
                   value={form.empresaInvitadaId || ''}
@@ -83,7 +83,7 @@ function EditAttendeeModal({
               </label>
             ) : (
               <label className="field">
-                <span>Empresa o institucion</span>
+                <span>  Empresa u organización </span>
                 <input
                   name="organization"
                   value={form.organization}

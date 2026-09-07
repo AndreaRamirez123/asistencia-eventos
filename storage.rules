@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Logos de co-organizadores por evento: lectura pública (se muestran en el
+    // formulario público de registro), escritura solo para usuarios autenticados
+    // (el panel admin ya restringe esta pantalla a roles de staff/admin).
+    match /eventoLogos/{eventoId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

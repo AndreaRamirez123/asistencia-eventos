@@ -1829,7 +1829,7 @@ El sistema se considera apto para producción cuando:
 | `documentId` | string | Número de documento único |
 | `email` | string | Correo electrónico |
 | `phone` | string | Teléfono de contacto |
-| `organization` | string | Empresa o institución (opcional) |
+| `organization` | string |   Empresa u organización (opcional) |
 | `attendeeType` | string | Categoría: `general`, `vip`, `speaker`, `staff`, `press` |
 | `notes` | string | Notas internas del administrador (opcional) |
 | `hasFaceConsent` | boolean | Autorización para reconocimiento facial |

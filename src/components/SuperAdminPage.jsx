@@ -5,6 +5,7 @@ import {
   deleteCliente,
   getClienteStats,
   getGlobalStats,
+  limpiarDatosHuerfanos,
   listClientes,
   migrarDatosHuerfanos,
   updateCliente,
@@ -386,6 +387,7 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel, dark = false, onT
   const [modal, setModal] = useState(null) // null | 'create' | cliente obj para editar
   const [invitandoCliente, setInvitandoCliente] = useState(null)
   const [globalStats, setGlobalStats] = useState(null)
+  const [limpiando, setLimpiando] = useState(false)
 
   useEffect(() => {
     listClientes().then((list) => {
@@ -417,6 +419,24 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel, dark = false, onT
 
   const handleMigrar = async (clienteId) => {
     return migrarDatosHuerfanos(clienteId)
+  }
+
+  const handleLimpiarHuerfanos = async () => {
+    if (!window.confirm(
+      'Esto borra permanentemente eventos, asistentes, estaciones, visitas, ' +
+      'calificaciones y trivias cuyo clienteId ya no corresponde a ninguna ' +
+      'empresa existente (por ejemplo, sobras de empresas eliminadas). ¿Continuar?',
+    )) return
+    setLimpiando(true)
+    try {
+      const total = await limpiarDatosHuerfanos()
+      getGlobalStats().then(setGlobalStats)
+      window.alert(`Se borraron ${total} documentos huérfanos.`)
+    } catch (error) {
+      window.alert(error.message || 'No fue posible limpiar los datos huérfanos.')
+    } finally {
+      setLimpiando(false)
+    }
   }
 
   const activas = clientes.filter((c) => c.activa).length
@@ -472,6 +492,15 @@ function SuperAdminPage({ currentUser, onLogout, onEnterPanel, dark = false, onT
             </span>
             <span className="superadmin-stat-label">Asistentes (total)</span>
           </div>
+          <button
+            type="button"
+            className="mini-action"
+            onClick={handleLimpiarHuerfanos}
+            disabled={limpiando}
+            title="Borra eventos/asistentes y su data relacionada cuyo clienteId ya no corresponde a ninguna empresa existente"
+          >
+            {limpiando ? 'Limpiando...' : 'Limpiar huérfanos'}
+          </button>
         </div>
 
         <div className="superadmin-toolbar">

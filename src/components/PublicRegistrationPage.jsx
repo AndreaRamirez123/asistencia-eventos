@@ -27,6 +27,11 @@ function PublicRegistrationPage({
   eventoNombre = '',
   eventoId = '',
   empresaConfig = null,
+  logosCoOrganizadores = [],
+  preguntasEvento = [],
+  preguntasEventoObligatorio = false,
+  ocultarCategoria = false,
+  ocultarAcompanantes = false,
 }) {
   const [showScanner, setShowScanner] = useState(false)
   const [isGeneratingPase, setIsGeneratingPase] = useState(false)
@@ -62,11 +67,14 @@ function PublicRegistrationPage({
     (e) => e.id === form.empresaInvitadaId,
   )
   const encuestaActiva = Boolean(selectedEmpresa?.encuestaHabilitada)
-  const encuestaObligatoria = Boolean(selectedEmpresa?.encuestaObligatoria)
-  const preguntas =
+  const preguntasEmpresa =
     encuestaActiva && Array.isArray(selectedEmpresa?.encuestaPreguntas)
       ? selectedEmpresa.encuestaPreguntas
       : []
+  const preguntas = [...preguntasEmpresa, ...preguntasEvento]
+  const encuestaObligatoria =
+    (preguntasEmpresa.length > 0 && Boolean(selectedEmpresa?.encuestaObligatoria)) ||
+    (preguntasEvento.length > 0 && preguntasEventoObligatorio)
 
   const showModeToggle = false
   const effectiveMode =
@@ -131,12 +139,20 @@ function PublicRegistrationPage({
     <div className="public-shell" style={brandStyle}>
       <header className="public-hero">
         <div>
-          {empresaConfig?.logoUrl && (
-            <img
-              src={empresaConfig.logoUrl}
-              alt="Logo"
-              style={{ height: '48px', objectFit: 'contain', marginBottom: '12px', display: 'block' }}
-            />
+          {logosCoOrganizadores.length > 0 ? (
+            <div className="public-hero-cologos">
+              {logosCoOrganizadores.map((url, index) => (
+                <img key={`${url}-${index}`} src={url} alt="Logo organizador" />
+              ))}
+            </div>
+          ) : (
+            empresaConfig?.logoUrl && (
+              <img
+                src={empresaConfig.logoUrl}
+                alt="Logo"
+                style={{ height: '48px', objectFit: 'contain', marginBottom: '12px', display: 'block' }}
+              />
+            )
           )}
           <p className="eyebrow">Registro publico del evento</p>
           <h1>
@@ -276,7 +292,7 @@ function PublicRegistrationPage({
             {empresasInvitadas.length > 0 ? (
               <>
                 <label className="field">
-                  <span>Empresa o institucion</span>
+                  <span>  Empresa u organización</span>
                   <select
                     name="empresaInvitadaId"
                     value={form.empresaInvitadaId || ''}
@@ -306,7 +322,7 @@ function PublicRegistrationPage({
               </>
             ) : (
               <label className="field">
-                <span>Empresa o institucion</span>
+                <span>  Empresa u organización</span>
                 <input
                   name="organization"
                   value={form.organization}
@@ -316,38 +332,42 @@ function PublicRegistrationPage({
               </label>
             )}
 
-            <label className="field">
-              <span>Categoria</span>
-              <select name="attendeeType" value={form.attendeeType} onChange={handleChange}>
-                {categorias.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {ocultarCategoria ? null : (
+              <label className="field">
+                <span>Categoria</span>
+                <select name="attendeeType" value={form.attendeeType} onChange={handleChange}>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
-            <label className="field">
-              <span>¿Llevas acompañantes?</span>
-              <select
-                name="hasCompanions"
-                value={form.hasCompanions ? 'si' : 'no'}
-                onChange={(event) =>
-                  handleChange({
-                    target: {
-                      name: 'hasCompanions',
-                      type: 'checkbox',
-                      checked: event.target.value === 'si',
-                    },
-                  })
-                }
-              >
-                <option value="no">No, voy solo</option>
-                <option value="si">Si, llevo acompañantes</option>
-              </select>
-            </label>
+            {ocultarAcompanantes ? null : (
+              <label className="field">
+                <span>¿Llevas acompañantes?</span>
+                <select
+                  name="hasCompanions"
+                  value={form.hasCompanions ? 'si' : 'no'}
+                  onChange={(event) =>
+                    handleChange({
+                      target: {
+                        name: 'hasCompanions',
+                        type: 'checkbox',
+                        checked: event.target.value === 'si',
+                      },
+                    })
+                  }
+                >
+                  <option value="no">No, voy solo</option>
+                  <option value="si">Si, llevo acompañantes</option>
+                </select>
+              </label>
+            )}
 
-            {form.hasCompanions ? (
+            {!ocultarAcompanantes && form.hasCompanions ? (
               <label className="field">
                 <span>¿Cuántos acompañantes?</span>
                 <input
@@ -367,13 +387,13 @@ function PublicRegistrationPage({
               <fieldset className="encuesta-section">
                 <legend>
                   {encuestaObligatoria
-                    ? 'Encuesta (obligatoria)'
-                    : 'Encuesta (opcional)'}
+                    ? ''
+                    : ''}
                 </legend>
                 <p className="helper-text">
                   {encuestaObligatoria
-                    ? 'Responde estas preguntas para poder continuar con el registro.'
-                    : 'Ayudanos respondiendo estas preguntas. Puedes omitirlas si prefieres.'}
+                    ? ''
+                    : ''}
                 </p>
 
                 {preguntas.map((pregunta) => {
@@ -381,6 +401,8 @@ function PublicRegistrationPage({
                   const required = encuestaObligatoria
 
                   if (pregunta.tipo === 'opcion') {
+                    const esOtro = value.trim().toLowerCase() === 'otro'
+                    const otroValue = form.surveyAnswers?.[`${pregunta.id}__otro`] || ''
                     return (
                       <label key={pregunta.id} className="field">
                         <span>{pregunta.label}</span>
@@ -398,6 +420,18 @@ function PublicRegistrationPage({
                             </option>
                           ))}
                         </select>
+                        {esOtro ? (
+                          <input
+                            type="text"
+                            value={otroValue}
+                            onChange={(event) =>
+                              handleSurveyChange?.(`${pregunta.id}__otro`, event.target.value)
+                            }
+                            placeholder="Especifica..."
+                            required={required}
+                            style={{ marginTop: '8px' }}
+                          />
+                        ) : null}
                       </label>
                     )
                   }
