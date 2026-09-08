@@ -129,6 +129,17 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
   }
 
   const cargarPlantillaDTalks = () => {
+    if (
+      draftPreguntas.length > 0 &&
+      !window.confirm(
+        `Esto reemplaza las ${draftPreguntas.length} pregunta(s) que ya tienes aquí por las ` +
+        '5 de la plantilla D Talks (Cargo, Sector, Confirmación, Autorización, Recibir ' +
+        'información) — las que tengas ahora se pierden si no las has guardado en otro lado. ' +
+        '¿Continuar?',
+      )
+    ) {
+      return
+    }
     setDraftPreguntas([
       { ...createExtraQuestion(), tipo: 'texto', label: 'Cargo' },
       {
@@ -144,8 +155,19 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
       {
         ...createExtraQuestion(),
         tipo: 'si-no',
+        requiereSi: true,
         label:
-          'Autorizo el tratamiento de mis datos personales de acuerdo con la Ley 1581 de 2012 y acepto recibir información sobre próximos eventos, capacitaciones y actividades organizadas por D Talks y KUN, Divergency y la CUN.',
+          'Autorizo el tratamiento de mis datos personales para efectos del registro y ' +
+          'confirmación de asistencia a este evento, de acuerdo con la Ley 1581 de 2012. ' +
+          'Mis datos podrán ser compartidos entre D Talks, KUN, Divergency y la CUN para ' +
+          'este fin.',
+      },
+      {
+        ...createExtraQuestion(),
+        tipo: 'si-no',
+        label:
+          'Acepto recibir información sobre futuros eventos, capacitaciones y actividades ' +
+          'organizadas por D Talks, KUN, Divergency y la CUN.',
       },
     ])
   }
@@ -305,6 +327,35 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     Boolean(evento?.autoAprobarPreregistro),
   )
   const [autoAprobarError, setAutoAprobarError] = useState('')
+
+  // Este panel guarda muchos valores en estado local (inicializados una sola
+  // vez desde `evento`), así que al cambiar de evento en el selector de
+  // arriba, sin este efecto se quedaba mostrando/editando el evento anterior.
+  useEffect(() => {
+    setLogosList(
+      (evento?.logosCoOrganizadores || []).map((logo, index) =>
+        typeof logo === 'string'
+          ? { id: `logo-${index}`, url: logo, urlOscuro: '' }
+          : { id: logo.id || `logo-${index}`, url: logo.url, urlOscuro: logo.urlOscuro || '' },
+      ),
+    )
+    setNuevaLogoUrl('')
+    setLogosError('')
+    setOcultarCategoria(Boolean(evento?.ocultarCategoria))
+    setOcultarAcompanantes(Boolean(evento?.ocultarAcompanantes))
+    setCamposError('')
+    setSoloMapa(Boolean(evento?.soloMapa))
+    setSoloMapaError('')
+    setDraftPreguntas(Array.isArray(evento?.preguntasExtra) ? evento.preguntasExtra : [])
+    setPreguntasObligatorio(Boolean(evento?.preguntasExtraObligatorio))
+    setPreguntasError('')
+    setExpandedPreguntaIds(new Set())
+    setPendingModo(null)
+    setModeError('')
+    setAutoAprobar(Boolean(evento?.autoAprobarPreregistro))
+    setAutoAprobarError('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evento?.id])
 
   const toggleAutoAprobar = async (event) => {
     const checked = event.target.checked
@@ -632,6 +683,23 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
                         }
                         placeholder="Ej. Educación, Tecnología, Salud, Gobierno"
                       />
+                    </label>
+                  ) : null}
+                  {pregunta.tipo === 'si-no' ? (
+                    <label className="checkbox-field consent-inline">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(pregunta.requiereSi)}
+                        onChange={(e) => updateExtraPregunta(pregunta.id, { requiereSi: e.target.checked })}
+                      />
+                      <span>
+                        No dejar registrarse si responde "No"
+                        <small className="helper-text">
+                          Úsalo solo para el consentimiento de datos personales, no para preguntas
+                          opcionales como suscripción a novedades — esas deben poder responderse
+                          "No" sin bloquear el registro.
+                        </small>
+                      </span>
                     </label>
                   ) : null}
                   <button

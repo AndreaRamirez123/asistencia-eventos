@@ -130,8 +130,7 @@ function PublicRegistrationPage({
                   return <img key={`${urlClaro}-${index}`} src={urlClaro} alt="Logo organizador" />
                 }
 
-                // Se precargan ambas versiones para que el cambio de tema sea
-                // instantáneo (sin esperar a que se descargue la otra imagen).
+                
                 return (
                   <Fragment key={`${urlClaro}-${index}`}>
                     <img src={urlClaro} alt="Logo organizador" className="logo-solo-claro" />
@@ -150,11 +149,19 @@ function PublicRegistrationPage({
             )
           )}
           <p className="eyebrow">Registro publico del evento</p>
-          <h1>
-            {isOnSite
+          {(() => {
+            const subtitulo = isOnSite
               ? 'Registrate y entra al evento.'
-              : 'Inscribete y recibe tu codigo QR de asistencia.'}
-          </h1>
+              : 'Inscribete y recibe tu codigo QR de asistencia.'
+            return eventoNombre ? (
+              <>
+                <h1>{eventoNombre}</h1>
+                <p className="public-hero-subtitulo">{subtitulo}</p>
+              </>
+            ) : (
+              <h1>{subtitulo}</h1>
+            )
+          })()}
           <p className="hero-text">
             Diligencia tus datos y quedarás registrado para el evento.
           </p>
@@ -213,7 +220,7 @@ function PublicRegistrationPage({
               />
             </label>
 
-            <label className="field">
+            <label className="field field-wide">
               <span>Documento o NIT</span>
               <div className="document-input-row">
                 <select
@@ -427,6 +434,23 @@ function PublicRegistrationPage({
                             style={{ marginTop: '8px' }}
                           />
                         ) : null}
+                      </label>
+                    )
+                  }
+
+                  if (pregunta.tipo === 'si-no' && pregunta.requiereSi) {
+                    return (
+                      <label key={pregunta.id} className="field field-wide consent-toggle">
+                        <input
+                          type="checkbox"
+                          checked={value === 'si'}
+                          onChange={(event) =>
+                            handleSurveyChange?.(pregunta.id, event.target.checked ? 'si' : '')
+                          }
+                          required
+                        />
+                        <span className="consent-toggle-track" aria-hidden="true" />
+                        <span className="consent-toggle-label">{pregunta.label}</span>
                       </label>
                     )
                   }

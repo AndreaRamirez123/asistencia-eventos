@@ -89,6 +89,7 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
         attendee: data.item || null,
         accessPoint,
         scannedAt: new Date().toISOString(),
+        payload,
       }
 
       setLastResult(result)
@@ -118,6 +119,11 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
         autoResumeRef.current = null
       }, delay)
     }
+  }
+
+  const handleAprobarEnPuerta = async () => {
+    if (!lastResult?.payload) return
+    await sendCheckin({ ...lastResult.payload, aprobarSiPendiente: true })
   }
 
   const handleManualSubmit = async (event) => {
@@ -554,6 +560,17 @@ function ScannerPage({ currentUser, onLogout, evento, empresaConfig = null, onBa
                     </div>
                     {lastResult.status !== 'ok' ? (
                       <p className="preview-copy">{lastResult.message}</p>
+                    ) : null}
+                    {lastResult.status === 'not-approved' ? (
+                      <button
+                        type="button"
+                        className="submit-button"
+                        style={{ marginTop: '10px', width: '100%' }}
+                        onClick={handleAprobarEnPuerta}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'Aprobando...' : 'Aprobar y dejar entrar'}
+                      </button>
                     ) : null}
                     {lastResult.status === 'ok' && miEventoQr ? (
                       <div className="scanner-mi-evento-wrap">

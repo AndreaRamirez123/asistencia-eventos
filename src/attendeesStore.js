@@ -376,6 +376,7 @@ export async function performCheckin({
   accessPoint,
   checkedInBy = '',
   checkedInByName = '',
+  aprobarSiPendiente = false,
 }) {
   ensureFirestore()
 
@@ -413,7 +414,7 @@ export async function performCheckin({
     }
   }
 
-  if (current.status !== 'approved') {
+  if (current.status !== 'approved' && !aprobarSiPendiente) {
     return {
       status: 'not-approved',
       message:
@@ -429,6 +430,11 @@ export async function performCheckin({
     checkedInBy: checkedInBy || '',
     checkedInByName: checkedInByName || '',
     updatedAt: serverTimestamp(),
+  }
+  // El staff aprobó en el punto de entrada (no venía de un admin) — se deja
+  // constancia para diferenciarlo de una aprobación previa desde el panel.
+  if (current.status !== 'approved' && aprobarSiPendiente) {
+    update.aprobadoEnPuerta = true
   }
 
   await updateDoc(docSnap.ref, update)

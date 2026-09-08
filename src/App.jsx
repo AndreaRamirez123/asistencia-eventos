@@ -322,9 +322,9 @@ function App() {
   const brandingCliente = superadminClienteActivo || activeCliente
   const empresaConfigFromCliente = brandingCliente
     ? {
-        ...brandingCliente,
-        colorPrimario: brandingCliente.colorPrimario || brandingCliente.colorAcento || '',
-      }
+      ...brandingCliente,
+      colorPrimario: brandingCliente.colorPrimario || brandingCliente.colorAcento || '',
+    }
     : null
 
   const handleLogout = async () => {
@@ -412,7 +412,7 @@ function App() {
         if (cliente) setActiveCliente(cliente)
       })
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Cargar empresa del usuario logueado (para branding aunque no use slug en URL)
@@ -422,7 +422,7 @@ function App() {
     getClienteById(currentUser.clienteId).then((cliente) => {
       if (cliente) setActiveCliente(cliente)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.clienteId])
 
   // Cargar eventos para rutas públicas (visitantes sin login que usan /e/:slug/)
@@ -496,10 +496,26 @@ function App() {
   useEffect(() => {
     if (!isFirebaseConfigured || !currentUser) return
 
-    listEmpresas(currentUser.role === 'superadmin' ? superadminClienteActivo?.id : activeClienteId)
+    const clienteIdParaCargar =
+      currentUser.role === 'superadmin'
+        ? superadminClienteActivo?.id || activeClienteId
+        : activeClienteId
+
+    if (!clienteIdParaCargar) {
+      setEmpresas([])
+      setEventos([])
+      setEventosLoaded(true)
+      return
+    }
+
+    listEmpresas(clienteIdParaCargar)
       .then(setEmpresas)
-      .catch((error) => console.error(error))
-    listEventos(activeClienteId)
+      .catch((error) => {
+        console.error(error)
+        setEmpresas([])
+      })
+
+    listEventos(clienteIdParaCargar)
       .then((items) => {
         setEventos(items)
         setEventosLoaded(true)
@@ -508,8 +524,9 @@ function App() {
         console.error(error)
         setEventosLoaded(true)
       })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, superadminClienteActivo])
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, superadminClienteActivo, activeClienteId])
 
   useEffect(() => {
     const target = publicUrlOptions.empresaParam
@@ -553,7 +570,7 @@ function App() {
     )
 
     return unsubscribe
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, currentUser, superadminClienteActivo])
 
   const handleChange = (event) => {
@@ -833,7 +850,7 @@ function App() {
     } catch (error) {
       setErrorMessage(
         error.message ||
-          'No fue posible guardar el registro desde el panel admin. Revisa Firestore.',
+        'No fue posible guardar el registro desde el panel admin. Revisa Firestore.',
       )
       console.error(error)
     } finally {
@@ -854,6 +871,26 @@ function App() {
       const selectedEmpresa = empresasInvitadas.find(
         (e) => e.id === publicForm.empresaInvitadaId,
       )
+      // Preguntas de consentimiento (ej. tratamiento de datos): bloquean el
+      // registro si responden "No", sin importar si el resto son opcionales —
+      // esto es independiente de "preguntasExtraObligatorio" para no forzar
+      // a responder preguntas opcionales (ej. suscripción a novedades) solo
+      // porque una de consentimiento sí es obligatoria.
+      const todasLasPreguntas = [
+        ...(Array.isArray(selectedEmpresa?.encuestaPreguntas) ? selectedEmpresa.encuestaPreguntas : []),
+        ...(Array.isArray(activeEvento?.preguntasExtra) ? activeEvento.preguntasExtra : []),
+      ]
+      const consentimientoPendiente = todasLasPreguntas.find(
+        (p) => p.requiereSi && publicForm.surveyAnswers?.[p.id] !== 'si',
+      )
+      if (consentimientoPendiente) {
+        setPublicErrorMessage(
+          `Para continuar debes responder "Sí" a: "${consentimientoPendiente.label}"`,
+        )
+        setIsPublicSubmitting(false)
+        return
+      }
+
       const preguntasObligatoriasPendientes = []
       if (selectedEmpresa?.encuestaHabilitada && selectedEmpresa?.encuestaObligatoria) {
         preguntasObligatoriasPendientes.push(
@@ -1039,12 +1076,15 @@ function App() {
   )
 
   const handleMigrateOrphans = async () => {
+    // Usa el evento REALMENTE seleccionado en el panel (activeEvento), no un
+    // "primer evento activo" arbitrario — si no, los huérfanos podían quedar
+    // asignados a un evento distinto al que el admin está viendo.
     const defaultEmpresa = empresas.find((e) => e.active !== false) || empresas[0]
-    const defaultEvento = eventos.find((e) => e.active !== false) || eventos[0]
+    const defaultEvento = activeEvento
 
     if (!defaultEmpresa || !defaultEvento) {
       setErrorMessage(
-        'Debes tener al menos una empresa y un evento creados antes de migrar.',
+        'Debes tener al menos una empresa y un evento activo seleccionado antes de migrar.',
       )
       return
     }
@@ -1183,41 +1223,41 @@ function App() {
         {themeTogglePortal}
         <div className="public-overlay-spacer" />
         <PublicRegistrationPage
-            errorMessage={publicErrorMessage}
-            form={publicForm}
-            handleChange={handlePublicChange}
-            handleSurveyChange={handlePublicSurveyChange}
-            handleSubmit={handlePublicSubmit}
-            handleDocumentLookup={handlePublicDocumentLookup}
-            lookupStatus={publicLookupStatus}
-            isSubmitting={isPublicSubmitting}
-            submission={publicSubmission}
-            onCedulaFill={handlePublicCedulaFill}
-            empresasInvitadas={empresasInvitadas}
-            categorias={categoriasEvento}
-            kioskMode={publicUrlOptions.kiosk}
-            eventoModoRegistro={
-              activeEvento?.modoRegistro ||
-              (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
-            }
-            eventoLoaded={eventosLoaded}
-            eventoNombre={activeEvento?.nombre || ''}
-            eventoId={activeEvento?.id || ''}
-            empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
-            logosCoOrganizadores={activeEvento?.logosCoOrganizadores || []}
-            preguntasEvento={activeEvento?.preguntasExtra || []}
-            preguntasEventoObligatorio={Boolean(activeEvento?.preguntasExtraObligatorio)}
-            ocultarCategoria={Boolean(activeEvento?.ocultarCategoria)}
-            ocultarAcompanantes={Boolean(activeEvento?.ocultarAcompanantes)}
-            soloMapa={Boolean(activeEvento?.soloMapa)}
-            onResetSubmission={() => {
-              setPublicSubmission(null)
-              setPublicForm(initialPublicForm)
-              setPublicLookupStatus('idle')
-            }}
-          />
-          {publicFooter}
-        </div>
+          errorMessage={publicErrorMessage}
+          form={publicForm}
+          handleChange={handlePublicChange}
+          handleSurveyChange={handlePublicSurveyChange}
+          handleSubmit={handlePublicSubmit}
+          handleDocumentLookup={handlePublicDocumentLookup}
+          lookupStatus={publicLookupStatus}
+          isSubmitting={isPublicSubmitting}
+          submission={publicSubmission}
+          onCedulaFill={handlePublicCedulaFill}
+          empresasInvitadas={empresasInvitadas}
+          categorias={categoriasEvento}
+          kioskMode={publicUrlOptions.kiosk}
+          eventoModoRegistro={
+            activeEvento?.modoRegistro ||
+            (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
+          }
+          eventoLoaded={eventosLoaded}
+          eventoNombre={activeEvento?.nombre || ''}
+          eventoId={activeEvento?.id || ''}
+          empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
+          logosCoOrganizadores={activeEvento?.logosCoOrganizadores || []}
+          preguntasEvento={activeEvento?.preguntasExtra || []}
+          preguntasEventoObligatorio={Boolean(activeEvento?.preguntasExtraObligatorio)}
+          ocultarCategoria={Boolean(activeEvento?.ocultarCategoria)}
+          ocultarAcompanantes={Boolean(activeEvento?.ocultarAcompanantes)}
+          soloMapa={Boolean(activeEvento?.soloMapa)}
+          onResetSubmission={() => {
+            setPublicSubmission(null)
+            setPublicForm(initialPublicForm)
+            setPublicLookupStatus('idle')
+          }}
+        />
+        {publicFooter}
+      </div>
     )
   }
 
@@ -1607,244 +1647,244 @@ function App() {
 
           {/* Contenido de la sección activa */}
           <div className="admin-tile-content">
-          {activeSectionId === 'listado' && (
-            <AttendeeTableSection
-              attendees={filteredAttendees}
-              empresasMap={empresasMap}
-              empresasInvitadas={empresasInvitadas}
-              categorias={categoriasEvento}
-              handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
-              handleViewQr={setViewingQrAttendee}
-              handleBulkApprove={handleBulkApprove}
-              isBulkApproving={isBulkApproving}
-              handleBulkDelete={handleBulkDelete}
-              isBulkDeleting={isBulkDeleting}
-              filterState={filters}
-              filteredCount={filteredAttendees.length}
-              handleDelete={handleRequestDelete}
-              handleEdit={handleEdit}
-              handleFilterChange={handleFilterChange}
-              handleStatusAction={handleStatusAction}
-              formatDate={formatDate}
-              isDeletingId={isDeletingId}
-              isUpdatingStatusId={isUpdatingStatusId}
-              isLoadingAttendees={isLoadingAttendees}
-              loadAttendees={loadAttendees}
-            />
-          )}
+            {activeSectionId === 'listado' && (
+              <AttendeeTableSection
+                attendees={filteredAttendees}
+                empresasMap={empresasMap}
+                empresasInvitadas={empresasInvitadas}
+                categorias={categoriasEvento}
+                handleExportCsv={() => downloadAttendeesCsv(filteredAttendees)}
+                handleViewQr={setViewingQrAttendee}
+                handleBulkApprove={handleBulkApprove}
+                isBulkApproving={isBulkApproving}
+                handleBulkDelete={handleBulkDelete}
+                isBulkDeleting={isBulkDeleting}
+                filterState={filters}
+                filteredCount={filteredAttendees.length}
+                handleDelete={handleRequestDelete}
+                handleEdit={handleEdit}
+                handleFilterChange={handleFilterChange}
+                handleStatusAction={handleStatusAction}
+                formatDate={formatDate}
+                isDeletingId={isDeletingId}
+                isUpdatingStatusId={isUpdatingStatusId}
+                isLoadingAttendees={isLoadingAttendees}
+                loadAttendees={loadAttendees}
+              />
+            )}
 
-          {activeSectionId === 'crear-evento' && (
-            <section className="panel">
-              <div className="panel-heading">
-                <p className="eyebrow">Nuevo evento</p>
-                <h2>Crear evento desde cero</h2>
-                <p className="section-copy">
-                  Crea un evento nuevo. El evento activo no se cierra; puedes cambiar entre eventos
-                  desde el selector de arriba.
-                </p>
-              </div>
-              <form className="crear-evento-form" onSubmit={handleCrearEvento}>
-                <label className="field">
-                  <span>Nombre del evento</span>
-                  <input
-                    type="text"
-                    value={nuevoEventoNombre}
-                    onChange={(e) => setNuevoEventoNombre(e.target.value)}
-                    placeholder={`Evento ${new Date().toLocaleDateString('es-CO')}`}
-                    disabled={isCreandoEvento}
-                  />
-                </label>
-                {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
-                <button type="submit" className="submit-button" disabled={isCreandoEvento}>
-                  {isCreandoEvento ? 'Creando...' : 'Crear evento'}
-                </button>
-              </form>
-            </section>
-          )}
+            {activeSectionId === 'crear-evento' && (
+              <section className="panel">
+                <div className="panel-heading">
+                  <p className="eyebrow">Nuevo evento</p>
+                  <h2>Crear evento desde cero</h2>
+                  <p className="section-copy">
+                    Crea un evento nuevo. El evento activo no se cierra; puedes cambiar entre eventos
+                    desde el selector de arriba.
+                  </p>
+                </div>
+                <form className="crear-evento-form" onSubmit={handleCrearEvento}>
+                  <label className="field">
+                    <span>Nombre del evento</span>
+                    <input
+                      type="text"
+                      value={nuevoEventoNombre}
+                      onChange={(e) => setNuevoEventoNombre(e.target.value)}
+                      placeholder={`Evento ${new Date().toLocaleDateString('es-CO')}`}
+                      disabled={isCreandoEvento}
+                    />
+                  </label>
+                  {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
+                  <button type="submit" className="submit-button" disabled={isCreandoEvento}>
+                    {isCreandoEvento ? 'Creando...' : 'Crear evento'}
+                  </button>
+                </form>
+              </section>
+            )}
 
-          {activeSectionId === 'crear-evento' && activeEvento && (
-            <section className="panel">
-              <div className="panel-heading">
-                <p className="eyebrow">Evento recurrente</p>
-                <h2>Duplicar el evento activo</h2>
-                <p className="section-copy">
-                  Crea un evento nuevo copiando toda la configuración de <strong>{activeEvento.nombre}</strong> —
-                  logos, preguntas extra, campos ocultos, modo de registro, empresas invitadas y
-                  categorías. Solo cambias el nombre; la fecha la ajustas después en "Horario del
-                  evento". No copia asistentes ni calificaciones.
-                </p>
-              </div>
-              <form className="crear-evento-form" onSubmit={handleDuplicarEvento}>
-                <label className="field">
-                  <span>Nombre del nuevo evento</span>
-                  <input
-                    type="text"
-                    value={nombreDuplicado}
-                    onChange={(e) => setNombreDuplicado(e.target.value)}
-                    placeholder={`${activeEvento.nombre} (copia)`}
-                    disabled={isDuplicandoEvento}
-                  />
-                </label>
-                {duplicarEventoError ? <p className="feedback error">{duplicarEventoError}</p> : null}
-                <button type="submit" className="submit-button" disabled={isDuplicandoEvento}>
-                  {isDuplicandoEvento ? 'Duplicando...' : 'Duplicar evento'}
-                </button>
-              </form>
-            </section>
-          )}
+            {activeSectionId === 'crear-evento' && activeEvento && (
+              <section className="panel">
+                <div className="panel-heading">
+                  <p className="eyebrow">Evento recurrente</p>
+                  <h2>Duplicar el evento activo</h2>
+                  <p className="section-copy">
+                    Crea un evento nuevo copiando toda la configuración de <strong>{activeEvento.nombre}</strong> —
+                    logos, preguntas extra, campos ocultos, modo de registro, empresas invitadas y
+                    categorías. Solo cambias el nombre; la fecha la ajustas después en "Horario del
+                    evento". No copia asistentes ni calificaciones.
+                  </p>
+                </div>
+                <form className="crear-evento-form" onSubmit={handleDuplicarEvento}>
+                  <label className="field">
+                    <span>Nombre del nuevo evento</span>
+                    <input
+                      type="text"
+                      value={nombreDuplicado}
+                      onChange={(e) => setNombreDuplicado(e.target.value)}
+                      placeholder={`${activeEvento.nombre} (copia)`}
+                      disabled={isDuplicandoEvento}
+                    />
+                  </label>
+                  {duplicarEventoError ? <p className="feedback error">{duplicarEventoError}</p> : null}
+                  <button type="submit" className="submit-button" disabled={isDuplicandoEvento}>
+                    {isDuplicandoEvento ? 'Duplicando...' : 'Duplicar evento'}
+                  </button>
+                </form>
+              </section>
+            )}
 
-          {activeSectionId === 'empresas-invitadas' && activeEvento && (
-            <EmpresasInvitadasPanel
-              evento={activeEvento}
-              onChange={handleEmpresasInvitadasChange}
-            />
-          )}
+            {activeSectionId === 'empresas-invitadas' && activeEvento && (
+              <EmpresasInvitadasPanel
+                evento={activeEvento}
+                onChange={handleEmpresasInvitadasChange}
+              />
+            )}
 
-          {activeSectionId === 'categorias' && activeEvento && (
-            <CategoriasPanel
-              evento={activeEvento}
-              onChange={(nextEvento) =>
-                setEventos((current) =>
-                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-                )
-              }
-            />
-          )}
-
-          {activeSectionId === 'evento-config' && activeEvento && (
-            <KioskoQrPanel
-              empresasInvitadas={empresasInvitadas}
-              evento={activeEvento}
-              empresaSlug={brandingCliente?.slug || ''}
-              onEventoChange={(nextEvento) =>
-                setEventos((current) =>
-                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-                )
-              }
-            />
-          )}
-
-          {activeSectionId === 'horario' && activeEvento && (
-            <HorarioEventoPanel
-              evento={activeEvento}
-              onEventoChange={(nextEvento) =>
-                setEventos((current) =>
-                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-                )
-              }
-            />
-          )}
-
-          {activeSectionId === 'calificacion' && activeEvento && (
-            <CalificacionPanel
-              evento={activeEvento}
-              ratings={eventRatings}
-              empresaSlug={brandingCliente?.slug || ''}
-              empresasInvitadas={empresasInvitadas}
-              onEventoChange={(nextEvento) =>
-                setEventos((current) =>
-                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-                )
-              }
-            />
-          )}
-
-          {activeSectionId === 'mapa' && activeEvento && (
-            <MapEditorPanel
-              evento={activeEvento}
-              estaciones={estaciones}
-              onEventoChange={(nextEvento) =>
-                setEventos((current) =>
-                  current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
-                )
-              }
-            />
-          )}
-
-          {activeSectionId === 'trivia' && activeEvento && (
-            <TriviaEditorPanel
-              evento={activeEvento}
-              estaciones={estaciones}
-            />
-          )}
-
-          {activeSectionId === 'estacion-qr' && activeEvento && (
-            <EstacionQRPanel
-              evento={activeEvento}
-              estaciones={estaciones}
-            />
-          )}
-
-          {activeSectionId === 'dashboard' && activeEvento && (
-            <EstacionesDashboard
-              evento={activeEvento}
-              estaciones={estaciones}
-            />
-          )}
-
-          {activeSectionId === 'calificaciones-estaciones' && activeEvento && (
-            <CalificacionEstacionesPanel
-              evento={activeEvento}
-              estaciones={estaciones}
-            />
-          )}
-
-          {activeSectionId === 'gestion-eventos' && (
-            <GestionEventosPanel
-              eventos={eventos}
-              activeEventoId={activeEventoId}
-              attendees={attendees}
-              ratings={ratings}
-              onEliminados={(ids) => {
-                const idSet = new Set(ids)
-                setEventos((current) => current.filter((e) => !idSet.has(e.id)))
-                setAttendees((current) =>
-                  current.filter((a) => !idSet.has(a.eventoId)),
-                )
-                if (idSet.has(activeEventoId)) {
-                  // si por algo eliminaron el activo (no debería, son archivados)
-                  handleSelectEvento('')
+            {activeSectionId === 'categorias' && activeEvento && (
+              <CategoriasPanel
+                evento={activeEvento}
+                onChange={(nextEvento) =>
+                  setEventos((current) =>
+                    current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                  )
                 }
-              }}
-              onRecuperado={(eventoId) => {
-                setEventos((current) =>
-                  current.map((e) =>
-                    e.id === eventoId
-                      ? { ...e, archivado: false, active: true, fechaCierre: null }
-                      : e,
-                  ),
-                )
-              }}
-            />
-          )}
+              />
+            )}
 
-          {activeSectionId === 'cerrar-evento' && (
-            <CerrarEventoPanel
-              evento={activeEvento}
-              onCerrado={() => {
-                setEventos((current) =>
-                  current.map((e) =>
-                    e.id === activeEventoId
-                      ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
-                      : e,
-                  ),
-                )
-                const next = eventos.find((e) => e.id !== activeEventoId && !e.archivado)
-                handleSelectEvento(next?.id || '')
-              }}
-              onEliminado={(eventoIdEliminado) => {
-                setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
-                setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
-                setEventos((current) => {
-                  const remaining = current
-                  const next =
-                    remaining.find((e) => !e.archivado) || remaining[0]
+            {activeSectionId === 'evento-config' && activeEvento && (
+              <KioskoQrPanel
+                empresasInvitadas={empresasInvitadas}
+                evento={activeEvento}
+                empresaSlug={brandingCliente?.slug || ''}
+                onEventoChange={(nextEvento) =>
+                  setEventos((current) =>
+                    current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                  )
+                }
+              />
+            )}
+
+            {activeSectionId === 'horario' && activeEvento && (
+              <HorarioEventoPanel
+                evento={activeEvento}
+                onEventoChange={(nextEvento) =>
+                  setEventos((current) =>
+                    current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                  )
+                }
+              />
+            )}
+
+            {activeSectionId === 'calificacion' && activeEvento && (
+              <CalificacionPanel
+                evento={activeEvento}
+                ratings={eventRatings}
+                empresaSlug={brandingCliente?.slug || ''}
+                empresasInvitadas={empresasInvitadas}
+                onEventoChange={(nextEvento) =>
+                  setEventos((current) =>
+                    current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                  )
+                }
+              />
+            )}
+
+            {activeSectionId === 'mapa' && activeEvento && (
+              <MapEditorPanel
+                evento={activeEvento}
+                estaciones={estaciones}
+                onEventoChange={(nextEvento) =>
+                  setEventos((current) =>
+                    current.map((e) => (e.id === nextEvento.id ? nextEvento : e)),
+                  )
+                }
+              />
+            )}
+
+            {activeSectionId === 'trivia' && activeEvento && (
+              <TriviaEditorPanel
+                evento={activeEvento}
+                estaciones={estaciones}
+              />
+            )}
+
+            {activeSectionId === 'estacion-qr' && activeEvento && (
+              <EstacionQRPanel
+                evento={activeEvento}
+                estaciones={estaciones}
+              />
+            )}
+
+            {activeSectionId === 'dashboard' && activeEvento && (
+              <EstacionesDashboard
+                evento={activeEvento}
+                estaciones={estaciones}
+              />
+            )}
+
+            {activeSectionId === 'calificaciones-estaciones' && activeEvento && (
+              <CalificacionEstacionesPanel
+                evento={activeEvento}
+                estaciones={estaciones}
+              />
+            )}
+
+            {activeSectionId === 'gestion-eventos' && (
+              <GestionEventosPanel
+                eventos={eventos}
+                activeEventoId={activeEventoId}
+                attendees={attendees}
+                ratings={ratings}
+                onEliminados={(ids) => {
+                  const idSet = new Set(ids)
+                  setEventos((current) => current.filter((e) => !idSet.has(e.id)))
+                  setAttendees((current) =>
+                    current.filter((a) => !idSet.has(a.eventoId)),
+                  )
+                  if (idSet.has(activeEventoId)) {
+                    // si por algo eliminaron el activo (no debería, son archivados)
+                    handleSelectEvento('')
+                  }
+                }}
+                onRecuperado={(eventoId) => {
+                  setEventos((current) =>
+                    current.map((e) =>
+                      e.id === eventoId
+                        ? { ...e, archivado: false, active: true, fechaCierre: null }
+                        : e,
+                    ),
+                  )
+                }}
+              />
+            )}
+
+            {activeSectionId === 'cerrar-evento' && (
+              <CerrarEventoPanel
+                evento={activeEvento}
+                onCerrado={() => {
+                  setEventos((current) =>
+                    current.map((e) =>
+                      e.id === activeEventoId
+                        ? { ...e, archivado: true, active: false, fechaCierre: new Date().toISOString() }
+                        : e,
+                    ),
+                  )
+                  const next = eventos.find((e) => e.id !== activeEventoId && !e.archivado)
                   handleSelectEvento(next?.id || '')
-                  return current
-                })
-              }}
-            />
-          )}
+                }}
+                onEliminado={(eventoIdEliminado) => {
+                  setEventos((current) => current.filter((e) => e.id !== eventoIdEliminado))
+                  setAttendees((current) => current.filter((a) => a.eventoId !== eventoIdEliminado))
+                  setEventos((current) => {
+                    const remaining = current
+                    const next =
+                      remaining.find((e) => !e.archivado) || remaining[0]
+                    handleSelectEvento(next?.id || '')
+                    return current
+                  })
+                }}
+              />
+            )}
           </div>{/* end admin-tile-content */}
         </div>{/* end admin-layout */}
       </main>
