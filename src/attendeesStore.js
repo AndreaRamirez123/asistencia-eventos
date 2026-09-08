@@ -203,7 +203,9 @@ export async function registerAttendee(payload) {
   ensureFirestore()
   const attendee = normalizeAttendee(payload)
 
-  if (attendee.source === 'public-registration') {
+  // Por defecto, el pre-registro público queda pendiente de aprobación. Un evento
+  // puede pedir auto-aprobación (payload.status ya viene 'approved' desde App.jsx).
+  if (attendee.source === 'public-registration' && attendee.status !== 'approved') {
     attendee.status = 'pre-registered'
   }
 

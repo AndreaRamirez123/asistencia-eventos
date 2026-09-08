@@ -14,7 +14,7 @@ import {
   updateAttendeeStatus,
 } from './attendeesStore'
 import { listEmpresas } from './empresasStore'
-import { createEvento, listEventos } from './eventosStore'
+import { createEvento, duplicarEvento, listEventos } from './eventosStore'
 import { getClienteById, getClienteBySlug } from './clientesStore'
 import { getEventoById } from './eventosStore'
 import { subscribeToRatings } from './ratingsStore'
@@ -307,6 +307,9 @@ function App() {
   const [routeSlug] = useState(getRouteSlug)
   const [nuevoEventoNombre, setNuevoEventoNombre] = useState('')
   const [isCreandoEvento, setIsCreandoEvento] = useState(false)
+  const [nombreDuplicado, setNombreDuplicado] = useState('')
+  const [isDuplicandoEvento, setIsDuplicandoEvento] = useState(false)
+  const [duplicarEventoError, setDuplicarEventoError] = useState('')
   const [crearEventoError, setCrearEventoError] = useState('')
   const [filters, setFilters] = useState(initialFilters)
   const [isLoadingAttendees, setIsLoadingAttendees] = useState(false)
@@ -375,6 +378,15 @@ function App() {
           .then((items) => {
             setEventos(items)
             setEventosLoaded(true)
+            // En páginas públicas de registro, el QR/link fija el evento por su
+            // id — no debe depender de cuál esté archivado o cuál eligió el
+            // admin la última vez en su propio navegador.
+            if (window.location.pathname.endsWith('/registro')) {
+              const eventoIdParam = new URLSearchParams(window.location.search).get('evento')
+              if (eventoIdParam && items.some((e) => e.id === eventoIdParam)) {
+                setActiveEventoIdState(eventoIdParam)
+              }
+            }
           })
           .catch(() => setEventosLoaded(true))
       }
@@ -873,7 +885,7 @@ function App() {
       const isOnSite = publicUrlOptions.kiosk || eventoModo === 'onsite'
       const attendee = buildAttendeePayload(publicForm, {
         source: isOnSite ? 'kiosk-registration' : 'public-registration',
-        status: isOnSite ? 'approved' : 'pre-registered',
+        status: isOnSite || activeEvento?.autoAprobarPreregistro ? 'approved' : 'pre-registered',
         empresaId: activeEmpresaId,
         eventoId: activeEventoId,
         clienteId: activeClienteId,
@@ -1092,10 +1104,30 @@ function App() {
       localStorage.setItem('asistencia-evento:activeEventoId', nuevo.id)
       setNuevoEventoNombre('')
       setEventos((prev) => [nuevo, ...prev])
+      window.alert(`Evento "${nuevo.nombre}" creado correctamente. Ya quedó seleccionado como evento activo.`)
     } catch (err) {
       setCrearEventoError(err.message || 'No fue posible crear el evento.')
     } finally {
       setIsCreandoEvento(false)
+    }
+  }
+
+  const handleDuplicarEvento = async (e) => {
+    e.preventDefault()
+    if (!activeEvento) return
+    setIsDuplicandoEvento(true)
+    setDuplicarEventoError('')
+    try {
+      const nuevo = await duplicarEvento(activeEvento, nombreDuplicado)
+      setActiveEventoIdState(nuevo.id)
+      localStorage.setItem('asistencia-evento:activeEventoId', nuevo.id)
+      setNombreDuplicado('')
+      setEventos((prev) => [nuevo, ...prev])
+      window.alert(`Evento "${nuevo.nombre}" duplicado correctamente. Ya quedó seleccionado como evento activo — recuerda ajustar la fecha en "Horario del evento".`)
+    } catch (err) {
+      setDuplicarEventoError(err.message || 'No fue posible duplicar el evento.')
+    } finally {
+      setIsDuplicandoEvento(false)
     }
   }
 
@@ -1168,7 +1200,7 @@ function App() {
               activeEvento?.modoRegistro ||
               (activeEvento?.registroEnSitio ? 'onsite' : 'pre')
             }
-            eventoLoaded={true}
+            eventoLoaded={eventosLoaded}
             eventoNombre={activeEvento?.nombre || ''}
             eventoId={activeEvento?.id || ''}
             empresaConfig={empresasInvitadas.find((e) => e.id === publicUrlOptions.empresaParam) || empresaConfigFromCliente || null}
@@ -1177,6 +1209,7 @@ function App() {
             preguntasEventoObligatorio={Boolean(activeEvento?.preguntasExtraObligatorio)}
             ocultarCategoria={Boolean(activeEvento?.ocultarCategoria)}
             ocultarAcompanantes={Boolean(activeEvento?.ocultarAcompanantes)}
+            soloMapa={Boolean(activeEvento?.soloMapa)}
             onResetSubmission={() => {
               setPublicSubmission(null)
               setPublicForm(initialPublicForm)
@@ -1624,6 +1657,37 @@ function App() {
                 {crearEventoError ? <p className="feedback error">{crearEventoError}</p> : null}
                 <button type="submit" className="submit-button" disabled={isCreandoEvento}>
                   {isCreandoEvento ? 'Creando...' : 'Crear evento'}
+                </button>
+              </form>
+            </section>
+          )}
+
+          {activeSectionId === 'crear-evento' && activeEvento && (
+            <section className="panel">
+              <div className="panel-heading">
+                <p className="eyebrow">Evento recurrente</p>
+                <h2>Duplicar el evento activo</h2>
+                <p className="section-copy">
+                  Crea un evento nuevo copiando toda la configuración de <strong>{activeEvento.nombre}</strong> —
+                  logos, preguntas extra, campos ocultos, modo de registro, empresas invitadas y
+                  categorías. Solo cambias el nombre; la fecha la ajustas después en "Horario del
+                  evento". No copia asistentes ni calificaciones.
+                </p>
+              </div>
+              <form className="crear-evento-form" onSubmit={handleDuplicarEvento}>
+                <label className="field">
+                  <span>Nombre del nuevo evento</span>
+                  <input
+                    type="text"
+                    value={nombreDuplicado}
+                    onChange={(e) => setNombreDuplicado(e.target.value)}
+                    placeholder={`${activeEvento.nombre} (copia)`}
+                    disabled={isDuplicandoEvento}
+                  />
+                </label>
+                {duplicarEventoError ? <p className="feedback error">{duplicarEventoError}</p> : null}
+                <button type="submit" className="submit-button" disabled={isDuplicandoEvento}>
+                  {isDuplicandoEvento ? 'Duplicando...' : 'Duplicar evento'}
                 </button>
               </form>
             </section>

@@ -369,6 +369,18 @@
   object-fit: contain;
 }
 
+.logo-solo-oscuro {
+  display: none;
+}
+
+.dark .logo-solo-claro {
+  display: none;
+}
+
+.dark .logo-solo-oscuro {
+  display: inline-block;
+}
+
 @media (max-width: 480px) {
   .public-hero-cologos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2181,6 +2193,14 @@
   cursor: pointer;
 }
 
+.checkbox-field span {
+  color: var(--heading);
+}
+
+.pregunta-extra-row {
+  color: var(--heading);
+}
+
 .submit-button {
   grid-column: 1 / -1;
   min-height: 54px;
@@ -2257,6 +2277,12 @@
 
 .preview-card h3 {
   margin-bottom: 10px;
+  color: #eff6fb;
+}
+
+.preview-card .eyebrow,
+.dark .preview-card .eyebrow {
+  color: #9fb3c8;
 }
 
 .preview-copy {

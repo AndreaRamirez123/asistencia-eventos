@@ -20,6 +20,16 @@ function CerrarEventoPanel({ evento, onCerrado, onEliminado }) {
     }
   }, [deleteStep, evento?.id])
 
+  // Al cambiar de evento en el selector, este panel no debe seguir mostrando
+  // el resultado ("archivado"/"eliminar") de un evento distinto.
+  useEffect(() => {
+    setStep('idle')
+    setDeleteStep('idle')
+    setConfirmText('')
+    setErrorMessage('')
+    setDeleteError('')
+  }, [evento?.id])
+
   if (!evento) return null
 
   const handleEliminar = async () => {

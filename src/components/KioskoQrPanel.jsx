@@ -4,12 +4,16 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { updateEvento } from '../eventosStore'
 import { storage } from '../firebase'
 
-function buildUrl(slug, kiosk = false) {
+function buildUrl(slug, kiosk = false, eventoId = '') {
   if (typeof window === 'undefined') return ''
   const base = slug
     ? `${window.location.origin}/e/${slug}`
     : window.location.origin
-  return kiosk ? `${base}/registro?kiosk=1` : `${base}/registro`
+  const params = new URLSearchParams()
+  if (kiosk) params.set('kiosk', '1')
+  if (eventoId) params.set('evento', eventoId)
+  const query = params.toString()
+  return `${base}/registro${query ? `?${query}` : ''}`
 }
 
 async function generateQr(url) {
@@ -34,9 +38,14 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
   const [preQrDataUrl, setPreQrDataUrl] = useState('')
   const [copyState, setCopyState] = useState('')
   const [preCopyState, setPreCopyState] = useState('')
-  const [logosText, setLogosText] = useState(
-    (evento?.logosCoOrganizadores || []).join('\n'),
+  const [logosList, setLogosList] = useState(
+    (evento?.logosCoOrganizadores || []).map((logo, index) =>
+      typeof logo === 'string'
+        ? { id: `logo-${index}`, url: logo, urlOscuro: '' }
+        : { id: logo.id || `logo-${index}`, url: logo.url, urlOscuro: logo.urlOscuro || '' },
+    ),
   )
+  const [nuevaLogoUrl, setNuevaLogoUrl] = useState('')
   const [logosSaving, setLogosSaving] = useState(false)
   const [logosSaved, setLogosSaved] = useState(false)
   const [logosError, setLogosError] = useState('')
@@ -73,6 +82,22 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     } catch (err) {
       setOcultarAcompanantes(!checked)
       setCamposError(err.message || 'No fue posible guardar.')
+    }
+  }
+
+  const [soloMapa, setSoloMapa] = useState(Boolean(evento?.soloMapa))
+  const [soloMapaError, setSoloMapaError] = useState('')
+
+  const toggleSoloMapa = async (event) => {
+    const checked = event.target.checked
+    setSoloMapa(checked)
+    setSoloMapaError('')
+    try {
+      await updateEvento(evento.id, { soloMapa: checked })
+      onEventoChange?.({ ...evento, soloMapa: checked })
+    } catch (err) {
+      setSoloMapa(!checked)
+      setSoloMapaError(err.message || 'No fue posible guardar.')
     }
   }
 
@@ -177,18 +202,54 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     setIsUploadingLogo(true)
     setLogosError('')
     try {
-      const nuevasUrls = []
+      const nuevosLogos = []
       for (const file of files) {
         const path = `eventoLogos/${evento.id}/${Date.now()}-${file.name}`
         const fileRef = ref(storage, path)
         await uploadBytes(fileRef, file, { contentType: file.type })
         const url = await getDownloadURL(fileRef)
-        nuevasUrls.push(url)
+        nuevosLogos.push({ id: `logo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, url, urlOscuro: '' })
       }
-      setLogosText((current) => {
-        const lineas = current.split('\n').map((l) => l.trim()).filter(Boolean)
-        return [...lineas, ...nuevasUrls].join('\n')
-      })
+      setLogosList((current) => [...current, ...nuevosLogos])
+    } catch (err) {
+      setLogosError(err.message || 'No fue posible subir el archivo.')
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
+  const agregarLogoUrl = () => {
+    const url = nuevaLogoUrl.trim()
+    if (!url) return
+    setLogosList((current) => [
+      ...current,
+      { id: `logo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, url, urlOscuro: '' },
+    ])
+    setNuevaLogoUrl('')
+  }
+
+  const quitarLogo = (id) => {
+    setLogosList((current) => current.filter((l) => l.id !== id))
+  }
+
+  const updateLogoUrlOscuro = (id, urlOscuro) => {
+    setLogosList((current) =>
+      current.map((l) => (l.id === id ? { ...l, urlOscuro } : l)),
+    )
+  }
+
+  const handleSubirVersionOscura = async (id, event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !evento || !storage) return
+    setIsUploadingLogo(true)
+    setLogosError('')
+    try {
+      const path = `eventoLogos/${evento.id}/${Date.now()}-oscuro-${file.name}`
+      const fileRef = ref(storage, path)
+      await uploadBytes(fileRef, file, { contentType: file.type })
+      const url = await getDownloadURL(fileRef)
+      updateLogoUrlOscuro(id, url)
     } catch (err) {
       setLogosError(err.message || 'No fue posible subir el archivo.')
     } finally {
@@ -198,16 +259,13 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
 
   const handleGuardarLogos = async () => {
     if (!evento) return
-    const urls = logosText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
+    const logos = logosList.map(({ url, urlOscuro }) => ({ url, urlOscuro: urlOscuro || '' }))
     setLogosSaving(true)
     setLogosError('')
     setLogosSaved(false)
     try {
-      await updateEvento(evento.id, { logosCoOrganizadores: urls })
-      onEventoChange?.({ ...evento, logosCoOrganizadores: urls })
+      await updateEvento(evento.id, { logosCoOrganizadores: logos })
+      onEventoChange?.({ ...evento, logosCoOrganizadores: logos })
       setLogosSaved(true)
       setTimeout(() => setLogosSaved(false), 2000)
     } catch (err) {
@@ -217,8 +275,8 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
     }
   }
 
-  const kioskUrl = buildUrl(empresaSlug, true)
-  const preUrl = buildUrl(empresaSlug, false)
+  const kioskUrl = buildUrl(empresaSlug, true, evento?.id)
+  const preUrl = buildUrl(empresaSlug, false, evento?.id)
 
   useEffect(() => {
     let cancelled = false
@@ -242,6 +300,24 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
   const modoRegistro = pendingModo ?? modoRegistroFromProp
   const [isTogglingMode, setIsTogglingMode] = useState(false)
   const [modeError, setModeError] = useState('')
+
+  const [autoAprobar, setAutoAprobar] = useState(
+    Boolean(evento?.autoAprobarPreregistro),
+  )
+  const [autoAprobarError, setAutoAprobarError] = useState('')
+
+  const toggleAutoAprobar = async (event) => {
+    const checked = event.target.checked
+    setAutoAprobar(checked)
+    setAutoAprobarError('')
+    try {
+      await updateEvento(evento.id, { autoAprobarPreregistro: checked })
+      onEventoChange?.({ ...evento, autoAprobarPreregistro: checked })
+    } catch (err) {
+      setAutoAprobar(!checked)
+      setAutoAprobarError(err.message || 'No fue posible guardar.')
+    }
+  }
 
   const handleModoChange = async (event) => {
     if (!evento) return
@@ -351,6 +427,21 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
 
         </div>
         {modeError ? <p className="feedback error">{modeError}</p> : null}
+
+        {modoRegistro === 'pre' ? (
+          <label className="checkbox-field consent-inline" style={{ marginTop: '12px' }}>
+            <input type="checkbox" checked={autoAprobar} onChange={toggleAutoAprobar} />
+            <span>
+              Aprobar automáticamente los pre-registros desde casa
+              <small className="helper-text">
+                Sin esto, cada registro queda "pendiente" hasta que un admin lo apruebe. Con esto
+                activado, quedan aprobados de una vez y pueden entrar mostrando el QR o su
+                documento, sin revisión previa.
+              </small>
+            </span>
+          </label>
+        ) : null}
+        {autoAprobarError ? <p className="feedback error">{autoAprobarError}</p> : null}
       </div>
 
       <div className="kiosko-mode">
@@ -371,15 +462,56 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
           />
         </label>
         {isUploadingLogo ? <p className="helper-text">Subiendo...</p> : null}
+
         <label className="field">
-          <span>O pega URLs de logos ya hospedados (una por línea)</span>
-          <textarea
-            rows={4}
-            value={logosText}
-            onChange={(e) => setLogosText(e.target.value)}
-            placeholder={'https://.../logo1.png\nhttps://.../logo2.png'}
-          />
+          <span>O pega la URL de un logo ya hospedado</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={nuevaLogoUrl}
+              onChange={(e) => setNuevaLogoUrl(e.target.value)}
+              placeholder="https://.../logo.png"
+              style={{ flex: 1 }}
+            />
+            <button type="button" className="ghost-action" onClick={agregarLogoUrl}>
+              Agregar
+            </button>
+          </div>
         </label>
+
+        {logosList.map((logo) => (
+          <div
+            key={logo.id}
+            style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '10px', padding: '10px', border: '1px solid rgba(148,163,184,0.25)', borderRadius: '8px', marginBottom: '8px' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <img src={logo.url} alt="" style={{ height: '28px', maxWidth: '90px', objectFit: 'contain' }} />
+              {logo.urlOscuro ? (
+                <img src={logo.urlOscuro} alt="" style={{ height: '20px', maxWidth: '70px', objectFit: 'contain', background: '#13212d', borderRadius: '4px', padding: '2px 4px' }} />
+              ) : null}
+            </div>
+            <label className="field" style={{ margin: 0 }}>
+              <span style={{ fontSize: '0.8rem' }}>Versión para modo oscuro (opcional — vacío = usa la de arriba en ambos modos)</span>
+              <input
+                type="text"
+                value={logo.urlOscuro}
+                onChange={(e) => updateLogoUrlOscuro(logo.id, e.target.value)}
+                placeholder="Pega una URL, o sube un archivo →"
+                style={{ marginBottom: '6px' }}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleSubirVersionOscura(logo.id, e)}
+                disabled={isUploadingLogo}
+              />
+            </label>
+            <button type="button" className="ghost-action" onClick={() => quitarLogo(logo.id)}>
+              Quitar
+            </button>
+          </div>
+        ))}
+
         {logosError ? <p className="feedback error">{logosError}</p> : null}
         <div className="kiosko-actions">
           <button
@@ -407,6 +539,19 @@ function KioskoQrPanel({ evento, onEventoChange, empresaSlug = '' }) {
           <span>Ocultar el campo "¿Llevas acompañantes?"</span>
         </label>
         {camposError ? <p className="feedback error">{camposError}</p> : null}
+      </div>
+
+      <div className="kiosko-mode">
+        <p className="eyebrow">Página "Mi evento" (solo este evento)</p>
+        <p className="helper-text">
+          Si este evento no maneja check-in ni calificación de estaciones, deja solo el mapa
+          interactivo — sin el escáner de QR de estación ni el conteo de progreso.
+        </p>
+        <label className="checkbox-field consent-inline">
+          <input type="checkbox" checked={soloMapa} onChange={toggleSoloMapa} />
+          <span>Mostrar solo el mapa (sin escanear estaciones ni progreso)</span>
+        </label>
+        {soloMapaError ? <p className="feedback error">{soloMapaError}</p> : null}
       </div>
 
       <div className="kiosko-mode">

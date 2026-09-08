@@ -461,10 +461,12 @@ function MiEventoPage() {
           <span className="mie-topbar-name">{attendee.fullName?.split(' ')[0]}</span>
         </div>
         <div className="mie-topbar-right">
-          <div className="mie-trophy-badge">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-            <span>{totalVisitadas}/{totalEstaciones}</span>
-          </div>
+          {!evento?.soloMapa && (
+            <div className="mie-trophy-badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+              <span>{totalVisitadas}/{totalEstaciones}</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -819,34 +821,36 @@ function MiEventoPage() {
       </div>
 
       {/* Bottom nav */}
-      <nav className="mie-nav">
-        <button
-          type="button"
-          className={`mie-nav-btn ${activeTab === 'piso' ? 'active' : ''}`}
-          onClick={() => setActiveTab('piso')}
-        >
-          <IconMap />
-          <span>PISO</span>
-        </button>
+      {!evento?.soloMapa && (
+        <nav className="mie-nav">
+          <button
+            type="button"
+            className={`mie-nav-btn ${activeTab === 'piso' ? 'active' : ''}`}
+            onClick={() => setActiveTab('piso')}
+          >
+            <IconMap />
+            <span>PISO</span>
+          </button>
 
-        <button
-          type="button"
-          className="mie-nav-qr-btn"
-          onClick={() => { setActiveTab('qr'); setScanError('') }}
-        >
-          <IconQr />
-        </button>
+          <button
+            type="button"
+            className="mie-nav-qr-btn"
+            onClick={() => { setActiveTab('qr'); setScanError('') }}
+          >
+            <IconQr />
+          </button>
 
-        <button
-          type="button"
-          className={`mie-nav-btn ${activeTab === 'estaciones' ? 'active' : ''}`}
-          onClick={() => setActiveTab('estaciones')}
-        >
-          <IconPerson />
-          <span>ESTACIONES</span>
-        </button>
+          <button
+            type="button"
+            className={`mie-nav-btn ${activeTab === 'estaciones' ? 'active' : ''}`}
+            onClick={() => setActiveTab('estaciones')}
+          >
+            <IconPerson />
+            <span>ESTACIONES</span>
+          </button>
 
-      </nav>
+        </nav>
+      )}
     </div>
   )
 }

@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import CedulaScanner from './CedulaScanner'
-import { generarPase } from '../utils/generarPase'
 
 // Flag para mostrar/ocultar la lectura de cedula. Cambiar a true para reactivar.
 const SHOW_CEDULA_SCANNER = false
@@ -32,31 +31,11 @@ function PublicRegistrationPage({
   preguntasEventoObligatorio = false,
   ocultarCategoria = false,
   ocultarAcompanantes = false,
+  soloMapa = false,
 }) {
   const [showScanner, setShowScanner] = useState(false)
-  const [isGeneratingPase, setIsGeneratingPase] = useState(false)
 
-  const handleDescargarPase = async () => {
-    if (!submission) return
-    setIsGeneratingPase(true)
-    try {
-      const paseUrl = await generarPase({
-        attendee: submission.attendee,
-        qrDataUrl: submission.qrDataUrl,
-        eventoNombre,
-        colorPrimario: empresaConfig?.colorPrimario || '',
-        logoUrl: empresaConfig?.logoUrl || '',
-      })
-      const link = document.createElement('a')
-      link.href = paseUrl
-      link.download = `pase-${submission.attendee.documentId || 'asistente'}.png`
-      link.click()
-    } catch {
-      // silencioso
-    } finally {
-      setIsGeneratingPase(false)
-    }
-  }
+  const verEstacionesLabel = soloMapa ? 'Ver el mapa del evento →' : 'Ver mis estaciones y trivias →'
 
   const handleExtract = (data) => {
     onCedulaFill?.(data)
@@ -117,10 +96,12 @@ function PublicRegistrationPage({
               href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
               className="submit-button reg-cta-estaciones"
             >
-              Ver mis estaciones y trivias →
+              {verEstacionesLabel}
             </a>
             <p className="helper-text kiosk-tip">
-              Guarda ese enlace para acceder al recorrido y las trivias. Si el staff te lo solicita, muestra esta pantalla.
+              {soloMapa
+                ? 'Guarda ese enlace para ver el mapa del evento. Si el staff te lo solicita, muestra esta pantalla.'
+                : 'Guarda ese enlace para acceder al recorrido y las trivias. Si el staff te lo solicita, muestra esta pantalla.'}
             </p>
           </div>
         </div>
@@ -141,9 +122,23 @@ function PublicRegistrationPage({
         <div>
           {logosCoOrganizadores.length > 0 ? (
             <div className="public-hero-cologos">
-              {logosCoOrganizadores.map((url, index) => (
-                <img key={`${url}-${index}`} src={url} alt="Logo organizador" />
-              ))}
+              {logosCoOrganizadores.map((logo, index) => {
+                const urlClaro = typeof logo === 'string' ? logo : logo.url
+                const urlOscuro = typeof logo === 'object' && logo.urlOscuro
+
+                if (!urlOscuro) {
+                  return <img key={`${urlClaro}-${index}`} src={urlClaro} alt="Logo organizador" />
+                }
+
+                // Se precargan ambas versiones para que el cambio de tema sea
+                // instantáneo (sin esperar a que se descargue la otra imagen).
+                return (
+                  <Fragment key={`${urlClaro}-${index}`}>
+                    <img src={urlClaro} alt="Logo organizador" className="logo-solo-claro" />
+                    <img src={urlOscuro} alt="Logo organizador" className="logo-solo-oscuro" />
+                  </Fragment>
+                )
+              })}
             </div>
           ) : (
             empresaConfig?.logoUrl && (
@@ -498,7 +493,7 @@ function PublicRegistrationPage({
                     className="submit-button"
                     style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', marginTop: '10px', minHeight: '44px', boxSizing: 'border-box' }}
                   >
-                    Ver mis estaciones y trivias →
+                    {verEstacionesLabel}
                   </a>
                 ) : null}
               </div>
@@ -526,10 +521,12 @@ function PublicRegistrationPage({
                     href={`/mi-evento?doc=${submission.attendee.documentId}&evento=${submission.attendee.eventoId || ''}`}
                     className="submit-button reg-cta-estaciones"
                   >
-                    Ver mis estaciones y trivias →
+                    {verEstacionesLabel}
                   </a>
                   <p className="preview-copy" style={{ fontSize: '0.78rem', marginTop: '6px', opacity: 0.7 }}>
-                    Guarda ese enlace para acceder al recorrido y las trivias del evento.
+                    {soloMapa
+                      ? 'Guarda ese enlace para ver el mapa del evento.'
+                      : 'Guarda ese enlace para acceder al recorrido y las trivias del evento.'}
                   </p>
 
                   <img
@@ -550,15 +547,6 @@ function PublicRegistrationPage({
                     >
                       Descargar QR
                     </a>
-                    <button
-                      type="button"
-                      className="submit-button"
-                      style={{ marginTop: '8px', width: '100%', minHeight: '44px' }}
-                      onClick={handleDescargarPase}
-                      disabled={isGeneratingPase}
-                    >
-                      {isGeneratingPase ? 'Generando pase...' : '⬇ Descargar pase completo'}
-                    </button>
                   </div>
                   {onResetSubmission && (
                     <button
@@ -567,7 +555,7 @@ function PublicRegistrationPage({
                       style={{ marginTop: '14px', width: '100%', textAlign: 'center' }}
                       onClick={onResetSubmission}
                     >
-                      ← Registrar otra persona
+                      ← Volver
                     </button>
                   )}
                 </>

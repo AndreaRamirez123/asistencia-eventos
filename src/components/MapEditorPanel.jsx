@@ -37,19 +37,28 @@ function MapEditorPanel({ evento, onEventoChange, estaciones: estacionesIniciale
   const containerRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  // Cargar estaciones iniciales
+  // Cargar estaciones iniciales — se resincroniza cada vez que cambia el
+  // evento seleccionado, incluso si el nuevo tiene cero estaciones (si no,
+  // quedaban las del evento anterior y "Guardar mapa" las sobreescribía).
   useEffect(() => {
-    if (estacionesIniciales.length > 0) {
-      setEstaciones(estacionesIniciales.map((e) => ({ ...e, localId: e.id || generarId() })))
-    }
-  }, [estacionesIniciales.length])
+    setEstaciones(estacionesIniciales.map((e) => ({ ...e, localId: e.id || generarId() })))
+    setSelectedId(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evento?.id, estacionesIniciales])
 
-  // Cargar plano desde evento
+  // Cargar plano desde evento — igual, se resincroniza por evento.id (no solo
+  // por planoBase64) para que planoBase64 y planoImg nunca queden
+  // desalineados con el evento realmente seleccionado.
   useEffect(() => {
     if (evento?.planoBase64) {
+      setPlanoBase64(evento.planoBase64)
       cargarImagenDesdeBase64(evento.planoBase64)
+    } else {
+      setPlanoBase64('')
+      setPlanoImg(null)
     }
-  }, [evento?.planoBase64])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evento?.id])
 
   // Responsive stage
   useEffect(() => {

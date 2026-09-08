@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from './firebase'
+import { listEstaciones, saveEstacionesBulk } from './stacionesStore'
 
 const COLLECTION_NAME = 'eventoEventos'
 
@@ -78,6 +79,50 @@ export async function createEvento(payload = {}, clienteId = '') {
     ...data,
     createdAt: new Date().toISOString(),
   }
+}
+
+// Campos de configuración (no de estado ni de fecha) que se copian al duplicar
+// un evento — pensado para eventos recurrentes donde solo cambia el nombre y
+// la fecha. No copia asistentes, calificaciones, ni el estado de archivado/cierre.
+const CAMPOS_DUPLICABLES = [
+  'empresasInvitadas', 'categorias', 'modoRegistro',
+  'calificacionHabilitada', 'calificacionTitulo',
+  'logosCoOrganizadores', 'preguntasExtra', 'preguntasExtraObligatorio',
+  'ocultarCategoria', 'ocultarAcompanantes', 'soloMapa',
+  'autoAprobarPreregistro', 'puntosAcceso', 'planoBase64',
+]
+
+export async function duplicarEvento(eventoOrigen, nombreNuevo) {
+  if (!isFirebaseConfigured || !db) {
+    throw new Error('Firebase no esta configurado.')
+  }
+  if (!eventoOrigen) {
+    throw new Error('Falta el evento a duplicar.')
+  }
+
+  const data = {
+    nombre: String(nombreNuevo || `${eventoOrigen.nombre} (copia)`).trim(),
+    registroEnSitio: false,
+    archivado: false,
+    active: true,
+    clienteId: eventoOrigen.clienteId || '',
+    createdAt: serverTimestamp(),
+  }
+  for (const campo of CAMPOS_DUPLICABLES) {
+    if (eventoOrigen[campo] !== undefined) data[campo] = eventoOrigen[campo]
+  }
+
+  const ref = collection(db, COLLECTION_NAME)
+  const docRef = await addDoc(ref, data)
+
+  try {
+    const estaciones = await listEstaciones(eventoOrigen.id)
+    if (estaciones.length > 0) await saveEstacionesBulk(docRef.id, estaciones)
+  } catch (e) {
+    console.error('No fue posible copiar las estaciones del evento original.', e)
+  }
+
+  return { id: docRef.id, ...data, createdAt: new Date().toISOString() }
 }
 
 export async function countEventoData(eventoId) {
